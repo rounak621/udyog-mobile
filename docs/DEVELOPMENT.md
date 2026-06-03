@@ -27,11 +27,12 @@ github.com/rounak621/udyog-mobile
 | Signup | app/(auth)/signup.tsx | ✅ Done |
 | Dashboard | app/(tabs)/index.tsx | ✅ Done |
 | Bills List | app/(tabs)/bills.tsx | ✅ Done |
-| Parties List | app/(tabs)/parties.tsx | 🔲 Pending |
-| More | app/(tabs)/more.tsx | 🔲 Pending |
+| Parties List | app/(tabs)/parties.tsx | ✅ Done |
+| More | app/(tabs)/more.tsx | ✅ Done |
 | Create Invoice | app/invoice/create.tsx | ✅ Done |
 | Invoice Detail | app/invoice/[id].tsx | ✅ Done |
-| Party Detail | app/party/[id].tsx | 🔲 Pending |
+| Party Detail | app/party/[id].tsx | ✅ Done |
+| Create Party | app/party/create.tsx | ✅ Done |
 
 ## Color Theme
 - Primary: #F97316 (orange)
@@ -93,3 +94,10 @@ eas build --platform android
 - CA users shown notice to use web app with redirect link
 - Password show/hide toggle
 - Improved error handling on all auth screens
+
+### v0.5.0 — Parties + More Screen
+- Parties list with search, filter (All/Customers/Suppliers), pull to refresh
+- Party detail with contact info, outstanding amount, recent bills
+- Create party screen (customer or supplier)
+- More screen with profile, settings menu, logout
+- Logout with confirmation alert
