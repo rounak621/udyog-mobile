@@ -33,6 +33,13 @@ github.com/rounak621/udyog-mobile
 | Invoice Detail | app/invoice/[id].tsx | ✅ Done |
 | Party Detail | app/party/[id].tsx | ✅ Done |
 | Create Party | app/party/create.tsx | ✅ Done |
+| Maya AI | app/(tabs)/maya.tsx | ✅ Done |
+| Reports | app/reports.tsx | ✅ Done |
+| Business Settings | app/settings/business.tsx | ✅ Done |
+| Invoice Settings | app/settings/invoice.tsx | ✅ Done |
+| Subscription | app/settings/subscription.tsx | ✅ Done |
+| Tally Export | app/settings/exports.tsx | ✅ Done |
+| Manage Users | app/settings/users.tsx | ✅ Done |
 
 ## Color Theme
 - Primary: #F97316 (orange)
@@ -101,3 +108,12 @@ eas build --platform android
 - Create party screen (customer or supplier)
 - More screen with profile, settings menu, logout
 - Logout with confirmation alert
+
+### v0.6.0 — All Screens Complete
+- Maya AI screen with text input, example prompts, result preview
+- Reports screen with summary cards and report grid
+- Business settings — edit name, GSTIN, phone, address
+- Invoice settings — prefix, numbering, terms & conditions
+- Subscription screen — plan status, days remaining, upgrade link
+- Tally export screen — one-tap XML export with share sheet
+- User management — redirects to web app
