@@ -84,3 +84,12 @@ eas build --platform android
 - Mark as Paid action on invoice detail
 - Create Invoice screen with party selector, line items, GST calculation
 - Auto-calculates total with GST per line item
+
+### v0.4.0 — Auth Flow Redesign
+- Welcome/splash screen with feature highlights
+- Login/signup redesigned with wave header, Udyog branding
+- Google OAuth (Continue with Google) on both login and signup
+- Onboarding screen — Business Owner vs CA selector
+- CA users shown notice to use web app with redirect link
+- Password show/hide toggle
+- Improved error handling on all auth screens
