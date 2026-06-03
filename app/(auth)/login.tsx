@@ -16,16 +16,27 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      Alert.alert('Not ready', 'Auth not loaded yet, please wait');
+      return;
+    }
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
     setLoading(true);
     try {
-      const result = await signIn.create({ identifier: email, password });
+      const result = await signIn.create({ identifier: email.trim(), password });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/(tabs)');
+      } else {
+        Alert.alert('Login Failed', `Unexpected status: ${result.status}`);
       }
     } catch (err: any) {
-      Alert.alert('Login Failed', err.errors?.[0]?.message || 'Invalid email or password');
+      console.log('Login error full:', JSON.stringify(err));
+      const msg = err.errors?.[0]?.longMessage || err.errors?.[0]?.message || err.message || 'Login failed';
+      Alert.alert('Login Failed', msg);
     } finally {
       setLoading(false);
     }
