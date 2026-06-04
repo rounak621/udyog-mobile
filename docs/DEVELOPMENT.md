@@ -117,3 +117,10 @@ eas build --platform android
 - Subscription screen — plan status, days remaining, upgrade link
 - Tally export screen — one-tap XML export with share sheet
 - User management — redirects to web app
+
+### v0.7.0 — Auth UI Redesign
+- Welcome screen: full orange background, Udyog logo, hero illustration, Get Started + Sign In buttons
+- Login screen: compact orange header with logo, white form card, Google OAuth, email/password
+- Signup screen: same design as login, email verification OTP step
+- Real Udyog logo image used instead of text placeholder
+- Back button on login and signup
