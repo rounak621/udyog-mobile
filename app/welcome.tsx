@@ -22,7 +22,10 @@ export default function WelcomeScreen() {
 
       {/* Logo Area */}
       <View style={styles.logoArea}>
-        <Text style={styles.logoText}>UDYOG</Text>
+        <Image
+          source={require('../assets/udyog-logo.png')}
+          style={{ width: 180, height: 60, resizeMode: 'contain' }}
+        />
         <Text style={styles.logoSubtext}>India's Simplest GST Billing</Text>
       </View>
 
@@ -71,8 +74,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.primary, paddingHorizontal: 24 },
   circle: { position: 'absolute', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
   logoArea: { alignItems: 'center', paddingTop: 64 },
-  logoText: { color: '#ffffff', fontSize: 36, fontWeight: '800', letterSpacing: 6 },
-  logoSubtext: { color: '#ffffff', fontSize: 13, opacity: 0.85, marginTop: 4 },
+  logoSubtext: { color: '#ffffff', fontSize: 13, opacity: 0.85, marginTop: 4, textAlign: 'center' },
   illustrationArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, backgroundColor: 'transparent' },
   illustration: { width: '100%', height: 320 },
   statsRow: { flexDirection: 'row', marginHorizontal: 20, gap: 10 },
