@@ -24,9 +24,9 @@ export default function WelcomeScreen() {
       <View style={styles.logoArea}>
         <Image
           source={require('../assets/udyog-logo.png')}
-          style={{ width: 180, height: 60, resizeMode: 'contain' }}
+          style={{ width: 360, height: 120, resizeMode: 'contain' }}
         />
-        <Text style={styles.logoSubtext}>India's Simplest GST Billing</Text>
+        <Text style={styles.logoSubtext}>India's Simplest GST Billing App</Text>
       </View>
 
       {/* Hero illustration */}
