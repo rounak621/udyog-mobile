@@ -141,4 +141,10 @@ eas build --platform android
 - Bills filter chips: restyled with `borderWidth: 1.5`, `fontSize: 13`, `fontWeight: '500'/'600'`, `marginRight: 8`
 - Bills & Parties empty state: replaced `minHeight: 300` with `paddingVertical: 80` for proper centering
 
+### v1.0.0 — Final UI Polish Pass
+- Dashboard FAB: Restored "+ New Invoice" pill-shaped text button at bottom right
+- Bills & Parties: Replaced filter chips with horizontal ScrollView and premium styled chips
+- Bills & Parties: Redesigned and centered empty states using inline styling and custom icons
+- All Tabs: Set header titles to a consistent `fontSize: 22`, `fontWeight: '700'`, and color `#0f172a`
+
 

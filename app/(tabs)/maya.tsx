@@ -156,7 +156,7 @@ export default function MayaScreen() {
 
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  title: { fontSize: 20, fontWeight: '600', color: Colors.text },
+  title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
   subtitle: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   micArea: { alignItems: 'center', paddingVertical: 32 },

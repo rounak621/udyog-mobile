@@ -79,13 +79,20 @@ export default function PartiesScreen() {
         {search ? <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /></TouchableOpacity> : null}
       </View>
 
-      <View style={styles.filterRow}>
-        {(['all', 'customer', 'supplier'] as const).map(f => (
-          <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(f)}>
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f === 'all' ? 'All' : f === 'customer' ? 'Customers' : 'Suppliers'}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+        {['All', 'Customers', 'Suppliers'].map(f => {
+          const value = f === 'All' ? 'all' : f === 'Customers' ? 'customer' : 'supplier';
+          return (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setFilter(value)}
+              style={[styles.chip, filter === value && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, filter === value && styles.chipTextActive]}>{f}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       {loading ? (
         <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>
@@ -96,11 +103,11 @@ export default function PartiesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
         >
           {filtered.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No parties found</Text>
-              <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/party/create')}>
-                <Text style={styles.emptyBtnText}>Add First Party</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 }}>
+              <Ionicons name="people-outline" size={48} color="#cbd5e1" />
+              <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No parties</Text>
+              <TouchableOpacity style={{ backgroundColor: '#F97316', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10, marginTop: 16 }} onPress={() => router.push('/party/create')}>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add First Party</Text>
               </TouchableOpacity>
             </View>
           ) : filtered.map(party => (
@@ -132,21 +139,16 @@ export default function PartiesScreen() {
 
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  title: { fontSize: 20, fontWeight: '600', color: Colors.text },
+  title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.sm, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 0.5, borderColor: Colors.border },
   searchInput: { flex: 1, fontSize: 13, color: Colors.text },
-  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, marginBottom: 8 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border },
-  filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterText: { fontSize: 12, color: Colors.textSecondary },
-  filterTextActive: { color: '#fff', fontWeight: '500' },
+  chip: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
+  chipActive: { backgroundColor: '#F97316', borderColor: '#F97316' },
+  chipText: { fontSize: 13, color: '#64748b', fontWeight: '500' },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8 },
-  emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 20, paddingVertical: 10 },
-  emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' },
   avatarSupplier: { backgroundColor: '#eff6ff' },

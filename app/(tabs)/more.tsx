@@ -106,7 +106,7 @@ export default function MoreScreen() {
 
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  title: { fontSize: 20, fontWeight: '600', color: Colors.text },
+  title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.lg, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   profileAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   profileAvatarText: { color: '#fff', fontSize: 16, fontWeight: '700' },

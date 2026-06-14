@@ -85,9 +85,13 @@ export default function BillsScreen() {
         ) : null}
       </View>
 
-      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity key={f} style={[styles.chip, filter === f && styles.chipActive]} onPress={() => setFilter(f)}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+        {['All', 'Unpaid', 'Paid', 'Draft'].map(f => (
+          <TouchableOpacity
+            key={f}
+            onPress={() => setFilter(f)}
+            style={[styles.chip, filter === f && styles.chipActive]}
+          >
             <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>{f}</Text>
           </TouchableOpacity>
         ))}
@@ -102,9 +106,9 @@ export default function BillsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
         >
           {filtered.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={40} color={Colors.textMuted} />
-              <Text style={styles.emptyText}>No invoices found</Text>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 }}>
+              <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
+              <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
             </View>
           ) : filtered.map(inv => (
             <TouchableOpacity key={inv.id} style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
@@ -131,20 +135,16 @@ export default function BillsScreen() {
 
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  title: { fontSize: 20, fontWeight: '600', color: Colors.text },
+  title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.sm, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 0.5, borderColor: Colors.border },
   searchInput: { flex: 1, fontSize: 13, color: Colors.text },
-  filterScroll: { maxHeight: 44 },
-  filterRow: { paddingHorizontal: 12, alignItems: 'center' },
-  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.card, marginRight: 8 },
-  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  chip: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
+  chipActive: { backgroundColor: '#F97316', borderColor: '#F97316' },
+  chipText: { fontSize: 13, color: '#64748b', fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },
