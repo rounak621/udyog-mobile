@@ -85,7 +85,7 @@ export default function BillsScreen() {
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, maxHeight: 44 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
         {['All', 'Unpaid', 'Paid', 'Draft'].map(f => (
           <TouchableOpacity
             key={f}

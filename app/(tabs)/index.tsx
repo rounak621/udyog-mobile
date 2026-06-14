@@ -209,6 +209,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9, fontWeight: '600' },
   badgeTextPaid: { color: Colors.success },
   badgeTextUnpaid: { color: '#EA580C' },
-  createFab: { position: 'absolute', bottom: 100, right: 16, backgroundColor: '#F97316', borderRadius: 28, paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+  createFab: { position: 'absolute', bottom: 80, right: 16, backgroundColor: '#F97316', borderRadius: 28, paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
   createFabText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
