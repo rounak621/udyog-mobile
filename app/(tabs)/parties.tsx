@@ -98,12 +98,13 @@ export default function PartiesScreen() {
         <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
         >
           {filtered.length === 0 ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 }}>
+            /* v1.0.1 */
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="people-outline" size={48} color="#cbd5e1" />
               <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No parties</Text>
               <TouchableOpacity style={{ backgroundColor: '#F97316', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10, marginTop: 16 }} onPress={() => router.push('/party/create')}>

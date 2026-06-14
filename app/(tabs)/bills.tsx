@@ -101,12 +101,13 @@ export default function BillsScreen() {
         <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>
       ) : (
         <ScrollView
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { flexGrow: 1 }]}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
         >
           {filtered.length === 0 ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 }}>
+            /* v1.0.1 */
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
               <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
             </View>
