@@ -132,3 +132,4 @@ eas build --platform android
 - Centered empty state vertically and horizontally on Bills and Parties screens
 - Fixed stats text truncation on Welcome screen using adjustsFontSizeToFit
 - Shifted Dashboard New Invoice FAB position to bottom: 90 to float properly above the tab bar
+- Added Clerk `needs_second_factor` OTP verification flow on Login screen to support MFA/new client challenges

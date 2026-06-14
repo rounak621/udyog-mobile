@@ -18,6 +18,8 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showOTP, setShowOTP] = useState(false);
+  const [otp, setOtp] = useState('');
 
   const handleLogin = async () => {
     if (!isLoaded) { Alert.alert('Please wait', 'Auth loading...'); return; }
@@ -28,6 +30,8 @@ export default function LoginScreen() {
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
         router.replace('/(tabs)');
+      } else if (result.status === 'needs_second_factor') {
+        setShowOTP(true);
       } else {
         Alert.alert('Login Failed', `Status: ${result.status}`);
       }
@@ -53,6 +57,57 @@ export default function LoginScreen() {
       setGoogleLoading(false);
     }
   };
+
+  const handleOTP = async () => {
+    if (!otp) { Alert.alert('Error', 'Enter the OTP sent to your email'); return; }
+    setLoading(true);
+    try {
+      const result = await signIn.attemptSecondFactor({
+        strategy: 'email_code',
+        code: otp,
+      });
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert('Error', 'Invalid OTP. Please try again.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.errors?.[0]?.message || 'OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showOTP) {
+    return (
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: '#0f172a', marginBottom: 8 }}>Check your email</Text>
+          <Text style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>We sent a verification code to {email}</Text>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: 6 }}>Verification Code</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 20 }}>
+            <TextInput
+              style={{ flex: 1, fontSize: 18, color: '#0f172a', letterSpacing: 4, textAlign: 'center' }}
+              placeholder="000000"
+              placeholderTextColor="#94a3b8"
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="number-pad"
+              maxLength={6}
+              autoFocus
+            />
+          </View>
+          <TouchableOpacity style={{ backgroundColor: '#f97316', borderRadius: 12, padding: 15, alignItems: 'center' }} onPress={handleOTP} disabled={loading}>
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Verify</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={{ marginTop: 16, alignItems: 'center' }} onPress={() => setShowOTP(false)}>
+            <Text style={{ color: '#64748b', fontSize: 13 }}>← Back to login</Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#fff' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
