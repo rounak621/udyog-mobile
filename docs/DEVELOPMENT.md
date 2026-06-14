@@ -124,3 +124,11 @@ eas build --platform android
 - Signup screen: same design as login, email verification OTP step
 - Real Udyog logo image used instead of text placeholder
 - Back button on login and signup
+
+### v0.8.0 — Mobile App Fixes
+- Switched Clerk publishable key to production
+- Reduced topbar paddingTop to 16 on all tab screens for status bar alignment
+- Fixed filter chip text truncation on Bills screen by increasing horizontal padding to 16
+- Centered empty state vertically and horizontally on Bills and Parties screens
+- Fixed stats text truncation on Welcome screen using adjustsFontSizeToFit
+- Shifted Dashboard New Invoice FAB position to bottom: 90 to float properly above the tab bar

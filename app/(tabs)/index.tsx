@@ -165,7 +165,7 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   bizSelector: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
   bizName: { fontSize: 16, fontWeight: '600', color: Colors.text, flex: 1 },
   topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -199,6 +199,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9, fontWeight: '600' },
   badgeTextPaid: { color: Colors.success },
   badgeTextUnpaid: { color: '#EA580C' },
-  createFab: { position: 'absolute', bottom: 80, right: 20, backgroundColor: Colors.primary, borderRadius: 28, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 6 },
+  createFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: Colors.primary, borderRadius: 28, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 6 },
   createFabText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

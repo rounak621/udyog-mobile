@@ -42,15 +42,15 @@ export default function WelcomeScreen() {
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>500+</Text>
-          <Text style={styles.statLabel}>Businesses</Text>
+          <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit>Businesses</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>50K+</Text>
-          <Text style={styles.statLabel}>Invoices</Text>
+          <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit>Invoices</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>₹2Cr+</Text>
-          <Text style={styles.statLabel}>Processed</Text>
+          <Text style={styles.statLabel} numberOfLines={1} adjustsFontSizeToFit>Processed</Text>
         </View>
       </View>
 

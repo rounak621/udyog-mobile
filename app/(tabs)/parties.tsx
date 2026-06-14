@@ -127,7 +127,7 @@ export default function PartiesScreen() {
 }
 
 const styles = StyleSheet.create({
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 20, fontWeight: '600', color: Colors.text },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.sm, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 0.5, borderColor: Colors.border },
@@ -138,8 +138,8 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 12, color: Colors.textSecondary },
   filterTextActive: { color: '#fff', fontWeight: '500' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 12, paddingBottom: 80, gap: 8 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
+  list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 20, paddingVertical: 10 },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
