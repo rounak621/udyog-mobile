@@ -31,12 +31,16 @@ export default function BillsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [businessId, setBusinessId] = useState<string>('');
 
   const loadInvoices = async () => {
     try {
       const token = await getToken();
       setAuthToken(token);
-      const res = await api.get('/invoices?limit=50&sort=desc');
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      setBusinessId(bId);
+      const res = await api.get(`/invoices?limit=50&sort=desc&business_id=${bId}`);
       setInvoices(res.data.invoices || res.data || []);
     } catch (err) {
       console.log('Bills load error:', err);
@@ -81,10 +85,10 @@ export default function BillsScreen() {
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
+      <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
         {FILTERS.map(f => (
-          <TouchableOpacity key={f} style={[styles.filterChip, filter === f && styles.filterChipActive]} onPress={() => setFilter(f)}>
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
+          <TouchableOpacity key={f} style={[styles.chip, filter === f && styles.chipActive]} onPress={() => setFilter(f)}>
+            <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>{f}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -98,7 +102,7 @@ export default function BillsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
         >
           {filtered.length === 0 ? (
-            <View style={styles.empty}>
+            <View style={styles.emptyContainer}>
               <Ionicons name="document-text-outline" size={40} color={Colors.textMuted} />
               <Text style={styles.emptyText}>No invoices found</Text>
             </View>
@@ -132,15 +136,15 @@ const styles = StyleSheet.create({
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.sm, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 0.5, borderColor: Colors.border },
   searchInput: { flex: 1, fontSize: 13, color: Colors.text },
   filterScroll: { maxHeight: 44 },
-  filterRow: { paddingHorizontal: 12, gap: 8, alignItems: 'center' },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border },
-  filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterText: { fontSize: 12, color: Colors.textSecondary },
-  filterTextActive: { color: '#fff', fontWeight: '500' },
+  filterRow: { paddingHorizontal: 12, alignItems: 'center' },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1.5, borderColor: Colors.border, backgroundColor: Colors.card, marginRight: 8 },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300, gap: 10 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },

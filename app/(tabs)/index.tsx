@@ -165,8 +165,7 @@ export default function DashboardScreen() {
       </ScrollView>
 
       <TouchableOpacity style={styles.createFab} onPress={() => router.push('/invoice/create')}>
-        <Ionicons name="add" size={24} color="#fff" />
-        <Text style={styles.createFabText}>New Invoice</Text>
+        <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
     </View>
   );
@@ -208,6 +207,5 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9, fontWeight: '600' },
   badgeTextPaid: { color: Colors.success },
   badgeTextUnpaid: { color: '#EA580C' },
-  createFab: { position: 'absolute', bottom: 100, right: 20, backgroundColor: Colors.primary, borderRadius: 28, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
-  createFabText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  createFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: Colors.primary, borderRadius: 30, width: 56, height: 56, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
 });

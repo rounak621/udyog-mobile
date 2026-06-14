@@ -134,10 +134,11 @@ eas build --platform android
 - Shifted Dashboard New Invoice FAB position to bottom: 90 to float properly above the tab bar
 - Added Clerk `needs_second_factor` OTP verification flow on Login screen to support MFA/new client challenges
 
-### v0.9.0 — UI Layout & Status Bar Fixes
-- Fixed status bar header collisions across all tab screens using dynamic safe area insets
-- Corrected dashboard "New Invoice" FAB position to bottom-right (bottom: 100) and added shadow properties
-- Reduced dashboard content paddingBottom to 20 to eliminate large empty space below transactions
-- Solved empty state vertical centering issues on Bills and Parties screens using minHeight: 300
-- Resolved Bills filter chip truncation by using dynamic padding and removing fixed constraints
+### v0.9.0 — API, FAB & Layout Fixes
+- Bills screen: fetch business_id from `/businesses/me` before loading invoices with `business_id` query param
+- Parties screen: fetch business_id from `/businesses/me` before loading customers with `business_id` query param
+- Dashboard FAB: converted to 56×56 circular icon-only button (bottom: 90, elevation: 8, shadow)
+- Bills filter chips: restyled with `borderWidth: 1.5`, `fontSize: 13`, `fontWeight: '500'/'600'`, `marginRight: 8`
+- Bills & Parties empty state: replaced `minHeight: 300` with `paddingVertical: 80` for proper centering
+
 

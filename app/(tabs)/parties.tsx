@@ -34,7 +34,9 @@ export default function PartiesScreen() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      const res = await api.get('/customers?limit=100');
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      const res = await api.get(`/customers?business_id=${bId}`);
       setParties(res.data.customers || res.data || []);
     } catch (err) {
       console.log('Parties error:', err);
@@ -94,7 +96,7 @@ export default function PartiesScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
         >
           {filtered.length === 0 ? (
-            <View style={styles.empty}>
+            <View style={styles.emptyContainer}>
               <Ionicons name="people-outline" size={40} color={Colors.textMuted} />
               <Text style={styles.emptyText}>No parties found</Text>
               <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('/party/create')}>
@@ -141,8 +143,8 @@ const styles = StyleSheet.create({
   filterTextActive: { color: '#fff', fontWeight: '500' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300, gap: 12 },
-  emptyText: { fontSize: 14, color: Colors.textSecondary },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 80 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8 },
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 20, paddingVertical: 10 },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 },
