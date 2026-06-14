@@ -37,8 +37,8 @@ export default function CreateInvoiceScreen() {
         const token = await getToken();
         setAuthToken(token);
         const [partiesRes, itemsRes] = await Promise.allSettled([
-          api.get('/customers?limit=100'),
-          api.get('/items?limit=100'),
+          api.get('/customers/?limit=100'),
+          api.get('/items/?limit=100'),
         ]);
         if (partiesRes.status === 'fulfilled') setParties(partiesRes.value.data.customers || partiesRes.value.data || []);
         if (itemsRes.status === 'fulfilled') setItems(itemsRes.value.data.items || itemsRes.value.data || []);
@@ -86,7 +86,7 @@ export default function CreateInvoiceScreen() {
           unit: i.unit,
         })),
       };
-      const res = await api.post('/invoices', payload);
+      const res = await api.post('/invoices/', payload);
       Alert.alert('Success', 'Invoice created successfully', [
         { text: 'View Invoice', onPress: () => router.replace(`/invoice/${res.data.id}`) },
         { text: 'Create Another', onPress: () => router.replace('/invoice/create') },

@@ -40,7 +40,7 @@ export default function BillsScreen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
       setBusinessId(bId);
-      const res = await api.get(`/invoices?limit=50&sort=desc&business_id=${bId}`);
+      const res = await api.get(`/invoices/?limit=50&sort=desc&business_id=${bId}`);
       setInvoices(res.data.invoices || res.data || []);
     } catch (err) {
       console.log('Bills load error:', err);

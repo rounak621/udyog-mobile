@@ -24,7 +24,7 @@ export default function PartyDetailScreen() {
         setAuthToken(token);
         const [partyRes, invRes] = await Promise.allSettled([
           api.get(`/customers/${id}`),
-          api.get(`/invoices?customer_id=${id}&limit=10`),
+          api.get(`/invoices/?customer_id=${id}&limit=10`),
         ]);
         if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
         if (invRes.status === 'fulfilled') setInvoices(invRes.value.data.invoices || invRes.value.data || []);

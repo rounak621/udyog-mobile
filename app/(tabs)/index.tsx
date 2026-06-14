@@ -50,7 +50,7 @@ export default function DashboardScreen() {
       // Step 2: Get stats + invoices in parallel
       const [statsRes, invoiceRes] = await Promise.allSettled([
         api.get(`/reports/dashboard-stats?business_id=${businessId}`),
-        api.get(`/invoices?limit=5&sort=desc&business_id=${businessId}`),
+        api.get(`/invoices/?limit=5&sort=desc&business_id=${businessId}`),
       ]);
 
       if (statsRes.status === 'fulfilled') {

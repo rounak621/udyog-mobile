@@ -36,7 +36,7 @@ export default function PartiesScreen() {
       setAuthToken(token);
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
-      const res = await api.get(`/customers?business_id=${bId}`);
+      const res = await api.get(`/customers/?business_id=${bId}`);
       setParties(res.data.customers || res.data || []);
     } catch (err) {
       console.log('Parties error:', err);

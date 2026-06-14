@@ -27,7 +27,7 @@ export default function CreatePartyScreen() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      await api.post('/customers', {
+      await api.post('/customers/', {
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim(),
