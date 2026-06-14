@@ -40,8 +40,14 @@ export default function CreateInvoiceScreen() {
           api.get('/customers/?limit=100'),
           api.get('/items/?limit=100'),
         ]);
-        if (partiesRes.status === 'fulfilled') setParties(partiesRes.value.data.customers || partiesRes.value.data || []);
-        if (itemsRes.status === 'fulfilled') setItems(itemsRes.value.data.items || itemsRes.value.data || []);
+        if (partiesRes.status === 'fulfilled') {
+          const partyData = partiesRes.value.data;
+          setParties(Array.isArray(partyData) ? partyData : Array.isArray(partyData?.customers) ? partyData.customers : Array.isArray(partyData?.items) ? partyData.items : []);
+        }
+        if (itemsRes.status === 'fulfilled') {
+          const itemsData = itemsRes.value.data;
+          setItems(Array.isArray(itemsData) ? itemsData : Array.isArray(itemsData?.items) ? itemsData.items : Array.isArray(itemsData?.customers) ? itemsData.customers : []);
+        }
       } catch {}
     };
     load();

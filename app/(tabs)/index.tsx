@@ -63,7 +63,8 @@ export default function DashboardScreen() {
         });
       }
       if (invoiceRes.status === 'fulfilled') {
-        setRecentInvoices(invoiceRes.value.data.invoices || invoiceRes.value.data || []);
+        const invData = invoiceRes.value.data;
+        setRecentInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : Array.isArray(invData?.items) ? invData.items : []);
       }
     } catch (err) {
       console.log('Dashboard load error:', err);

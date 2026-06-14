@@ -27,7 +27,10 @@ export default function PartyDetailScreen() {
           api.get(`/invoices/?customer_id=${id}&limit=10`),
         ]);
         if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
-        if (invRes.status === 'fulfilled') setInvoices(invRes.value.data.invoices || invRes.value.data || []);
+        if (invRes.status === 'fulfilled') {
+          const invData = invRes.value.data;
+          setInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : Array.isArray(invData?.items) ? invData.items : []);
+        }
       } catch (err) {
         console.log('Party detail error:', err);
       } finally {

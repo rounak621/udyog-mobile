@@ -37,7 +37,8 @@ export default function PartiesScreen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
       const res = await api.get(`/customers/?business_id=${bId}`);
-      setParties(res.data.customers || res.data || []);
+      const partyData = res.data;
+      setParties(Array.isArray(partyData) ? partyData : Array.isArray(partyData?.customers) ? partyData.customers : Array.isArray(partyData?.items) ? partyData.items : []);
     } catch (err) {
       console.log('Parties error:', err);
     } finally {

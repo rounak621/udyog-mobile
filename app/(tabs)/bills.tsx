@@ -41,7 +41,8 @@ export default function BillsScreen() {
       const bId = bizRes.data.id;
       setBusinessId(bId);
       const res = await api.get(`/invoices/?limit=50&sort=desc&business_id=${bId}`);
-      setInvoices(res.data.invoices || res.data || []);
+      const invoiceData = res.data;
+      setInvoices(Array.isArray(invoiceData) ? invoiceData : Array.isArray(invoiceData?.invoices) ? invoiceData.invoices : Array.isArray(invoiceData?.items) ? invoiceData.items : []);
     } catch (err) {
       console.log('Bills load error:', err);
     } finally {
