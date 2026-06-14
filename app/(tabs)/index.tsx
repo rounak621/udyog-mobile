@@ -1,5 +1,6 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, RefreshControl, ActivityIndicator
@@ -29,6 +30,7 @@ export default function DashboardScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
   const [businessName, setBusinessName] = useState('');
@@ -89,7 +91,7 @@ export default function DashboardScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity style={styles.bizSelector}>
           <Text style={styles.bizName} numberOfLines={1}>{businessName || 'My Business'}</Text>
           <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
@@ -172,14 +174,14 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   bizSelector: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
   bizName: { fontSize: 16, fontWeight: '600', color: Colors.text, flex: 1 },
   topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBtn: { padding: 4 },
   avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  content: { padding: Spacing.lg, paddingBottom: 100 },
+  content: { padding: Spacing.lg, paddingBottom: 20 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   statCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 14, borderWidth: 0.5, borderColor: Colors.border, width: '48%', flex: 1, minWidth: '45%' },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
@@ -206,6 +208,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9, fontWeight: '600' },
   badgeTextPaid: { color: Colors.success },
   badgeTextUnpaid: { color: '#EA580C' },
-  createFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: Colors.primary, borderRadius: 28, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 6 },
+  createFab: { position: 'absolute', bottom: 100, right: 20, backgroundColor: Colors.primary, borderRadius: 28, paddingHorizontal: 20, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   createFabText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });

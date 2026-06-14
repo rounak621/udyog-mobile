@@ -1,5 +1,6 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, Alert, Switch
@@ -22,6 +23,7 @@ export default function MoreScreen() {
   const { signOut } = useAuth();
   const { user } = useUser();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -41,7 +43,7 @@ export default function MoreScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>More</Text>
       </View>
 
@@ -103,7 +105,7 @@ export default function MoreScreen() {
 }
 
 const styles = StyleSheet.create({
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 20, fontWeight: '600', color: Colors.text },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.lg, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   profileAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },

@@ -1,5 +1,6 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
@@ -22,6 +23,7 @@ interface Party {
 export default function PartiesScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [parties, setParties] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +58,7 @@ export default function PartiesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>Parties</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/party/create')}>
           <Ionicons name="add" size={20} color="#fff" />
@@ -127,7 +129,7 @@ export default function PartiesScreen() {
 }
 
 const styles = StyleSheet.create({
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 20, fontWeight: '600', color: Colors.text },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, margin: 12, borderRadius: Radius.sm, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 0.5, borderColor: Colors.border },
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
   filterTextActive: { color: '#fff', fontWeight: '500' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
-  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300, gap: 12 },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 20, paddingVertical: 10 },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
