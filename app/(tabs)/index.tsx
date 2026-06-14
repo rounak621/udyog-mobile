@@ -39,18 +39,25 @@ export default function DashboardScreen() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      const [bizRes, invoiceRes] = await Promise.allSettled([
-        api.get('/businesses/me'),
-        api.get('/invoices?limit=5&sort=desc'),
+      // Step 1: Get business info
+      const bizRes = await api.get('/businesses/me');
+      const biz = bizRes.data;
+      setBusinessName(biz.name || '');
+      const businessId = biz.id;
+
+      // Step 2: Get stats + invoices in parallel
+      const [statsRes, invoiceRes] = await Promise.allSettled([
+        api.get(`/reports/dashboard-stats?business_id=${businessId}`),
+        api.get(`/invoices?limit=5&sort=desc&business_id=${businessId}`),
       ]);
-      if (bizRes.status === 'fulfilled') {
-        setBusinessName(bizRes.value.data.name || '');
-        const biz = bizRes.value.data;
+
+      if (statsRes.status === 'fulfilled') {
+        const s = statsRes.value.data;
         setStats({
-          total_sales: biz.total_sales || 0,
-          total_purchases: biz.total_purchases || 0,
-          receivables: biz.total_receivables || 0,
-          payables: biz.total_payables || 0,
+          total_sales: s.total_sales || 0,
+          total_purchases: s.total_purchases || 0,
+          receivables: s.you_will_get || s.receivables || 0,
+          payables: s.you_have_to_pay || s.payables || 0,
         });
       }
       if (invoiceRes.status === 'fulfilled') {
