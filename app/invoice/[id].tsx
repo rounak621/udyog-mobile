@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Share
+  TouchableOpacity, ActivityIndicator, Alert, Share, Linking
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -63,6 +63,8 @@ export default function InvoiceDetailScreen() {
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
 
   const isPaid = invoice.status === 'PAID';
+  const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
+  const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -126,6 +128,23 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.paidBtnText}>Mark as Paid</Text>
           </TouchableOpacity>
         )}
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#FFF7ED', borderColor: '#FED7AA', borderWidth: 1 }]}
+            onPress={() => Share.share({ message: `Invoice ${invoice.invoice_number}\n${shareUrl}`, url: pdfUrl })}
+          >
+            <Ionicons name="share-social-outline" size={18} color="#C2410C" />
+            <Text style={[styles.actionBtnText, { color: '#C2410C' }]}>Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', borderWidth: 1 }]}
+            onPress={() => Linking.openURL(pdfUrl)}
+          >
+            <Ionicons name="download-outline" size={18} color="#475569" />
+            <Text style={[styles.actionBtnText, { color: '#475569' }]}>Download PDF</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -161,4 +180,6 @@ const styles = StyleSheet.create({
   unpaidText: { color: '#EA580C' },
   paidBtn: { backgroundColor: Colors.success, borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   paidBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  actionBtn: { borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  actionBtnText: { fontSize: 15, fontWeight: '600' },
 });

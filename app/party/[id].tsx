@@ -37,7 +37,7 @@ export default function PartyDetailScreen() {
           setInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : []);
         }
       } catch (err) {
-        console.log('Party detail error:', err);
+        console.log("Party detail error:", JSON.stringify(err?.response?.data), err?.message);
       } finally {
         setLoading(false);
       }

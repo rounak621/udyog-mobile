@@ -20,7 +20,7 @@ interface DashboardStats {
 interface RecentInvoice {
   id: string;
   invoice_number: string;
-  party_name: string;
+  customer_name: string;
   total_amount: number;
   status: string;
   invoice_date: string;
@@ -150,7 +150,7 @@ export default function DashboardScreen() {
                   <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
                 </View>
                 <View style={styles.txnInfo}>
-                  <Text style={styles.txnName} numberOfLines={1}>{inv.party_name || 'Unknown Party'}</Text>
+                  <Text style={styles.txnName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
                   <Text style={styles.txnSub}>{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
                 </View>
                 <View style={styles.txnRight}>
