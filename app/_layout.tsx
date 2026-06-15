@@ -4,6 +4,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../constants/theme';
+import { setAuthToken } from '../services/api';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -18,9 +19,17 @@ const tokenCache = {
 };
 
 function AuthGuard() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  useEffect(() => {
+    if (isSignedIn) {
+      getToken().then(token => setAuthToken(token));
+    } else {
+      setAuthToken(null);
+    }
+  }, [isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded) return;

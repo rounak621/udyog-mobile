@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
@@ -7,11 +6,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api } from '../../services/api';
 
 export default function PartyDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { getToken } = useAuth();
   const router = useRouter();
   const [party, setParty] = useState<any>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -20,28 +18,19 @@ export default function PartyDetailScreen() {
   useEffect(() => {
     const load = async () => {
       try {
-        const token = await getToken();
-        if (!token) { setLoading(false); return; }
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const bizRes = await api.get('/businesses/me');
         const bId = bizRes.data.id;
-        console.log('Fetching party:', id, 'for business:', bId);
         const [partyRes, invRes] = await Promise.allSettled([
           api.get(`/customers/${id}/?business_id=${bId}`),
           api.get(`/invoices/?customer_id=${id}&limit=10&business_id=${bId}`),
         ]);
-        if (partyRes.status === 'fulfilled') {
-          setParty(partyRes.value.data);
-        }
-        if (partyRes.status === 'rejected') {
-          console.error('Party fetch failed:', JSON.stringify(partyRes.reason?.response?.data), partyRes.reason?.message);
-        }
+        if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
           setInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : []);
         }
       } catch (err) {
-        console.log("Party detail error:", JSON.stringify(err?.response?.data), err?.message);
+        console.log('Party detail error:', err);
       } finally {
         setLoading(false);
       }
