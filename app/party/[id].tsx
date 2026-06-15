@@ -22,7 +22,7 @@ export default function PartyDetailScreen() {
       try {
         const token = await getToken();
         if (!token) { setLoading(false); return; }
-        setAuthToken(token);
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         const bizRes = await api.get('/businesses/me');
         const bId = bizRes.data.id;
         console.log('Fetching party:', id, 'for business:', bId);
