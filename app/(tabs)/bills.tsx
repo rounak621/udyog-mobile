@@ -16,7 +16,7 @@ const FILTERS = ['All', 'Unpaid', 'Paid', 'Draft'];
 interface Invoice {
   id: string;
   invoice_number: string;
-  party_name: string;
+  customer_name: string;
   total_amount: number;
   status: string;
   invoice_date: string;
@@ -54,7 +54,7 @@ export default function BillsScreen() {
   useEffect(() => { loadInvoices(); }, []);
 
   const filtered = invoices.filter(inv => {
-    const matchSearch = !search || inv.party_name?.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number?.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || inv.customer_name?.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number?.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'All' || inv.status?.toUpperCase() === filter.toUpperCase();
     return matchSearch && matchFilter;
   });
@@ -86,7 +86,7 @@ export default function BillsScreen() {
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, maxHeight: 44 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, height: 48 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
         {['All', 'Unpaid', 'Paid', 'Draft'].map(f => (
           <TouchableOpacity
             key={f}
@@ -118,7 +118,7 @@ export default function BillsScreen() {
                 <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
               </View>
               <View style={styles.cardInfo}>
-                <Text style={styles.cardName} numberOfLines={1}>{inv.party_name || 'Unknown Party'}</Text>
+                <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
                 <Text style={styles.cardSub}>{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
               </View>
               <View style={styles.cardRight}>

@@ -21,15 +21,20 @@ export default function PartyDetailScreen() {
     const load = async () => {
       try {
         const token = await getToken();
+        if (!token) { setLoading(false); return; }
         setAuthToken(token);
+        const bizRes = await api.get('/businesses/me');
+        const bId = bizRes.data.id;
         const [partyRes, invRes] = await Promise.allSettled([
-          api.get(`/customers/${id}`),
-          api.get(`/invoices/?customer_id=${id}&limit=10`),
+          api.get(`/customers/${id}/?business_id=${bId}`),
+          api.get(`/invoices/?customer_id=${id}&limit=10&business_id=${bId}`),
         ]);
-        if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
+        if (partyRes.status === 'fulfilled') {
+          setParty(partyRes.value.data);
+        }
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
-          setInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : Array.isArray(invData?.items) ? invData.items : []);
+          setInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : []);
         }
       } catch (err) {
         console.log('Party detail error:', err);
@@ -44,7 +49,11 @@ export default function PartyDetailScreen() {
   const getInitials = (name: string) => name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
   if (loading) return <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>;
-  if (!party) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Party not found</Text></View>;
+  if (!party) return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <Text>Party not found</Text>
+    </View>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>

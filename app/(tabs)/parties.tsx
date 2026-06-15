@@ -80,7 +80,7 @@ export default function PartiesScreen() {
         {search ? <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /></TouchableOpacity> : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, maxHeight: 44 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, height: 48 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
         {['All', 'Customers', 'Suppliers'].map(f => {
           const value = f === 'All' ? 'all' : f === 'Customers' ? 'customer' : 'supplier';
           return (

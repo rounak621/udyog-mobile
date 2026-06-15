@@ -97,25 +97,25 @@ export default function InvoiceDetailScreen() {
 
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Items</Text>
-          {(invoice.items || invoice.invoice_items || []).map((item: any, i: number) => (
+          {(invoice.line_items || invoice.items || []).map((item: any, i: number) => (
             <View key={i} style={styles.itemRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName}>{item.item_name || item.name}</Text>
                 <Text style={styles.itemSub}>{item.quantity} {item.unit || 'pcs'} × {fmt(item.rate || item.unit_price)} · GST {item.gst_rate || 0}%</Text>
               </View>
-              <Text style={styles.itemAmount}>{fmt(item.amount || item.total)}</Text>
+              <Text style={styles.itemAmount}>{fmt(item.line_total || item.amount || item.total)}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.card}>
-          <View style={styles.totalRow}><Text style={styles.totalLabel}>Subtotal</Text><Text style={styles.totalVal}>{fmt(invoice.subtotal || invoice.total_amount)}</Text></View>
-          {invoice.cgst_amount > 0 && <View style={styles.totalRow}><Text style={styles.totalLabel}>CGST</Text><Text style={styles.totalVal}>{fmt(invoice.cgst_amount)}</Text></View>}
-          {invoice.sgst_amount > 0 && <View style={styles.totalRow}><Text style={styles.totalLabel}>SGST</Text><Text style={styles.totalVal}>{fmt(invoice.sgst_amount)}</Text></View>}
-          {invoice.igst_amount > 0 && <View style={styles.totalRow}><Text style={styles.totalLabel}>IGST</Text><Text style={styles.totalVal}>{fmt(invoice.igst_amount)}</Text></View>}
+          <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>Subtotal</Text><Text style={styles.totalVal}>{fmt(invoice.taxable_amount || invoice.subtotal)}</Text></View>
+          {invoice.cgst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>CGST</Text><Text style={styles.totalVal}>{fmt(invoice.cgst_amount)}</Text></View>}
+          {invoice.sgst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>SGST</Text><Text style={styles.totalVal}>{fmt(invoice.sgst_amount)}</Text></View>}
+          {invoice.igst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>IGST</Text><Text style={styles.totalVal}>{fmt(invoice.igst_amount)}</Text></View>}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
-            <Text style={[styles.totalLabel, { fontSize: 15, fontWeight: '600', color: Colors.text }]}>Total</Text>
+            <Text style={[styles.totalLabel, { fontSize: 15, fontWeight: '600', color: Colors.text, width: 100 }]} numberOfLines={1}>Total</Text>
             <Text style={[styles.totalVal, { fontSize: 16, fontWeight: '700', color: Colors.primary }]}>{fmt(invoice.total_amount)}</Text>
           </View>
         </View>
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4, marginRight: 8 },
   topbarTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
   shareBtn: { padding: 4 },
-  content: { padding: 12, gap: 10, paddingBottom: 40 },
+  content: { padding: 12, gap: 10, paddingBottom: 20 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   invoiceNum: { fontSize: 17, fontWeight: '600', color: Colors.text },
