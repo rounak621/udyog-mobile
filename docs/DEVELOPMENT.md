@@ -187,3 +187,12 @@ eas build --platform android
 - Service invoice enhancement: Allowed typing a custom service name via TextInput instead of forcing selection from the item list
 - Non-GST compliance: Hides the GST rate input field and sets the line items' `gst_rate` to 0 automatically when Non-GST type is selected
 - Invoice sequence synchronization: Restructured invoice sequence hook to reload the next invoice number preview cleanly when the invoice type changes
+
+### v1.6.0 — Premium Create Invoice UI Redesign
+- Redesigned the header with safe area insets integration, displaying auto-saved draft indicator and a borderless outline Save button
+- Swapped simple tabs for an elegant, rounded tab selector displaying custom toggle styles with shadow effects
+- Refactored invoice metadata section: Invoice Number and Date are now displayed side-by-side in distinct card blocks
+- Replaced basic Bill To text selector with an interactive card featuring initials avatar generation (auto-computing split letters from customer names)
+- Enhanced Items grid: Re-styled items container card with custom list separators, displaying full calculation sums, inline Qty/Rate input boxes, and clean trash action icons
+- Updated invoice summary layout to use orange-tinted background card displaying Subtotal, CGST+SGST/IGST tax, and an extra-bold grand Total
+- Converted Create Invoice button to a full-width themed button embedded directly below notes input card

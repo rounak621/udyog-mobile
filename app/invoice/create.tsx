@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface LineItem {
   id: string;
@@ -25,6 +26,7 @@ interface LineItem {
 export default function CreateInvoiceScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [parties, setParties] = useState<any[]>([]);
@@ -51,6 +53,8 @@ export default function CreateInvoiceScreen() {
   // Success modal actions states
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Helper aliases to match mockup JSX names perfectly (moved below definitions)
 
   const loadData = async () => {
     try {
@@ -125,13 +129,11 @@ export default function CreateInvoiceScreen() {
   }, 0);
   const total = subtotal + tax;
 
-  const fmt = (n: number) => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-
   const shareInvoicePDF = async (mode: 'whatsapp' | 'download') => {
     if (!createdInvoice?.share_token) return;
     try {
       const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`;
-      const fileUri = FileSystem.cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace('/', '_')}.pdf`;
+      const fileUri = (FileSystem as any).cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace('/', '_')}.pdf`;
       const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
       if (mode === 'whatsapp') {
         await Sharing.shareAsync(uri, {
@@ -189,155 +191,212 @@ export default function CreateInvoiceScreen() {
     }
   };
 
+  const getInitials = (name: string) => {
+    if (!name) return 'CS';
+    return name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  };
+
+  // Helper aliases to match mockup JSX names perfectly
+  const selectedCustomer = selectedParty;
+  const addItem = addLineItem;
+  const removeItem = removeLineItem;
+  const updateItem = updateLineItem;
+  const handleSubmit = handleSave;
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: Colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.topbar}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F8FAFC' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.text} />
+          <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
-        <Text style={styles.topbarTitle}>New Invoice</Text>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={styles.headerTitle}>New Invoice</Text>
+          <Text style={styles.headerSub}>Draft · auto-saved</Text>
+        </View>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.saveBtnText}>Save</Text>}
+          {saving ? (
+            <ActivityIndicator color="#F97316" size="small" />
+          ) : (
+            <>
+              <Ionicons name="save-outline" size={16} color="#F97316" />
+              <Text style={styles.saveBtnText}>Save</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* Invoice Type Selector (Fix 1) */}
-        <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, marginBottom: 16 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {/* Invoice type toggle */}
+        <View style={styles.typeToggle}>
           {[
             { label: 'GST Invoice', value: 'INVOICE' },
             { label: 'Non-GST', value: 'NONGST' },
-            { label: 'Service', value: 'SERVICE' },
-          ].map(type => (
+            { label: 'Service', value: 'SERVICE' }
+          ].map(t => (
             <TouchableOpacity
-              key={type.value}
-              style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: invoiceType === type.value ? '#F97316' : 'transparent' }}
-              onPress={() => setInvoiceType(type.value as any)}
+              key={t.value}
+              style={[styles.typeBtn, invoiceType === t.value && styles.typeBtnActive]}
+              onPress={() => setInvoiceType(t.value as any)}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: invoiceType === type.value ? '#fff' : '#64748B' }}>{type.label}</Text>
+              <Text style={[styles.typeBtnText, invoiceType === t.value && styles.typeBtnTextActive]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Invoice Number (Fix 4) */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Invoice Number</Text>
-          <View style={[styles.input, { backgroundColor: '#F1F5F9', borderStyle: 'dashed', justifyContent: 'center', minHeight: 40 }]}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.textSecondary }}>
-              {invoiceNumber || 'Auto-generating...'}
-            </Text>
+        {/* Invoice No + Date row (side by side) */}
+        <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 16 }}>
+          <View style={[styles.card, { flex: 1 }]}>
+            <Text style={styles.cardLabel}>INVOICE NO.</Text>
+            <Text style={styles.cardValue}>{invoiceNumber || 'Auto-generating...'}</Text>
+          </View>
+          <View style={[styles.card, { flex: 1 }]}>
+            <Text style={styles.cardLabel}>DATE (YYYY-MM-DD)</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TextInput
+                style={[styles.cardValue, { padding: 0, flex: 1 }]}
+                value={invoiceDate}
+                onChangeText={setInvoiceDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#94A3B8"
+              />
+              <Ionicons name="calendar-outline" size={14} color="#94A3B8" />
+            </View>
           </View>
         </View>
 
         {/* Bill To */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Bill To</Text>
-          <TouchableOpacity style={styles.partySelector} onPress={() => setShowCustomerPicker(true)}>
-            {selectedParty ? (
-              <View style={{ flex: 1 }}>
-                <Text style={styles.selectedPartyName}>{selectedParty.name}</Text>
-                {selectedParty.gstin && <Text style={styles.selectedPartyGst}>{selectedParty.gstin}</Text>}
-              </View>
+        <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+          <Text style={styles.sectionLabel}>BILL TO</Text>
+          <TouchableOpacity style={[styles.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]} onPress={() => setShowCustomerPicker(true)}>
+            {selectedCustomer ? (
+              <>
+                <View style={styles.customerAvatar}>
+                  <Text style={styles.customerAvatarText}>{getInitials(selectedCustomer.name)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardValue}>{selectedCustomer.name}</Text>
+                  {selectedCustomer.gstin && <Text style={styles.customerGstin}>GSTIN {selectedCustomer.gstin}</Text>}
+                </View>
+              </>
             ) : (
-              <Text style={styles.placeholder}>Select customer...</Text>
+              <Text style={{ color: '#94A3B8', fontSize: 14, flex: 1 }}>Select customer...</Text>
             )}
-            <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
+            <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Invoice Date</Text>
-          <TextInput style={styles.input} value={invoiceDate} onChangeText={setInvoiceDate} placeholder="YYYY-MM-DD" placeholderTextColor={Colors.textMuted} />
-        </View>
-
-        {/* Items */}
-        <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <Text style={styles.sectionLabel}>Items</Text>
-            <TouchableOpacity style={styles.addItemBtn} onPress={addLineItem}>
-              <Ionicons name="add" size={14} color={Colors.primary} />
-              <Text style={styles.addItemText}>Add Item</Text>
+        {/* Items Section */}
+        <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={styles.sectionLabel}>ITEMS · {lineItems.length}</Text>
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={addItem}>
+              <Ionicons name="add" size={16} color="#F97316" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>Add Item</Text>
             </TouchableOpacity>
           </View>
-
-          {lineItems.map((item, i) => (
-            <View key={item.id} style={styles.lineItem}>
-              <View style={styles.rowBetween}>
-                {invoiceType === 'SERVICE' ? (
+          <View style={styles.card}>
+            {lineItems.map((item, index) => (
+              <View key={item.id}>
+                {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  {/* Item name */}
+                  {invoiceType === 'SERVICE' ? (
+                    <TextInput
+                      style={[styles.itemNameInput, { flex: 1 }]}
+                      placeholder="Enter service name..."
+                      value={item.name}
+                      onChangeText={t => updateItem(item.id, 'name', t)}
+                    />
+                  ) : (
+                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowItemPicker(item.id)}>
+                      <Text style={item.name ? styles.itemName : styles.itemNamePlaceholder}>{item.name || 'Select item...'}</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Text style={styles.itemAmount}>₹{((Number(item.rate) || 0) * (Number(item.qty) || 1)).toLocaleString('en-IN')}</Text>
+                  {lineItems.length > 1 && (
+                    <TouchableOpacity onPress={() => removeItem(item.id)} style={{ marginLeft: 8 }}>
+                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
                   <TextInput
-                    placeholder="Enter service name..."
-                    value={item.name}
-                    onChangeText={text => updateLineItem(item.id, 'name', text)}
-                    style={[styles.input, { flex: 1, marginRight: 8 }]}
+                    style={styles.itemInput}
+                    value={String(item.qty)}
+                    onChangeText={t => updateItem(item.id, 'qty', t)}
+                    keyboardType="numeric"
+                    placeholder="Qty"
                   />
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.input, { flex: 1, marginRight: 8, justifyContent: 'center', minHeight: 40 }]}
-                    onPress={() => setShowItemPicker(item.id)}
-                  >
-                    <Text style={{ color: item.name ? Colors.text : Colors.textMuted, fontSize: 13 }}>
-                      {item.name || 'Select Item...'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {lineItems.length > 1 && (
-                  <TouchableOpacity onPress={() => removeLineItem(item.id)}>
-                    <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <View style={styles.rowBetween}>
-                <View style={{ flex: 1, marginRight: 6 }}>
-                  <Text style={styles.inputLabel}>Qty</Text>
-                  <TextInput style={styles.input} keyboardType="numeric" value={item.qty} onChangeText={v => updateLineItem(item.id, 'qty', v)} />
+                  <Text style={{ color: '#94A3B8' }}>×</Text>
+                  <TextInput
+                    style={[styles.itemInput, { flex: 1 }]}
+                    value={String(item.rate)}
+                    onChangeText={t => updateItem(item.id, 'rate', t)}
+                    keyboardType="numeric"
+                    placeholder="Rate (₹)"
+                  />
+                  {invoiceType !== 'NONGST' && (
+                    <View style={styles.gstBadge}>
+                      <TextInput
+                        style={styles.gstBadgeText}
+                        value={String(item.gst_rate)}
+                        onChangeText={t => updateItem(item.id, 'gst_rate', t)}
+                        keyboardType="numeric"
+                      />
+                      <Text style={styles.gstBadgeText}>% GST</Text>
+                    </View>
+                  )}
                 </View>
-                <View style={{ flex: 1.5, marginRight: 6 }}>
-                  <Text style={styles.inputLabel}>Rate (₹)</Text>
-                  <TextInput style={styles.input} keyboardType="numeric" value={item.rate} onChangeText={v => updateLineItem(item.id, 'rate', v)} />
-                </View>
-                {invoiceType !== 'NONGST' && (
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>GST %</Text>
-                    <TextInput style={styles.input} keyboardType="numeric" value={item.gst_rate} onChangeText={v => updateLineItem(item.id, 'gst_rate', v)} />
-                  </View>
-                )}
               </View>
-              <Text style={styles.itemTotal}>
-                Amount: {fmt((parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0) * (1 + (invoiceType === 'NONGST' ? 0 : parseFloat(item.gst_rate) || 0) / 100))}
-              </Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
 
-        {/* Summary (Fix 5) */}
-        <View style={styles.card}>
-          <View style={[styles.rowBetween, { marginBottom: 8 }]}>
-            <Text style={{ fontSize: 13, color: Colors.textSecondary, flexShrink: 0 }}>Subtotal</Text>
-            <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>{fmt(subtotal)}</Text>
+        {/* Summary card with orange tint */}
+        <View style={[styles.card, { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFF7ED' }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>Subtotal (Taxable)</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{subtotal.toLocaleString('en-IN')}</Text>
           </View>
-          {invoiceType !== 'NONGST' && (
-            <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-              <Text style={{ fontSize: 13, color: Colors.textSecondary, flexShrink: 0 }}>GST Tax</Text>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>{fmt(tax)}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>GST · CGST + SGST</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toLocaleString('en-IN')}</Text>
+          </View>
+          <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+            <View>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>Total Amount</Text>
+              <Text style={{ fontSize: 11, color: '#92400E' }}>Incl. all taxes</Text>
             </View>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#F97316' }}>₹{total.toLocaleString('en-IN')}</Text>
+          </View>
+        </View>
+
+        {/* Notes (optional) */}
+        <View style={[styles.card, { marginHorizontal: 16, marginBottom: 16 }]}>
+          <Text style={styles.cardLabel}>Notes (optional)</Text>
+          <TextInput
+            style={[styles.itemInput, { height: 60, textAlignVertical: 'top', minWidth: '100%', textAlign: 'left', paddingHorizontal: 10, paddingVertical: 6 }]}
+            multiline
+            placeholder="Add a note..."
+            placeholderTextColor="#94A3B8"
+            value={notes}
+            onChangeText={setNotes}
+          />
+        </View>
+
+        {/* Create Invoice button showing total */}
+        <TouchableOpacity style={styles.createBtn} onPress={handleSubmit} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.createBtnText}>Create Invoice · ₹{total.toLocaleString('en-IN')}</Text>
           )}
-          <View style={[styles.totalRow, { borderTopWidth: 0.5, borderTopColor: Colors.border, paddingTop: 10 }]}>
-            <Text style={styles.totalFinalLabel}>Total Amount</Text>
-            <Text style={styles.totalFinalValue}>{fmt(total)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Notes (optional)</Text>
-          <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top' }]} multiline placeholder="Add a note..." placeholderTextColor={Colors.textMuted} value={notes} onChangeText={setNotes} />
-        </View>
-
-        <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Create Invoice</Text>}
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Customer Picker Modal (Fix 2) */}
+      {/* Customer Picker Modal */}
       <Modal
         visible={showCustomerPicker}
         animationType="slide"
@@ -349,15 +408,15 @@ export default function CreateInvoiceScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Customer</Text>
               <TouchableOpacity onPress={() => { setShowCustomerPicker(false); setPartySearch(''); }}>
-                <Ionicons name="close" size={24} color={Colors.text} />
+                <Ionicons name="close" size={24} color="#0F172A" />
               </TouchableOpacity>
             </View>
             <View style={styles.modalSearch}>
-              <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={{ marginRight: 6 }} />
+              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
               <TextInput
                 style={styles.modalSearchInput}
                 placeholder="Search customers..."
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor="#94A3B8"
                 value={partySearch}
                 onChangeText={setPartySearch}
                 autoFocus
@@ -405,15 +464,15 @@ export default function CreateInvoiceScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Item</Text>
               <TouchableOpacity onPress={() => { setShowItemPicker(null); setItemSearch(''); }}>
-                <Ionicons name="close" size={24} color={Colors.text} />
+                <Ionicons name="close" size={24} color="#0F172A" />
               </TouchableOpacity>
             </View>
             <View style={styles.modalSearch}>
-              <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={{ marginRight: 6 }} />
+              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
               <TextInput
                 style={styles.modalSearchInput}
                 placeholder="Search items..."
-                placeholderTextColor={Colors.textMuted}
+                placeholderTextColor="#94A3B8"
                 value={itemSearch}
                 onChangeText={setItemSearch}
                 autoFocus
@@ -450,7 +509,7 @@ export default function CreateInvoiceScreen() {
         </View>
       </Modal>
 
-      {/* Success Modal (Fix 4) */}
+      {/* Success Modal */}
       <Modal visible={showSuccess} transparent animationType="slide">
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
@@ -504,41 +563,191 @@ export default function CreateInvoiceScreen() {
 }
 
 const styles = StyleSheet.create({
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  backBtn: { padding: 4, marginRight: 8 },
-  topbarTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
-  saveBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
-  saveBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  content: { padding: 12, gap: 10, paddingBottom: 40 },
-  card: { backgroundColor: Colors.card, borderRadius: 16, padding: 14, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
-  sectionLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10, fontWeight: '700' },
-  partySelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12 },
-  selectedPartyName: { fontSize: 14, fontWeight: '500', color: Colors.text },
-  selectedPartyGst: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  placeholder: { flex: 1, fontSize: 13, color: Colors.textMuted },
-  input: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12, fontSize: 13, color: Colors.text },
-  inputLabel: { fontSize: 10, color: Colors.textSecondary, marginBottom: 4 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  addItemBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addItemText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  lineItem: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginBottom: 8 },
-  itemTotal: { fontSize: 12, color: Colors.primary, fontWeight: '500', textAlign: 'right' },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  totalFinalLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  totalFinalValue: { fontSize: 18, fontWeight: '700', color: Colors.primary },
-  submitBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, padding: 16, alignItems: 'center' },
-  submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  
-  // Modal styles
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#E2E8F0',
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  headerSub: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  saveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1.5,
+    borderColor: '#F97316',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  saveBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F97316',
+  },
+  typeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 4,
+    margin: 16,
+  },
+  typeBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  typeBtnActive: {
+    backgroundColor: '#F97316',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  typeBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  typeBtnTextActive: {
+    color: '#fff',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  cardLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  cardValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  customerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F97316',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerAvatarText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  customerGstin: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  itemNamePlaceholder: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  itemNameInput: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+    padding: 0,
+  },
+  itemAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginLeft: 8,
+  },
+  itemInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: '#0F172A',
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  gstBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  gstBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563EB',
+    padding: 0,
+  },
+  createBtn: {
+    margin: 16,
+    backgroundColor: '#F97316',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  createBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: Radius.md,
-    borderTopRightRadius: Radius.md,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     padding: 16,
     maxHeight: '80%',
   },
@@ -551,15 +760,15 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.text,
+    color: '#0F172A',
   },
   modalSearch: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderWidth: 0.5,
-    borderColor: Colors.border,
-    borderRadius: Radius.sm,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 12,
@@ -567,7 +776,7 @@ const styles = StyleSheet.create({
   modalSearchInput: {
     flex: 1,
     fontSize: 13,
-    color: Colors.text,
+    color: '#0F172A',
     padding: 0,
   },
   modalItem: {
@@ -576,33 +785,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: Colors.border,
+    borderBottomColor: '#E2E8F0',
   },
   modalItemName: {
     fontSize: 13,
     fontWeight: '500',
-    color: Colors.text,
+    color: '#0F172A',
   },
   modalItemSub: {
     fontSize: 11,
-    color: Colors.textSecondary,
+    color: '#64748B',
     marginTop: 2,
   },
   modalItemPhone: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#64748B',
   },
   modalItemPrice: {
     fontSize: 13,
     fontWeight: '600',
-    color: Colors.primary,
+    color: '#F97316',
   },
   emptyContainer: {
     padding: 24,
     alignItems: 'center',
   },
   emptyText: {
-    color: Colors.textMuted,
+    color: '#94A3B8',
     fontSize: 13,
   },
 });
