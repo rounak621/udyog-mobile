@@ -139,17 +139,21 @@ export default function DashboardScreen() {
           ))}
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-          {[
-            { label: 'New Sale', icon: 'add-circle-outline', route: '/invoice/create' },
-            { label: 'New Party', icon: 'people-outline', route: '/party/create' },
-            { label: 'Reports', icon: 'bar-chart-outline', route: '/reports' },
-          ].map(action => (
-            <TouchableOpacity key={action.label} style={{ flex: 1, backgroundColor: Colors.card, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.border }} onPress={() => router.push(action.route as any)}>
-              <Ionicons name={action.icon as any} size={22} color={Colors.primary} />
-              <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '600', marginTop: 4 }}>{action.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <View style={{ backgroundColor: Colors.card, borderRadius: 16, padding: 8, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 }}>
+          <View style={{ flexDirection: 'row' }}>
+            {[
+              { label: 'New Sale', icon: 'add-circle-outline', route: '/invoice/create' },
+              { label: 'New Party', icon: 'people-outline', route: '/party/create' },
+              { label: 'Reports', icon: 'bar-chart-outline', route: '/reports' },
+            ].map(action => (
+              <TouchableOpacity key={action.label} style={{ flex: 1, alignItems: 'center', padding: 8 }} onPress={() => router.push(action.route as any)}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+                  <Ionicons name={action.icon as any} size={22} color={Colors.primary} />
+                </View>
+                <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '600' }}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -180,8 +184,8 @@ export default function DashboardScreen() {
                 </View>
                 <View style={styles.txnRight}>
                   <Text style={styles.txnAmount}>{fmt(inv.total_amount)}</Text>
-                  <View style={[styles.badge, inv.status === 'PAID' ? styles.badgePaid : styles.badgeUnpaid]}>
-                    <Text style={[styles.badgeText, inv.status === 'PAID' ? styles.badgeTextPaid : styles.badgeTextUnpaid]}>{inv.status || 'UNPAID'}</Text>
+                  <View style={[styles.badge, (inv.payment_status || inv.status) === 'PAID' ? styles.badgePaid : (inv.payment_status || inv.status) === 'PARTIAL' ? styles.badgePartial : styles.badgeUnpaid]}>
+                    <Text style={[styles.badgeText, (inv.payment_status || inv.status) === 'PAID' ? styles.badgeTextPaid : (inv.payment_status || inv.status) === 'PARTIAL' ? styles.badgeTextPartial : styles.badgeTextUnpaid]}>{inv.payment_status || inv.status || 'UNPAID'}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -198,7 +202,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
             {topCustomers.map((customer, index) => (
-              <View key={index} style={{ backgroundColor: Colors.card, borderRadius: 12, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 12 }}>
+              <View key={index} style={{ backgroundColor: Colors.card, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 12, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.primary }}>
                     {customer.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -231,9 +235,9 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 4 },
   avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  content: { padding: Spacing.lg, paddingBottom: 80 },
+  content: { padding: Spacing.lg, paddingBottom: 100 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  statCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 10, borderWidth: 0.5, borderColor: Colors.border, width: '48%', flex: 1, minWidth: '45%' },
+  statCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, width: '48%', flex: 1, minWidth: '45%', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
   statValue: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
   statSub: { fontSize: 10, color: Colors.textMuted },
@@ -245,7 +249,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8, marginBottom: 16 },
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 20, paddingVertical: 10 },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  txnCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  txnCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
   txnIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   txnInfo: { flex: 1, minWidth: 0 },
   txnName: { fontSize: 13, fontWeight: '500', color: Colors.text },
@@ -255,8 +259,10 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
   badgePaid: { backgroundColor: '#F0FDF4' },
   badgeUnpaid: { backgroundColor: '#FFF7ED' },
+  badgePartial: { backgroundColor: '#EFF6FF' },
   badgeText: { fontSize: 9, fontWeight: '600' },
-  badgeTextPaid: { color: Colors.success },
-  badgeTextUnpaid: { color: '#EA580C' },
+  badgeTextPaid: { color: '#16A34A' },
+  badgeTextUnpaid: { color: '#C2410C' },
+  badgeTextPartial: { color: '#2563EB' },
   createFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: '#F97316', borderRadius: 32, width: 56, height: 56, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
 });
