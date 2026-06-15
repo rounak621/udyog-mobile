@@ -1,5 +1,5 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
@@ -50,7 +50,7 @@ export default function DashboardScreen() {
       // Step 2: Get stats + invoices in parallel
       const [statsRes, invoiceRes] = await Promise.allSettled([
         api.get(`/reports/dashboard-stats?business_id=${businessId}`),
-        api.get(`/invoices/?limit=3&sort=desc&business_id=${businessId}`),
+        api.get(`/invoices/?limit=10&sort=desc&business_id=${businessId}`),
       ]);
 
       if (statsRes.status === 'fulfilled') {
@@ -77,6 +77,18 @@ export default function DashboardScreen() {
   useEffect(() => { loadData(); }, []);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
+
+  const topCustomers = useMemo(() => {
+    const map: Record<string, { name: string; total: number; count: number }> = {};
+    recentInvoices.forEach((inv: any) => {
+      const name = inv.customer_name || 'Unknown';
+      const id = inv.customer_id || name;
+      if (!map[id]) map[id] = { name, total: 0, count: 0 };
+      map[id].total += Number(inv.total_amount || 0);
+      map[id].count += 1;
+    });
+    return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 3);
+  }, [recentInvoices]);
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
@@ -157,7 +169,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            recentInvoices.map(inv => (
+            recentInvoices.slice(0, 3).map(inv => (
               <TouchableOpacity key={inv.id} style={styles.txnCard} onPress={() => router.push(`/invoice/${inv.id}`)}>
                 <View style={styles.txnIcon}>
                   <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
@@ -176,6 +188,31 @@ export default function DashboardScreen() {
             ))
           )}
         </View>
+
+        {topCustomers.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.text }}>Top Customers</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/parties')}>
+                <Text style={{ fontSize: 13, color: Colors.primary }}>View All</Text>
+              </TouchableOpacity>
+            </View>
+            {topCustomers.map((customer, index) => (
+              <View key={index} style={{ backgroundColor: Colors.card, borderRadius: 12, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 12 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.primary }}>
+                    {customer.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }} numberOfLines={1}>{customer.name}</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>{customer.count} invoice{customer.count > 1 ? 's' : ''}</Text>
+                </View>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{'₹' + customer.total.toLocaleString('en-IN')}</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <TouchableOpacity style={styles.createFab} onPress={() => router.push('/invoice/create')}>
