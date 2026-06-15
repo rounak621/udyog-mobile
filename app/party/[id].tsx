@@ -25,12 +25,16 @@ export default function PartyDetailScreen() {
         setAuthToken(token);
         const bizRes = await api.get('/businesses/me');
         const bId = bizRes.data.id;
+        console.log('Fetching party:', id, 'for business:', bId);
         const [partyRes, invRes] = await Promise.allSettled([
           api.get(`/customers/${id}/?business_id=${bId}`),
           api.get(`/invoices/?customer_id=${id}&limit=10&business_id=${bId}`),
         ]);
         if (partyRes.status === 'fulfilled') {
           setParty(partyRes.value.data);
+        }
+        if (partyRes.status === 'rejected') {
+          console.error('Party fetch failed:', JSON.stringify(partyRes.reason?.response?.data), partyRes.reason?.message);
         }
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
