@@ -173,6 +173,14 @@ eas build --platform android
 - FAB: Replaced pill-shaped text button with compact 56×56 circular icon-only button (`bottom: 90`, `right: 20`)
 - ScrollView: Updated content `paddingBottom` to 80 to accommodate circular FAB
 
+### v1.4.0 — Invoice Creation Fixes
+- Create Invoice screen: Fetch business ID and load customer/item data in parallel
+- Searchable Item Modal: Tap item name to open search modal and auto-fill price, unit, and GST details
+- Save Payload standardisation: Match backend line items structure and pass `business_id` query param
+- Read-only invoice number field added
+- Improved GST calculations to calculate per line item subtotal, GST, and grand total
+
+
 
 
 

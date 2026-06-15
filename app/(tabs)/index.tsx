@@ -264,5 +264,5 @@ const styles = StyleSheet.create({
   badgeTextPaid: { color: '#16A34A' },
   badgeTextUnpaid: { color: '#C2410C' },
   badgeTextPartial: { color: '#2563EB' },
-  createFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: '#F97316', borderRadius: 32, width: 56, height: 56, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+  createFab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: '#F97316', borderRadius: 32, width: 56, height: 56, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
 });
