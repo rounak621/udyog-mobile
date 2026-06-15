@@ -50,7 +50,7 @@ export default function DashboardScreen() {
       // Step 2: Get stats + invoices in parallel
       const [statsRes, invoiceRes] = await Promise.allSettled([
         api.get(`/reports/dashboard-stats?business_id=${businessId}`),
-        api.get(`/invoices/?limit=5&sort=desc&business_id=${businessId}`),
+        api.get(`/invoices/?limit=3&sort=desc&business_id=${businessId}`),
       ]);
 
       if (statsRes.status === 'fulfilled') {
@@ -127,6 +127,19 @@ export default function DashboardScreen() {
           ))}
         </View>
 
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+          {[
+            { label: 'New Sale', icon: 'add-circle-outline', route: '/invoice/create' },
+            { label: 'New Party', icon: 'people-outline', route: '/party/create' },
+            { label: 'Reports', icon: 'bar-chart-outline', route: '/reports' },
+          ].map(action => (
+            <TouchableOpacity key={action.label} style={{ flex: 1, backgroundColor: Colors.card, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.border }} onPress={() => router.push(action.route as any)}>
+              <Ionicons name={action.icon as any} size={22} color={Colors.primary} />
+              <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '600', marginTop: 4 }}>{action.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -165,10 +178,8 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
 
-      {/* v1.0.1 */}
       <TouchableOpacity style={styles.createFab} onPress={() => router.push('/invoice/create')}>
-        <Ionicons name="add" size={22} color="#fff" />
-        <Text style={styles.createFabText}>New Invoice</Text>
+        <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
     </View>
   );
@@ -183,11 +194,11 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 4 },
   avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  content: { padding: Spacing.lg, paddingBottom: 20 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  statCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 14, borderWidth: 0.5, borderColor: Colors.border, width: '48%', flex: 1, minWidth: '45%' },
+  content: { padding: Spacing.lg, paddingBottom: 80 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  statCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 10, borderWidth: 0.5, borderColor: Colors.border, width: '48%', flex: 1, minWidth: '45%' },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
-  statValue: { fontSize: 18, fontWeight: '600', marginBottom: 2 },
+  statValue: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
   statSub: { fontSize: 10, color: Colors.textMuted },
   section: { marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -210,6 +221,5 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9, fontWeight: '600' },
   badgeTextPaid: { color: Colors.success },
   badgeTextUnpaid: { color: '#EA580C' },
-  createFab: { position: 'absolute', bottom: 80, right: 16, backgroundColor: '#F97316', borderRadius: 28, paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 8, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
-  createFabText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  createFab: { position: 'absolute', bottom: 90, right: 20, backgroundColor: '#F97316', borderRadius: 32, width: 56, height: 56, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
 });

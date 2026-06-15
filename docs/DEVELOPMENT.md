@@ -166,6 +166,14 @@ eas build --platform android
 - Dashboard: Replaced `party_name` with `customer_name` on recent transactions to fix the "Unknown Party" display issue
 - Invoice Detail: Added action buttons ("Share" and "Download PDF") using native Share sheet and browser Linking, styled to match the app theme
 
+### v1.3.0 — Dashboard Redesign
+- Stat Cards: Reduced padding from 14 to 10, font size from 18 to 16, and grid gap from 10 to 8 for a compact layout
+- Quick Actions: Added horizontal row with "New Sale", "New Party", and "Reports" shortcuts between stats and recent transactions
+- Recent Transactions: Limited API fetch from 5 to 3 invoices for a cleaner view
+- FAB: Replaced pill-shaped text button with compact 56×56 circular icon-only button (`bottom: 90`, `right: 20`)
+- ScrollView: Updated content `paddingBottom` to 80 to accommodate circular FAB
+
+
 
 
 
