@@ -21,13 +21,14 @@ export default function PartyDetailScreen() {
         const bizRes = await api.get('/businesses/me');
         const bId = bizRes.data.id;
         const [partyRes, invRes] = await Promise.allSettled([
-          api.get(`/customers/${id}/?business_id=${bId}`),
-          api.get(`/invoices/?customer_id=${id}&limit=10&business_id=${bId}`),
+          api.get(`/customers/${id}?business_id=${bId}`),
+          api.get(`/invoices/?business_id=${bId}&limit=10&sort=desc`),
         ]);
         if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
-          setInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : []);
+          const allInvoices = Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : [];
+          setInvoices(allInvoices.filter((inv: any) => inv.customer_id === id || inv.customer?.id === id));
         }
       } catch (err) {
         console.log('Party detail error:', err);

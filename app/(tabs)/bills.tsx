@@ -1,12 +1,12 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
   ActivityIndicator
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -51,7 +51,11 @@ export default function BillsScreen() {
     }
   };
 
-  useEffect(() => { loadInvoices(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadInvoices();
+    }, [])
+  );
 
   const filtered = invoices.filter(inv => {
     const matchSearch = !search || inv.customer_name?.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number?.toLowerCase().includes(search.toLowerCase());
