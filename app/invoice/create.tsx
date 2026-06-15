@@ -9,6 +9,8 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 interface LineItem {
   id: string;
@@ -29,7 +31,6 @@ export default function CreateInvoiceScreen() {
   const [items, setItems] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
   const [partySearch, setPartySearch] = useState('');
-  const [showPartyDropdown, setShowPartyDropdown] = useState(false);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS' }
@@ -37,9 +38,19 @@ export default function CreateInvoiceScreen() {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   
+  // Invoice type state
+  const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'NONGST' | 'SERVICE'>('INVOICE');
+
+  // Customer picker modal state
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+
   // Item picker state
   const [showItemPicker, setShowItemPicker] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState('');
+
+  // Success modal actions states
+  const [createdInvoice, setCreatedInvoice] = useState<any>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const loadData = async () => {
     try {
@@ -53,7 +64,7 @@ export default function CreateInvoiceScreen() {
       const [custRes, itemRes, numRes] = await Promise.allSettled([
         api.get(`/customers/?business_id=${bId}&limit=100`),
         api.get(`/items/?business_id=${bId}&limit=100`),
-        api.get(`/invoices/next-number?business_id=${bId}&invoice_type=INVOICE`),
+        api.get(`/invoices/next-number?business_id=${bId}&invoice_type=${invoiceType}`),
       ]);
       
       if (custRes.status === 'fulfilled') {
@@ -75,6 +86,15 @@ export default function CreateInvoiceScreen() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Fetch next invoice number when invoiceType or businessId changes
+  useEffect(() => {
+    if (businessId) {
+      api.get(`/invoices/next-number?business_id=${businessId}&invoice_type=${invoiceType}`)
+        .then(res => setInvoiceNumber(res.data.invoice_number || res.data.next_number || ''))
+        .catch(() => {});
+    }
+  }, [invoiceType, businessId]);
 
   const filteredParties = parties.filter(p => p.name?.toLowerCase().includes(partySearch.toLowerCase()));
 
@@ -100,11 +120,36 @@ export default function CreateInvoiceScreen() {
   const subtotal = lineItems.reduce((sum, l) => sum + (Number(l.rate) * Number(l.qty || 1)), 0);
   const tax = lineItems.reduce((sum, l) => {
     const amount = Number(l.rate) * Number(l.qty || 1);
-    return sum + (amount * Number(l.gst_rate || 0) / 100);
+    const gstRateVal = invoiceType === 'NONGST' ? 0 : Number(l.gst_rate || 0);
+    return sum + (amount * gstRateVal / 100);
   }, 0);
   const total = subtotal + tax;
 
   const fmt = (n: number) => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+  const shareInvoicePDF = async (mode: 'whatsapp' | 'download') => {
+    if (!createdInvoice?.share_token) return;
+    try {
+      const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`;
+      const fileUri = FileSystem.cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace('/', '_')}.pdf`;
+      const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
+      if (mode === 'whatsapp') {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Invoice ${createdInvoice.invoice_number}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Download Invoice ${createdInvoice.invoice_number}`,
+        });
+      }
+    } catch (err) {
+      console.log('Share error:', err);
+      Alert.alert('Error', 'Could not share PDF. Please try again.');
+    }
+  };
 
   const handleSave = async () => {
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
@@ -115,10 +160,9 @@ export default function CreateInvoiceScreen() {
       setAuthToken(token);
       
       const payload = {
-        business_id: businessId,
-        customer_id: selectedParty.id || null,
+        customer_id: selectedParty?.id || null,
         invoice_date: invoiceDate,
-        invoice_type: 'INVOICE',
+        invoice_type: invoiceType,
         status: 'ISSUED',
         notes: notes || undefined,
         line_items: lineItems.map(l => ({
@@ -126,16 +170,18 @@ export default function CreateInvoiceScreen() {
           item_name: l.name,
           quantity: Number(l.qty) || 1,
           rate: Number(l.rate) || 0,
-          gst_rate: Number(l.gst_rate) || 0,
-          unit: l.unit || 'PCS',
+          gst_rate: invoiceType === 'NONGST' ? 0 : Number(l.gst_rate) || 0,
         })),
       };
       
       const res = await api.post(`/invoices/?business_id=${businessId}`, payload);
-      Alert.alert('Success', 'Invoice created successfully', [
-        { text: 'View Invoice', onPress: () => router.replace(`/invoice/${res.data.id}`) },
-        { text: 'Create Another', onPress: () => router.replace('/invoice/create') },
-      ]);
+      const invoiceData = res.data?.invoice || res.data;
+      const warnings = res.data?.warnings || [];
+      if (warnings.length > 0) {
+        Alert.alert('Stock Warning', warnings.join('\n'));
+      }
+      setCreatedInvoice(invoiceData);
+      setShowSuccess(true);
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to create invoice');
     } finally {
@@ -156,6 +202,23 @@ export default function CreateInvoiceScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Invoice Type Selector (Fix 1) */}
+        <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 4, marginBottom: 16 }}>
+          {[
+            { label: 'GST Invoice', value: 'INVOICE' },
+            { label: 'Non-GST', value: 'NONGST' },
+            { label: 'Service', value: 'SERVICE' },
+          ].map(type => (
+            <TouchableOpacity
+              key={type.value}
+              style={{ flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: invoiceType === type.value ? '#F97316' : 'transparent' }}
+              onPress={() => setInvoiceType(type.value as any)}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: invoiceType === type.value ? '#fff' : '#64748B' }}>{type.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Invoice Number (Fix 4) */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Invoice Number</Text>
@@ -169,7 +232,7 @@ export default function CreateInvoiceScreen() {
         {/* Bill To */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Bill To</Text>
-          <TouchableOpacity style={styles.partySelector} onPress={() => setShowPartyDropdown(true)}>
+          <TouchableOpacity style={styles.partySelector} onPress={() => setShowCustomerPicker(true)}>
             {selectedParty ? (
               <View style={{ flex: 1 }}>
                 <Text style={styles.selectedPartyName}>{selectedParty.name}</Text>
@@ -180,23 +243,6 @@ export default function CreateInvoiceScreen() {
             )}
             <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
           </TouchableOpacity>
-
-          {showPartyDropdown && (
-            <View style={styles.dropdown}>
-              <View style={styles.dropdownSearch}>
-                <Ionicons name="search-outline" size={14} color={Colors.textMuted} />
-                <TextInput style={styles.dropdownInput} placeholder="Search..." placeholderTextColor={Colors.textMuted} value={partySearch} onChangeText={setPartySearch} autoFocus />
-              </View>
-              <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
-                {filteredParties.slice(0, 20).map(p => (
-                  <TouchableOpacity key={p.id} style={styles.dropdownItem} onPress={() => { setSelectedParty(p); setShowPartyDropdown(false); setPartySearch(''); }}>
-                    <Text style={styles.dropdownItemText}>{p.name}</Text>
-                    {p.gstin && <Text style={styles.dropdownItemSub}>{p.gstin}</Text>}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
         </View>
 
         <View style={styles.card}>
@@ -217,15 +263,23 @@ export default function CreateInvoiceScreen() {
           {lineItems.map((item, i) => (
             <View key={item.id} style={styles.lineItem}>
               <View style={styles.rowBetween}>
-                {/* Touchable Item Selector (Fix 2) */}
-                <TouchableOpacity
-                  style={[styles.input, { flex: 1, marginRight: 8, justifyContent: 'center', minHeight: 40 }]}
-                  onPress={() => setShowItemPicker(item.id)}
-                >
-                  <Text style={{ color: item.name ? Colors.text : Colors.textMuted, fontSize: 13 }}>
-                    {item.name || 'Select Item...'}
-                  </Text>
-                </TouchableOpacity>
+                {invoiceType === 'SERVICE' ? (
+                  <TextInput
+                    placeholder="Enter service name..."
+                    value={item.name}
+                    onChangeText={text => updateLineItem(item.id, 'name', text)}
+                    style={[styles.input, { flex: 1, marginRight: 8 }]}
+                  />
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.input, { flex: 1, marginRight: 8, justifyContent: 'center', minHeight: 40 }]}
+                    onPress={() => setShowItemPicker(item.id)}
+                  >
+                    <Text style={{ color: item.name ? Colors.text : Colors.textMuted, fontSize: 13 }}>
+                      {item.name || 'Select Item...'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 {lineItems.length > 1 && (
                   <TouchableOpacity onPress={() => removeLineItem(item.id)}>
                     <Ionicons name="trash-outline" size={18} color={Colors.danger} />
@@ -241,13 +295,15 @@ export default function CreateInvoiceScreen() {
                   <Text style={styles.inputLabel}>Rate (₹)</Text>
                   <TextInput style={styles.input} keyboardType="numeric" value={item.rate} onChangeText={v => updateLineItem(item.id, 'rate', v)} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>GST %</Text>
-                  <TextInput style={styles.input} keyboardType="numeric" value={item.gst_rate} onChangeText={v => updateLineItem(item.id, 'gst_rate', v)} />
-                </View>
+                {invoiceType !== 'NONGST' && (
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>GST %</Text>
+                    <TextInput style={styles.input} keyboardType="numeric" value={item.gst_rate} onChangeText={v => updateLineItem(item.id, 'gst_rate', v)} />
+                  </View>
+                )}
               </View>
               <Text style={styles.itemTotal}>
-                Amount: {fmt((parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0) * (1 + (parseFloat(item.gst_rate) || 0) / 100))}
+                Amount: {fmt((parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0) * (1 + (invoiceType === 'NONGST' ? 0 : parseFloat(item.gst_rate) || 0) / 100))}
               </Text>
             </View>
           ))}
@@ -256,13 +312,15 @@ export default function CreateInvoiceScreen() {
         {/* Summary (Fix 5) */}
         <View style={styles.card}>
           <View style={[styles.rowBetween, { marginBottom: 8 }]}>
-            <Text style={{ fontSize: 13, color: Colors.textSecondary }}>Subtotal</Text>
+            <Text style={{ fontSize: 13, color: Colors.textSecondary, flexShrink: 0 }}>Subtotal</Text>
             <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>{fmt(subtotal)}</Text>
           </View>
-          <View style={[styles.rowBetween, { marginBottom: 12 }]}>
-            <Text style={{ fontSize: 13, color: Colors.textSecondary }}>GST Tax</Text>
-            <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>{fmt(tax)}</Text>
-          </View>
+          {invoiceType !== 'NONGST' && (
+            <View style={[styles.rowBetween, { marginBottom: 12 }]}>
+              <Text style={{ fontSize: 13, color: Colors.textSecondary, flexShrink: 0 }}>GST Tax</Text>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: Colors.text }}>{fmt(tax)}</Text>
+            </View>
+          )}
           <View style={[styles.totalRow, { borderTopWidth: 0.5, borderTopColor: Colors.border, paddingTop: 10 }]}>
             <Text style={styles.totalFinalLabel}>Total Amount</Text>
             <Text style={styles.totalFinalValue}>{fmt(total)}</Text>
@@ -279,7 +337,63 @@ export default function CreateInvoiceScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Item Picker Modal (Fix 2) */}
+      {/* Customer Picker Modal (Fix 2) */}
+      <Modal
+        visible={showCustomerPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => { setShowCustomerPicker(false); setPartySearch(''); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Customer</Text>
+              <TouchableOpacity onPress={() => { setShowCustomerPicker(false); setPartySearch(''); }}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearch}>
+              <Ionicons name="search-outline" size={18} color={Colors.textMuted} style={{ marginRight: 6 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search customers..."
+                placeholderTextColor={Colors.textMuted}
+                value={partySearch}
+                onChangeText={setPartySearch}
+                autoFocus
+              />
+            </View>
+            <FlatList
+              data={filteredParties}
+              keyExtractor={item => String(item.id)}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setSelectedParty(item);
+                    setShowCustomerPicker(false);
+                    setPartySearch('');
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalItemName}>{item.name}</Text>
+                    {item.gstin && <Text style={styles.modalItemSub}>GSTIN: {item.gstin}</Text>}
+                  </View>
+                  {item.phone && <Text style={styles.modalItemPhone}>{item.phone}</Text>}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No customers found</Text>
+                </View>
+              }
+              keyboardShouldPersistTaps="handled"
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Item Picker Modal */}
       <Modal
         visible={showItemPicker !== null}
         animationType="slide"
@@ -335,6 +449,56 @@ export default function CreateInvoiceScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Success Modal (Fix 4) */}
+      <Modal visible={showSuccess} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <Ionicons name="checkmark-circle" size={32} color="#16A34A" />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Invoice Created!</Text>
+              <Text style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>{createdInvoice?.invoice_number}</Text>
+            </View>
+
+            {/* Share via WhatsApp */}
+            <TouchableOpacity
+              style={{ backgroundColor: '#25D366', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
+              onPress={() => shareInvoicePDF('whatsapp')}
+            >
+              <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Share on WhatsApp</Text>
+            </TouchableOpacity>
+
+            {/* Download PDF */}
+            <TouchableOpacity
+              style={{ backgroundColor: '#F97316', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
+              onPress={() => shareInvoicePDF('download')}
+            >
+              <Ionicons name="download-outline" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Download PDF</Text>
+            </TouchableOpacity>
+
+            {/* View Invoice */}
+            <TouchableOpacity
+              style={{ backgroundColor: '#F1F5F9', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
+              onPress={() => { setShowSuccess(false); router.replace(`/invoice/${createdInvoice?.id}`); }}
+            >
+              <Ionicons name="eye-outline" size={20} color="#374151" />
+              <Text style={{ color: '#374151', fontSize: 14, fontWeight: '600' }}>View Invoice</Text>
+            </TouchableOpacity>
+
+            {/* Done */}
+            <TouchableOpacity
+              style={{ padding: 14, alignItems: 'center' }}
+              onPress={() => { setShowSuccess(false); router.replace('/(tabs)/bills'); }}
+            >
+              <Text style={{ color: '#64748B', fontSize: 14 }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -346,24 +510,18 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
   saveBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   content: { padding: 12, gap: 10, paddingBottom: 40 },
-  card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 14, borderWidth: 0.5, borderColor: Colors.border },
-  sectionLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  partySelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 12 },
+  card: { backgroundColor: Colors.card, borderRadius: 16, padding: 14, marginBottom: 16, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
+  sectionLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 10, fontWeight: '700' },
+  partySelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12 },
   selectedPartyName: { fontSize: 14, fontWeight: '500', color: Colors.text },
   selectedPartyGst: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   placeholder: { flex: 1, fontSize: 13, color: Colors.textMuted },
-  dropdown: { marginTop: 8, backgroundColor: Colors.card, borderRadius: Radius.sm, borderWidth: 0.5, borderColor: Colors.border, overflow: 'hidden' },
-  dropdownSearch: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  dropdownInput: { flex: 1, fontSize: 13, color: Colors.text },
-  dropdownItem: { padding: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  dropdownItemText: { fontSize: 13, fontWeight: '500', color: Colors.text },
-  dropdownItemSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 10, fontSize: 13, color: Colors.text },
+  input: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12, fontSize: 13, color: Colors.text },
   inputLabel: { fontSize: 10, color: Colors.textSecondary, marginBottom: 4 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   addItemBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addItemText: { fontSize: 12, color: Colors.primary, fontWeight: '500' },
-  lineItem: { backgroundColor: '#F8FAFC', borderRadius: Radius.sm, padding: 10, marginBottom: 8, borderWidth: 0.5, borderColor: Colors.border },
+  lineItem: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 10, marginBottom: 8 },
   itemTotal: { fontSize: 12, color: Colors.primary, fontWeight: '500', textAlign: 'right' },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   totalFinalLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
@@ -429,6 +587,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  modalItemPhone: {
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
   modalItemPrice: {
     fontSize: 13,

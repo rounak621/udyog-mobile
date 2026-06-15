@@ -180,8 +180,10 @@ eas build --platform android
 - Read-only invoice number field added
 - Improved GST calculations to calculate per line item subtotal, GST, and grand total
 
-
-
-
-
-
+### v1.5.1 — Create Invoice Screen Refinements
+- Fixed payload: Removed `business_id` from POST request body, keeping it only in the query parameters
+- Fixed payload: Removed unused `unit` field from `line_items` array in payload
+- Added support for warning responses: Parses warning structures (e.g. stock warnings) returned by the backend post-creation and triggers a native stock warning alert
+- Service invoice enhancement: Allowed typing a custom service name via TextInput instead of forcing selection from the item list
+- Non-GST compliance: Hides the GST rate input field and sets the line items' `gst_rate` to 0 automatically when Non-GST type is selected
+- Invoice sequence synchronization: Restructured invoice sequence hook to reload the next invoice number preview cleanly when the invoice type changes
