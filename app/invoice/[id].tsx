@@ -70,17 +70,30 @@ export default function InvoiceDetailScreen() {
 
   const handleDownloadPDF = async () => {
     try {
+      const customerName = (invoice.customer_name || invoice.party_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${customerName}_${invoiceNum}.pdf`;
+
       const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
-      const fileName = `invoice_${invoice.invoice_number?.replace('/', '_')}.pdf`;
-      const downloadDest = (FileSystem as any).documentDirectory + fileName;
-      const { uri } = await FileSystem.downloadAsync(pdfUrl, downloadDest);
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Save to Downloads',
-        UTI: 'com.adobe.pdf',
-      });
+
+      const udyogDir = (FileSystem as any).documentDirectory + 'Udyog/';
+      await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
+      const fileUri = udyogDir + fileName;
+
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+
+      if (downloadResult.status === 200) {
+        Alert.alert(
+          '✅ Downloaded',
+          `${fileName} saved to Udyog folder on your device.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        throw new Error('Download failed');
+      }
     } catch (err) {
-      Alert.alert('Error', 'Could not download PDF');
+      console.log('Download error:', err);
+      Alert.alert('Error', 'Could not download PDF. Please try again.');
     }
   };
 

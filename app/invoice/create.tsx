@@ -191,18 +191,26 @@ export default function CreateInvoiceScreen() {
     if (!createdInvoice?.share_token) return;
     try {
       const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`;
-      const fileUri = (FileSystem as any).cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace('/', '_')}.pdf`;
-      const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
-      if (mode === 'whatsapp') {
+
+      if (mode === 'download') {
+        const customerName = (selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+        const invoiceNum = (createdInvoice?.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${customerName}_${invoiceNum}.pdf`;
+        const udyogDir = (FileSystem as any).cacheDirectory + 'Udyog/';
+        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
+        const fileUri = udyogDir + fileName;
+        const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+        if (downloadResult.status === 200) {
+          Alert.alert('✅ Downloaded', `${fileName} saved successfully.`, [{ text: 'OK' }]);
+        } else {
+          throw new Error('Download failed');
+        }
+      } else {
+        const fileUri = (FileSystem as any).cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace('/', '_')}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
           dialogTitle: `Invoice ${createdInvoice.invoice_number}`,
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Save to Downloads',
           UTI: 'com.adobe.pdf',
         });
       }
