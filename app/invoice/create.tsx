@@ -1,11 +1,11 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Platform, Modal, FlatList
+  Alert, Platform, Modal, FlatList, Animated, Easing
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -14,6 +14,7 @@ import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { WebView } from 'react-native-webview';
 
 interface LineItem {
   id: string;
@@ -30,6 +31,8 @@ export default function CreateInvoiceScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ customer_id?: string; party_id?: string }>();
+  const preselectCustomerId = params.customer_id || params.party_id;
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessState, setBusinessState] = useState('');
   const [isInterState, setIsInterState] = useState(false);
@@ -59,6 +62,12 @@ export default function CreateInvoiceScreen() {
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+
+  // Animation refs for success modal checkmark
+  const circleScale = useRef(new Animated.Value(0)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0.4)).current;
 
   // Helper aliases to match mockup JSX names perfectly (moved below definitions)
 
@@ -106,6 +115,49 @@ export default function CreateInvoiceScreen() {
         .catch(() => {});
     }
   }, [invoiceType, businessId]);
+
+  // Pre-select customer if customer_id was passed in route params
+  useEffect(() => {
+    if (preselectCustomerId && parties.length > 0 && !selectedParty) {
+      const match = parties.find(p => String(p.id) === String(preselectCustomerId));
+      if (match) {
+        setSelectedParty(match);
+        const customerState = match.state || '';
+        const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
+        setIsInterState(!!interState);
+      }
+    }
+  }, [preselectCustomerId, parties, businessState]);
+
+  // Animate success checkmark (Google Pay-style: circle scales in, then check draws)
+  useEffect(() => {
+    if (showSuccess) {
+      circleScale.setValue(0);
+      checkOpacity.setValue(0);
+      checkScale.setValue(0.4);
+      Animated.sequence([
+        Animated.spring(circleScale, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.parallel([
+          Animated.timing(checkOpacity, {
+            toValue: 1,
+            duration: 180,
+            useNativeDriver: true,
+          }),
+          Animated.spring(checkScale, {
+            toValue: 1,
+            friction: 4,
+            tension: 120,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    }
+  }, [showSuccess]);
 
   const filteredParties = parties.filter(p => p.name?.toLowerCase().includes(partySearch.toLowerCase()));
 
@@ -225,7 +277,7 @@ export default function CreateInvoiceScreen() {
         style={{ flex: 1, backgroundColor: '#F8FAFC' }}
         contentContainerStyle={{ paddingBottom: 40 }}
         enableOnAndroid={true}
-        extraScrollHeight={20}
+        extraScrollHeight={120}
         keyboardShouldPersistTaps="handled"
       >
         {/* Invoice type toggle */}
@@ -595,9 +647,20 @@ export default function CreateInvoiceScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-                <Ionicons name="checkmark-circle" size={32} color="#16A34A" />
-              </View>
+              <Animated.View
+                style={{
+                  width: 64, height: 64, borderRadius: 32,
+                  backgroundColor: '#16A34A',
+                  alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 14,
+                  transform: [{ scale: circleScale }],
+                  shadowColor: '#16A34A', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+                }}
+              >
+                <Animated.View style={{ opacity: checkOpacity, transform: [{ scale: checkScale }] }}>
+                  <Ionicons name="checkmark-sharp" size={36} color="#fff" />
+                </Animated.View>
+              </Animated.View>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Invoice Created!</Text>
               <Text style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>{createdInvoice?.invoice_number}</Text>
             </View>
@@ -620,23 +683,57 @@ export default function CreateInvoiceScreen() {
               <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Download PDF</Text>
             </TouchableOpacity>
 
-            {/* View Invoice */}
+            {/* View Invoice — opens PDF preview in-app */}
             <TouchableOpacity
               style={{ backgroundColor: '#F1F5F9', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
-              onPress={() => { setShowSuccess(false); router.replace(`/invoice/${createdInvoice?.id}`); }}
+              onPress={() => setShowPdfPreview(true)}
             >
               <Ionicons name="eye-outline" size={20} color="#374151" />
               <Text style={{ color: '#374151', fontSize: 14, fontWeight: '600' }}>View Invoice</Text>
             </TouchableOpacity>
 
-            {/* Done */}
+            {/* Done — go to the created invoice detail */}
             <TouchableOpacity
               style={{ padding: 14, alignItems: 'center' }}
-              onPress={() => { setShowSuccess(false); router.replace('/(tabs)/bills'); }}
+              onPress={() => {
+                setShowSuccess(false);
+                if (createdInvoice?.id) {
+                  router.replace(`/invoice/${createdInvoice.id}`);
+                } else {
+                  router.replace('/(tabs)/bills');
+                }
+              }}
             >
-              <Text style={{ color: '#64748B', fontSize: 14 }}>Done</Text>
+              <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Done</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* PDF Preview Modal */}
+      <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={[styles.pdfHeader, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={{ padding: 6 }}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.pdfHeaderTitle} numberOfLines={1}>
+              {createdInvoice?.invoice_number || 'Invoice'}
+            </Text>
+            <View style={{ width: 36 }} />
+          </View>
+          {createdInvoice?.share_token ? (
+            <WebView
+              source={{ uri: `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf?mode=inline` }}
+              style={{ flex: 1, backgroundColor: '#000' }}
+              startInLoadingState
+              renderLoading={() => (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
+                  <ActivityIndicator color="#fff" size="large" />
+                </View>
+              )}
+            />
+          ) : null}
         </View>
       </Modal>
     </View>
@@ -914,5 +1011,19 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#94A3B8',
     fontSize: 13,
+  },
+  pdfHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    backgroundColor: '#0F172A',
+  },
+  pdfHeaderTitle: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

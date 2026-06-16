@@ -19,6 +19,7 @@ interface Invoice {
   customer_name: string;
   total_amount: number;
   status: string;
+  payment_status?: string;
   invoice_date: string;
 }
 
@@ -59,7 +60,10 @@ export default function BillsScreen() {
 
   const filtered = invoices.filter(inv => {
     const matchSearch = !search || inv.customer_name?.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'All' || inv.status?.toUpperCase() === filter.toUpperCase();
+    const ps = (inv.payment_status || inv.status || '').toUpperCase();
+    const matchFilter =
+      filter === 'All' ||
+      (filter === 'Draft' ? inv.status?.toUpperCase() === 'DRAFT' : ps === filter.toUpperCase());
     return matchSearch && matchFilter;
   });
 
@@ -116,23 +120,41 @@ export default function BillsScreen() {
               <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
               <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
             </View>
-          ) : filtered.map(inv => (
-            <TouchableOpacity key={inv.id} style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
-              <View style={styles.cardIcon}>
-                <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
-                <Text style={styles.cardSub}>{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
-              </View>
-              <View style={styles.cardRight}>
-                <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
-                <View style={[styles.badge, inv.status === 'PAID' ? styles.paidBadge : inv.status === 'DRAFT' ? styles.draftBadge : styles.unpaidBadge]}>
-                  <Text style={[styles.badgeText, inv.status === 'PAID' ? styles.paidText : inv.status === 'DRAFT' ? styles.draftText : styles.unpaidText]}>{inv.status || 'UNPAID'}</Text>
+          ) : filtered.map(inv => {
+            const ps = (inv.payment_status || (inv.status === 'DRAFT' ? 'DRAFT' : 'UNPAID')).toUpperCase();
+            const isPaid = ps === 'PAID';
+            const isPartial = ps === 'PARTIAL';
+            const isDraft = ps === 'DRAFT' || inv.status === 'DRAFT';
+            return (
+              <TouchableOpacity key={inv.id} style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
+                <View style={styles.cardIcon}>
+                  <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
+                  <Text style={styles.cardSub}>{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
+                </View>
+                <View style={styles.cardRight}>
+                  <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
+                  <View style={[
+                    styles.badge,
+                    isPaid ? styles.paidBadge :
+                    isPartial ? styles.partialBadge :
+                    isDraft ? styles.draftBadge :
+                    styles.unpaidBadge
+                  ]}>
+                    <Text style={[
+                      styles.badgeText,
+                      isPaid ? styles.paidText :
+                      isPartial ? styles.partialText :
+                      isDraft ? styles.draftText :
+                      styles.unpaidText
+                    ]}>{isDraft ? 'DRAFT' : ps}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </View>
@@ -161,9 +183,11 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
   paidBadge: { backgroundColor: '#F0FDF4' },
   unpaidBadge: { backgroundColor: '#FFF7ED' },
+  partialBadge: { backgroundColor: '#EFF6FF' },
   draftBadge: { backgroundColor: '#F8FAFC' },
   badgeText: { fontSize: 9, fontWeight: '600' },
   paidText: { color: Colors.success },
   unpaidText: { color: '#EA580C' },
+  partialText: { color: '#2563EB' },
   draftText: { color: Colors.textSecondary },
 });

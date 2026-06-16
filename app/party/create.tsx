@@ -80,7 +80,7 @@ export default function CreatePartyScreen() {
 
       const payload = {
         name: name.trim(),
-        party_type: partyType.toUpperCase(),
+        party_type: partyType.toLowerCase(),
         phone: phone.trim() || undefined,
         email: email.trim() || undefined,
         gstin: gstin.trim().toUpperCase() || undefined,

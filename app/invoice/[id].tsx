@@ -2,21 +2,26 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Share, Linking
+  TouchableOpacity, ActivityIndicator, Alert, Share, Linking, Modal
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { WebView } from 'react-native-webview';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
   const { getToken } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -60,6 +65,33 @@ export default function InvoiceDetailScreen() {
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Invoice',
+      `Are you sure you want to delete invoice ${invoice?.invoice_number}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeleting(true);
+              const token = await getToken();
+              setAuthToken(token);
+              await api.delete(`/invoices/${id}?business_id=${invoice.business_id}`);
+              router.replace('/(tabs)/bills');
+            } catch (err: any) {
+              Alert.alert('Error', err?.response?.data?.detail || 'Failed to delete invoice');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleMarkPaid = async () => {
     Alert.alert('Mark as Paid', 'Mark this invoice as paid?', [
       { text: 'Cancel', style: 'cancel' },
@@ -80,7 +112,8 @@ export default function InvoiceDetailScreen() {
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
 
   const isPaid = invoice.payment_status === 'PAID' || invoice.status === 'PAID';
-  const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
+  const pdfPreviewUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf?mode=inline`;
+  const pdfDownloadUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
   const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
   return (
@@ -92,6 +125,13 @@ export default function InvoiceDetailScreen() {
         <Text style={styles.topbarTitle}>Invoice</Text>
         <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
           <Ionicons name="share-outline" size={22} color={Colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={handleDelete} style={styles.shareBtn} disabled={deleting}>
+          {deleting ? (
+            <ActivityIndicator size="small" color={Colors.danger} />
+          ) : (
+            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -173,6 +213,13 @@ export default function InvoiceDetailScreen() {
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
           <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
+            onPress={() => setShowPdfPreview(true)}
+          >
+            <Ionicons name="eye-outline" size={18} color="#2563EB" />
+            <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Preview</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.actionBtn, { flex: 1, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
             onPress={handleWhatsAppShare}
           >
@@ -181,13 +228,38 @@ export default function InvoiceDetailScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, { flex: 1, backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', borderWidth: 1 }]}
-            onPress={() => Linking.openURL(pdfUrl)}
+            onPress={() => Linking.openURL(pdfDownloadUrl)}
           >
             <Ionicons name="download-outline" size={18} color="#475569" />
-            <Text style={[styles.actionBtnText, { color: '#475569' }]}>Download PDF</Text>
+            <Text style={[styles.actionBtnText, { color: '#475569' }]}>Download</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* PDF Preview Modal */}
+      <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <View style={[styles.pdfHeader, { paddingTop: insets.top + 8 }]}>
+            <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={{ padding: 6 }}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.pdfHeaderTitle} numberOfLines={1}>
+              {invoice?.invoice_number || 'Invoice'}
+            </Text>
+            <View style={{ width: 36 }} />
+          </View>
+          <WebView
+            source={{ uri: pdfPreviewUrl }}
+            style={{ flex: 1, backgroundColor: '#000' }}
+            startInLoadingState
+            renderLoading={() => (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
+                <ActivityIndicator color="#fff" size="large" />
+              </View>
+            )}
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -224,6 +296,8 @@ const styles = StyleSheet.create({
   partialText: { color: '#2563EB' },
   paidBtn: { backgroundColor: Colors.success, borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   paidBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  actionBtn: { borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  actionBtnText: { fontSize: 15, fontWeight: '600' },
+  actionBtn: { borderRadius: Radius.sm, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  actionBtnText: { fontSize: 13, fontWeight: '600' },
+  pdfHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 10, backgroundColor: '#0F172A' },
+  pdfHeaderTitle: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 },
 });

@@ -22,13 +22,13 @@ export default function PartyDetailScreen() {
         const bId = bizRes.data.id;
         const [partyRes, invRes] = await Promise.allSettled([
           api.get(`/customers/${id}?business_id=${bId}`),
-          api.get(`/invoices/?business_id=${bId}&limit=10&sort=desc`),
+          api.get(`/invoices/?business_id=${bId}&limit=20&sort=desc`),
         ]);
         if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
           const allInvoices = Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : [];
-          setInvoices(allInvoices.filter((inv: any) => inv.customer_id === id || inv.customer?.id === id));
+          setInvoices(allInvoices.filter((inv: any) => String(inv.customer_id) === String(id) || String(inv.customer?.id) === String(id)));
         }
       } catch (err) {
         console.log('Party detail error:', err);
@@ -56,9 +56,9 @@ export default function PartyDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle} numberOfLines={1}>{party.name}</Text>
-        <TouchableOpacity style={styles.newInvBtn} onPress={() => router.push({ pathname: '/invoice/create', params: { party_id: id } })}>
+        <TouchableOpacity style={styles.newInvBtn} onPress={() => router.push({ pathname: '/invoice/create', params: { customer_id: String(id) } })}>
           <Ionicons name="add" size={16} color="#fff" />
-          <Text style={styles.newInvBtnText}>Invoice</Text>
+          <Text style={styles.newInvBtnText}>New Invoice</Text>
         </TouchableOpacity>
       </View>
 
@@ -69,11 +69,19 @@ export default function PartyDetailScreen() {
             <Text style={styles.avatarText}>{getInitials(party.name)}</Text>
           </View>
           <Text style={styles.partyName}>{party.name}</Text>
-          <View style={[styles.typeBadge, party.party_type === 'supplier' && styles.typeBadgeSupplier]}>
-            <Text style={[styles.typeText, party.party_type === 'supplier' && styles.typeTextSupplier]}>
-              {party.party_type === 'supplier' ? 'Supplier' : 'Customer'}
-            </Text>
-          </View>
+          {(() => {
+            const pt = String(party.party_type || 'customer').toLowerCase();
+            const label = pt === 'supplier' ? 'Supplier' : pt === 'both' ? 'Both' : 'Customer';
+            const isSupplier = pt === 'supplier';
+            const isBoth = pt === 'both';
+            return (
+              <View style={[styles.typeBadge, isSupplier && styles.typeBadgeSupplier, isBoth && styles.typeBadgeBoth]}>
+                <Text style={[styles.typeText, isSupplier && styles.typeTextSupplier, isBoth && styles.typeTextBoth]}>
+                  {label}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
 
         {/* Details */}
@@ -92,18 +100,31 @@ export default function PartyDetailScreen() {
           ))}
         </View>
 
-        {/* Outstanding */}
-        {party.outstanding_amount !== undefined && (
-          <View style={styles.outstandingCard}>
-            <Text style={styles.outstandingLabel}>Outstanding Amount</Text>
-            <Text style={[styles.outstandingValue, party.outstanding_amount >= 0 ? styles.receivable : styles.payable]}>
-              {fmt(Math.abs(party.outstanding_amount))}
-            </Text>
-            <Text style={styles.outstandingType}>
-              {party.outstanding_amount >= 0 ? 'Receivable (they owe you)' : 'Payable (you owe them)'}
-            </Text>
-          </View>
-        )}
+        {/* Outstanding — Invoiced vs Paid */}
+        {(() => {
+          const totalInvoiced = invoices.reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
+          const totalPaid = invoices.reduce((s, i) => s + (Number(i.amount_paid ?? (i.payment_status === 'PAID' ? i.total_amount : 0)) || 0), 0);
+          const outstanding = totalInvoiced - totalPaid;
+          return (
+            <View style={styles.balanceCard}>
+              <Text style={styles.balanceLabel}>Outstanding Balance</Text>
+              <Text style={[styles.balanceValue, outstanding > 0 ? styles.receivable : styles.receivableZero]}>
+                {fmt(Math.abs(outstanding))}
+              </Text>
+              <View style={styles.balanceRow}>
+                <View style={styles.balanceCol}>
+                  <Text style={styles.balanceSubLabel}>Total Invoiced</Text>
+                  <Text style={styles.balanceSubVal}>{fmt(totalInvoiced)}</Text>
+                </View>
+                <View style={styles.balanceDivider} />
+                <View style={styles.balanceCol}>
+                  <Text style={styles.balanceSubLabel}>Total Paid</Text>
+                  <Text style={[styles.balanceSubVal, { color: Colors.success }]}>{fmt(totalPaid)}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Recent Invoices */}
         <View style={styles.section}>
@@ -112,20 +133,25 @@ export default function PartyDetailScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>No bills yet</Text>
             </View>
-          ) : invoices.map(inv => (
-            <TouchableOpacity key={inv.id} style={styles.invCard} onPress={() => router.push(`/invoice/${inv.id}`)}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.invNum}>{inv.invoice_number}</Text>
-                <Text style={styles.invDate}>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN') : ''}</Text>
-              </View>
-              <View style={styles.invRight}>
-                <Text style={styles.invAmount}>{fmt(inv.total_amount)}</Text>
-                <View style={[styles.badge, inv.status === 'PAID' ? styles.paidBadge : styles.unpaidBadge]}>
-                  <Text style={[styles.badgeText, inv.status === 'PAID' ? styles.paidText : styles.unpaidText]}>{inv.status || 'UNPAID'}</Text>
+          ) : invoices.map(inv => {
+            const ps = (inv.payment_status || inv.status || 'UNPAID').toUpperCase();
+            const isPaid = ps === 'PAID';
+            const isPartial = ps === 'PARTIAL';
+            return (
+              <TouchableOpacity key={inv.id} style={styles.invCard} onPress={() => router.push(`/invoice/${inv.id}`)}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.invNum}>{inv.invoice_number}</Text>
+                  <Text style={styles.invDate}>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN') : ''}</Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.invRight}>
+                  <Text style={styles.invAmount}>{fmt(inv.total_amount)}</Text>
+                  <View style={[styles.badge, isPaid ? styles.paidBadge : isPartial ? styles.partialBadge : styles.unpaidBadge]}>
+                    <Text style={[styles.badgeText, isPaid ? styles.paidText : isPartial ? styles.partialText : styles.unpaidText]}>{ps}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
     </View>
@@ -145,8 +171,10 @@ const styles = StyleSheet.create({
   partyName: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 8 },
   typeBadge: { backgroundColor: '#fff7ed', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
   typeBadgeSupplier: { backgroundColor: '#eff6ff' },
+  typeBadgeBoth: { backgroundColor: '#f5f3ff' },
   typeText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   typeTextSupplier: { color: Colors.info },
+  typeTextBoth: { color: '#7c3aed' },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   detailLabel: { fontSize: 13, color: Colors.textSecondary, width: 60 },
@@ -155,6 +183,17 @@ const styles = StyleSheet.create({
   outstandingLabel: { fontSize: 12, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   outstandingValue: { fontSize: 28, fontWeight: '800', letterSpacing: -1 },
   outstandingType: { fontSize: 12, color: Colors.textSecondary, marginTop: 4 },
+  balanceCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, alignItems: 'center' },
+  balanceLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
+  balanceValue: { fontSize: 28, fontWeight: '800', letterSpacing: -1, marginBottom: 14 },
+  balanceRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
+  balanceCol: { flex: 1, alignItems: 'center' },
+  balanceDivider: { width: 0.5, alignSelf: 'stretch', backgroundColor: Colors.border, marginHorizontal: 8 },
+  balanceSubLabel: { fontSize: 10, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  balanceSubVal: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  receivableZero: { color: Colors.success },
+  partialBadge: { backgroundColor: '#EFF6FF' },
+  partialText: { color: '#2563EB' },
   receivable: { color: Colors.success },
   payable: { color: Colors.danger },
   section: {},

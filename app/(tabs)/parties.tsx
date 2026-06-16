@@ -112,27 +112,40 @@ export default function PartiesScreen() {
                 <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add First Party</Text>
               </TouchableOpacity>
             </View>
-          ) : filtered.map(party => (
-            <TouchableOpacity key={party.id} style={styles.card} onPress={() => router.push(`/party/${party.id}`)}>
-              <View style={[styles.avatar, party.party_type === 'supplier' && styles.avatarSupplier]}>
-                <Text style={styles.avatarText}>{getInitials(party.name)}</Text>
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName} numberOfLines={1}>{party.name}</Text>
-                <Text style={styles.cardSub}>
-                  {party.phone || party.gstin || (party.party_type === 'supplier' ? 'Supplier' : 'Customer')}
-                </Text>
-              </View>
-              <View style={styles.cardRight}>
-                {party.outstanding_amount ? (
-                  <Text style={[styles.outstanding, party.outstanding_amount > 0 ? styles.receivable : styles.payable]}>
-                    {fmt(Math.abs(party.outstanding_amount))}
+          ) : filtered.map(party => {
+            const pt = String(party.party_type || 'customer').toLowerCase();
+            const typeLabel = pt === 'supplier' ? 'Supplier' : pt === 'both' ? 'Both' : 'Customer';
+            const isSupplier = pt === 'supplier';
+            const isBoth = pt === 'both';
+            return (
+              <TouchableOpacity key={party.id} style={styles.card} onPress={() => router.push(`/party/${party.id}`)}>
+                <View style={[styles.avatar, isSupplier && styles.avatarSupplier, isBoth && styles.avatarBoth]}>
+                  <Text style={[styles.avatarText, isSupplier && styles.avatarTextSupplier, isBoth && styles.avatarTextBoth]}>{getInitials(party.name)}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.cardName} numberOfLines={1}>{party.name}</Text>
+                    <View style={[styles.typeBadge, isSupplier && styles.typeBadgeSupplier, isBoth && styles.typeBadgeBoth]}>
+                      <Text style={[styles.typeBadgeText, isSupplier && styles.typeBadgeTextSupplier, isBoth && styles.typeBadgeTextBoth]}>
+                        {typeLabel}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardSub} numberOfLines={1}>
+                    {party.phone || party.gstin || '—'}
                   </Text>
-                ) : null}
-                <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
-              </View>
-            </TouchableOpacity>
-          ))}
+                </View>
+                <View style={styles.cardRight}>
+                  {party.outstanding_amount ? (
+                    <Text style={[styles.outstanding, party.outstanding_amount > 0 ? styles.receivable : styles.payable]}>
+                      {fmt(Math.abs(party.outstanding_amount))}
+                    </Text>
+                  ) : null}
+                  <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </View>
@@ -154,7 +167,16 @@ const styles = StyleSheet.create({
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' },
   avatarSupplier: { backgroundColor: '#eff6ff' },
+  avatarBoth: { backgroundColor: '#f5f3ff' },
   avatarText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  avatarTextSupplier: { color: Colors.info },
+  avatarTextBoth: { color: '#7c3aed' },
+  typeBadge: { backgroundColor: '#fff7ed', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  typeBadgeSupplier: { backgroundColor: '#eff6ff' },
+  typeBadgeBoth: { backgroundColor: '#f5f3ff' },
+  typeBadgeText: { fontSize: 9, fontWeight: '700', color: Colors.primary, letterSpacing: 0.4, textTransform: 'uppercase' },
+  typeBadgeTextSupplier: { color: Colors.info },
+  typeBadgeTextBoth: { color: '#7c3aed' },
   cardInfo: { flex: 1, minWidth: 0 },
   cardName: { fontSize: 14, fontWeight: '600', color: Colors.text },
   cardSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
