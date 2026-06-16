@@ -1,9 +1,9 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, Modal, FlatList
+  Alert, Platform, Modal, FlatList
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -13,6 +13,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 interface LineItem {
   id: string;
@@ -198,7 +199,7 @@ export default function CreateInvoiceScreen() {
   const handleSubmit = handleSave;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F8FAFC' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -213,14 +214,20 @@ export default function CreateInvoiceScreen() {
             <ActivityIndicator color="#F97316" size="small" />
           ) : (
             <>
-              <Ionicons name="save-outline" size={16} color="#F97316" />
+              <Ionicons name="save-outline" size={16} color="#F97316" style={{ marginRight: 6 }} />
               <Text style={styles.saveBtnText}>Save</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView
+        style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Invoice type toggle */}
         <View style={styles.typeToggle}>
           {[
@@ -306,23 +313,51 @@ export default function CreateInvoiceScreen() {
                   {/* Item name: Select button or Custom TextInput */}
                   <View style={{ flex: 1 }}>
                     {item.isCustom ? (
-                      <TextInput
-                        key={`item_name_${item.id}`}
-                        blurOnSubmit={false}
-                        style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
-                        placeholder="Type item name..."
-                        placeholderTextColor="#94A3B8"
-                        value={item.name}
-                        onChangeText={t => updateItem(item.id, 'name', t)}
-                        autoFocus
-                      />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, paddingRight: 12 }}>
+                        <TextInput
+                          key={`item_name_${item.id}`}
+                          blurOnSubmit={false}
+                          style={{ flex: 1, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
+                          placeholder="Type item name..."
+                          placeholderTextColor="#94A3B8"
+                          value={item.name}
+                          onChangeText={t => updateItem(item.id, 'name', t)}
+                          autoFocus
+                        />
+                        <TouchableOpacity onPress={() => {
+                          updateItem(item.id, 'isCustom', false);
+                          updateItem(item.id, 'name', '');
+                          updateItem(item.id, 'item_id', null);
+                        }}>
+                          <Ionicons name="close-circle" size={20} color="#94A3B8" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : item.name ? (
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                        onPress={() => {
+                          setItemSearch(prev => ({ ...prev, [item.id]: '' }));
+                          setShowItemDropdown(item.id);
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A' }} numberOfLines={1}>{item.name}</Text>
+                          <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                            ₹{item.rate} · {item.gst_rate}% GST
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="pencil-outline" size={16} color="#F97316" />
+                          <Text style={{ fontSize: 11, color: '#F97316', fontWeight: '600', marginLeft: 4 }}>Change</Text>
+                        </View>
+                      </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
                         style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, justifyContent: 'center' }}
                         onPress={() => setShowItemDropdown(item.id)}
                       >
-                        <Text style={{ fontSize: 14, color: item.name ? '#0F172A' : '#94A3B8', fontWeight: item.name ? '600' : '400' }}>
-                          {item.name || 'Select item...'}
+                        <Text style={{ fontSize: 14, color: '#94A3B8', fontWeight: '400' }}>
+                          Select item...
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -480,7 +515,7 @@ export default function CreateInvoiceScreen() {
             <Text style={styles.createBtnText}>Create Invoice · ₹{total.toLocaleString('en-IN')}</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Customer Picker Modal */}
       <Modal
@@ -604,7 +639,7 @@ export default function CreateInvoiceScreen() {
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

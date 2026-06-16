@@ -222,4 +222,10 @@ eas build --platform android
 - Modal-based State Picker: Replaced free-form State text input with a searchable modal list containing all 36 Indian States and Union Territories. Enforced GST compliance check that makes state selection required.
 - Refined UI Theme: Redesigned layout to utilize card components with shadows (no borders), orange primary color accentuation, and section labels styled in uppercase with letter spacing matching the Invoice creation screen styling.
 
+### v1.6.5 — Keyboard Aware Scroll & Item Detail UX
+- Keyboard Avoidance: Integrated `react-native-keyboard-aware-scroll-view` and replaced traditional `KeyboardAvoidingView` + `ScrollView` wrappers with `KeyboardAwareScrollView` in both `app/party/create.tsx` and `app/invoice/create.tsx` to prevent the software keyboard from obscuring address and other form inputs.
+- Selected Item Detail & Change UX: For already selected line items in `app/invoice/create.tsx`, replaced the plain "Select item..." button with a detailed row showing the selected item's name, rate, and tax rate alongside a pencil icon and "Change" action to reopen the dropdown.
+- Custom Item Revert Action: Added a clear/remove circle icon next to the custom item text input in `app/invoice/create.tsx`, permitting the user to reset a line item back to selector mode.
+
+
 

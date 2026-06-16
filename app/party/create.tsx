@@ -1,13 +1,14 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, Modal, FlatList
+  Alert, Platform, Modal, FlatList
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -97,7 +98,7 @@ export default function CreatePartyScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: '#F8FAFC' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -119,7 +120,13 @@ export default function CreatePartyScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView
+        style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+        contentContainerStyle={styles.content}
+        enableOnAndroid={true}
+        extraScrollHeight={20}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Type Selector Tabs */}
         <View style={styles.typeRow}>
           {['customer', 'supplier', 'both'].map(type => (
@@ -237,7 +244,7 @@ export default function CreatePartyScreen() {
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Add Party</Text>}
         </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* State Picker Modal */}
       <Modal
@@ -285,7 +292,7 @@ export default function CreatePartyScreen() {
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
