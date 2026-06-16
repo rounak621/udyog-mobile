@@ -129,7 +129,8 @@ export default function CreateInvoiceScreen() {
     }
   }, [preselectCustomerId, parties, businessState]);
 
-  // Animate success checkmark (Google Pay-style: circle scales in, then check draws)
+  // Animate success checkmark (Google Pay-style: circle scales in, then check draws).
+  // Tuned to complete in under ~500ms total.
   useEffect(() => {
     if (showSuccess) {
       circleScale.setValue(0);
@@ -138,20 +139,20 @@ export default function CreateInvoiceScreen() {
       Animated.sequence([
         Animated.spring(circleScale, {
           toValue: 1,
-          friction: 5,
-          tension: 80,
+          tension: 150,
+          friction: 7,
           useNativeDriver: true,
         }),
         Animated.parallel([
           Animated.timing(checkOpacity, {
             toValue: 1,
-            duration: 180,
+            duration: 200,
             useNativeDriver: true,
           }),
-          Animated.spring(checkScale, {
+          Animated.timing(checkScale, {
             toValue: 1,
-            friction: 4,
-            tension: 120,
+            duration: 200,
+            easing: Easing.out(Easing.back(1.6)),
             useNativeDriver: true,
           }),
         ]),
@@ -277,7 +278,7 @@ export default function CreateInvoiceScreen() {
         style={{ flex: 1, backgroundColor: '#F8FAFC' }}
         contentContainerStyle={{ paddingBottom: 40 }}
         enableOnAndroid={true}
-        extraScrollHeight={120}
+        extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
       >
         {/* Invoice type toggle */}
@@ -556,6 +557,7 @@ export default function CreateInvoiceScreen() {
             placeholderTextColor="#94A3B8"
             value={notes}
             onChangeText={setNotes}
+            onFocus={() => {}}
           />
         </View>
 
@@ -724,7 +726,7 @@ export default function CreateInvoiceScreen() {
           </View>
           {createdInvoice?.share_token ? (
             <WebView
-              source={{ uri: `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf?mode=inline` }}
+              source={{ uri: `https://docs.google.com/gviewer?embedded=true&url=${encodeURIComponent(`https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`)}` }}
               style={{ flex: 1, backgroundColor: '#000' }}
               startInLoadingState
               renderLoading={() => (
