@@ -196,3 +196,11 @@ eas build --platform android
 - Enhanced Items grid: Re-styled items container card with custom list separators, displaying full calculation sums, inline Qty/Rate input boxes, and clean trash action icons
 - Updated invoice summary layout to use orange-tinted background card displaying Subtotal, CGST+SGST/IGST tax, and an extra-bold grand Total
 - Converted Create Invoice button to a full-width themed button embedded directly below notes input card
+
+### v1.6.1 — Invoice Date Picker, Custom Items & Customer Creation
+- Fixed deprecated import: Replaced standard `expo-file-system` import with `expo-file-system/legacy` to resolve deprecation warnings
+- Date Selector: Integrated `@react-native-community/datetimepicker` to replace manual text date entry with a native calendar modal interface
+- Custom Items: Added a "Custom Item" selector trigger at the top of the Item Picker modal. Tapping it sets `isCustom: true` on the line item, enabling a text input field for manual item naming
+- Custom Customer Creation: Added an "Add New Customer" shortcut at the top of the Customer Picker modal that redirects to the Create Customer screen
+- Editable GST: Converted the GST badge label to an editable `TextInput` field, permitting custom tax percentage modifications per item
+- UI Label truncation fix: Replaced `GST · CGST + SGST` with `GST (CGST + SGST)` to prevent clipping issues

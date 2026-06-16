@@ -9,9 +9,10 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface LineItem {
   id: string;
@@ -21,6 +22,7 @@ interface LineItem {
   rate: string;
   gst_rate: string;
   unit: string;
+  isCustom?: boolean;
 }
 
 export default function CreateInvoiceScreen() {
@@ -53,6 +55,7 @@ export default function CreateInvoiceScreen() {
   // Success modal actions states
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Helper aliases to match mockup JSX names perfectly (moved below definitions)
 
@@ -116,7 +119,7 @@ export default function CreateInvoiceScreen() {
 
   const addLineItem = () => setLineItems(prev => [...prev, { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS' }]);
   const removeLineItem = (id: string) => setLineItems(prev => prev.filter(l => l.id !== id));
-  const updateLineItem = (id: string, field: keyof LineItem, value: string) => {
+  const updateLineItem = (id: string, field: keyof LineItem, value: any) => {
     setLineItems(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
   };
 
@@ -251,17 +254,26 @@ export default function CreateInvoiceScreen() {
             <Text style={styles.cardValue}>{invoiceNumber || 'Auto-generating...'}</Text>
           </View>
           <View style={[styles.card, { flex: 1 }]}>
-            <Text style={styles.cardLabel}>DATE (YYYY-MM-DD)</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <TextInput
-                style={[styles.cardValue, { padding: 0, flex: 1 }]}
-                value={invoiceDate}
-                onChangeText={setInvoiceDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#94A3B8"
+            <Text style={styles.cardLabel}>DATE</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A' }}>
+                {invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Select date'}
+              </Text>
+              <Ionicons name="calendar-outline" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={invoiceDate ? new Date(invoiceDate) : new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) {
+                    setInvoiceDate(selectedDate.toISOString().split('T')[0]);
+                  }
+                }}
               />
-              <Ionicons name="calendar-outline" size={14} color="#94A3B8" />
-            </View>
+            )}
           </View>
         </View>
 
@@ -301,10 +313,10 @@ export default function CreateInvoiceScreen() {
                 {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   {/* Item name */}
-                  {invoiceType === 'SERVICE' ? (
+                  {invoiceType === 'SERVICE' || item.isCustom ? (
                     <TextInput
                       style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
-                      placeholder="Enter service name..."
+                      placeholder={item.isCustom ? "Enter item name..." : "Enter service name..."}
                       placeholderTextColor="#94A3B8"
                       value={item.name}
                       onChangeText={t => updateItem(item.id, 'name', t)}
@@ -347,12 +359,13 @@ export default function CreateInvoiceScreen() {
                   {invoiceType !== 'NONGST' && (
                     <View style={styles.gstBadge}>
                       <TextInput
-                        style={styles.gstBadgeText}
+                        style={{ fontSize: 12, fontWeight: '600', color: '#2563EB', minWidth: 24, textAlign: 'center', padding: 0 }}
                         value={String(item.gst_rate)}
                         onChangeText={t => updateItem(item.id, 'gst_rate', t)}
                         keyboardType="numeric"
+                        maxLength={2}
                       />
-                      <Text style={styles.gstBadgeText}>% GST</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#2563EB' }}>% GST</Text>
                     </View>
                   )}
                 </View>
@@ -368,7 +381,7 @@ export default function CreateInvoiceScreen() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{subtotal.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: '#92400E' }}>GST · CGST + SGST</Text>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>GST (CGST + SGST)</Text>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
@@ -430,6 +443,18 @@ export default function CreateInvoiceScreen() {
                 autoFocus
               />
             </View>
+            <TouchableOpacity
+              style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
+              onPress={() => { setShowCustomerPicker(false); router.push('/party/create'); }}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="person-add-outline" size={20} color="#F97316" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#F97316' }}>Add New Customer</Text>
+                <Text style={{ fontSize: 12, color: '#64748B' }}>Create a new party</Text>
+              </View>
+            </TouchableOpacity>
             <FlatList
               data={filteredParties}
               keyExtractor={item => String(item.id)}
@@ -486,6 +511,23 @@ export default function CreateInvoiceScreen() {
                 autoFocus
               />
             </View>
+            <TouchableOpacity
+              style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
+              onPress={() => {
+                updateItem(showItemPicker!, 'name', '');
+                updateItem(showItemPicker!, 'item_id', null);
+                updateItem(showItemPicker!, 'isCustom', true);
+                setShowItemPicker(null);
+              }}
+            >
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="create-outline" size={20} color="#F97316" />
+              </View>
+              <View>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#F97316' }}>Custom Item</Text>
+                <Text style={{ fontSize: 12, color: '#64748B' }}>Type any item name manually</Text>
+              </View>
+            </TouchableOpacity>
             <FlatList
               data={items.filter(item => item.name?.toLowerCase().includes(itemSearch.toLowerCase()))}
               keyExtractor={item => String(item.id)}
