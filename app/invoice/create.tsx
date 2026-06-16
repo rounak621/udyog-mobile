@@ -299,27 +299,35 @@ export default function CreateInvoiceScreen() {
             {lineItems.map((item, index) => (
               <View key={item.id}>
                 {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   {/* Item name */}
                   {invoiceType === 'SERVICE' ? (
                     <TextInput
-                      style={[styles.itemNameInput, { flex: 1 }]}
+                      style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
                       placeholder="Enter service name..."
+                      placeholderTextColor="#94A3B8"
                       value={item.name}
                       onChangeText={t => updateItem(item.id, 'name', t)}
                     />
                   ) : (
-                    <TouchableOpacity style={{ flex: 1 }} onPress={() => setShowItemPicker(item.id)}>
-                      <Text style={item.name ? styles.itemName : styles.itemNamePlaceholder}>{item.name || 'Select item...'}</Text>
+                    <TouchableOpacity 
+                      style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, justifyContent: 'center' }} 
+                      onPress={() => setShowItemPicker(item.id)}
+                    >
+                      <Text style={item.name ? { fontSize: 14, fontWeight: '600', color: '#0F172A' } : { fontSize: 14, color: '#94A3B8' }}>
+                        {item.name || '+ Select item...'}
+                      </Text>
                     </TouchableOpacity>
                   )}
-                  <Text style={styles.itemAmount}>₹{((Number(item.rate) || 0) * (Number(item.qty) || 1)).toLocaleString('en-IN')}</Text>
                   {lineItems.length > 1 && (
-                    <TouchableOpacity onPress={() => removeItem(item.id)} style={{ marginLeft: 8 }}>
-                      <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    <TouchableOpacity onPress={() => removeItem(item.id)} style={{ marginLeft: 12, padding: 4 }}>
+                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
                     </TouchableOpacity>
                   )}
                 </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 4, marginLeft: 2 }}>
+                  Amount: ₹{((Number(item.rate) || 0) * (Number(item.qty) || 1)).toLocaleString('en-IN')}
+                </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
                   <TextInput
                     style={styles.itemInput}
