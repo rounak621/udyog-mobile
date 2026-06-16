@@ -216,3 +216,10 @@ eas build --platform android
 - Item Selection UX: Default line item shows a "Select item..." tap button instead of a text input. Tapping opens an inline dropdown with "Custom Item" at the top, existing items in the middle, and "+ Add New Item" at the bottom. Selecting "Custom Item" switches to a text input for manual entry.
 - Dynamic CGST+SGST vs IGST: Added `businessState` tracking from `/businesses/me` API response. When a customer is selected, compares business state vs customer state to determine inter-state trade. Summary card now dynamically displays "IGST" or "CGST + SGST" accordingly.
 
+### v1.6.4 — Party Creation Alignment with Web App
+- Web-aligned Form Fields: Standardized party creation fields to match the web app. Kept Name (required), Phone, Email, GSTIN (optional, max 15 characters), State (required), and Address (optional, multiline text input). Removed the redundant City and Pincode fields.
+- 3-Option Party Type Selector: Added "Both" option to the Customer / Supplier toggle, allowing a party to be designated as both.
+- Modal-based State Picker: Replaced free-form State text input with a searchable modal list containing all 36 Indian States and Union Territories. Enforced GST compliance check that makes state selection required.
+- Refined UI Theme: Redesigned layout to utilize card components with shadows (no borders), orange primary color accentuation, and section labels styled in uppercase with letter spacing matching the Invoice creation screen styling.
+
+
