@@ -210,3 +210,9 @@ eas build --platform android
 - Searchable Inline Combobox: Replaced the separate Item Picker Modal in `app/invoice/create.tsx` with an inline text-searchable combobox/dropdown list for each line item, featuring auto-fill on select, support for custom typed items, and a footer link to navigate to item creation.
 - GST Label Update: Shortened `GST (CGST + SGST)` label to `Tax (GST)` to prevent layout truncation.
 - Qty & Rate Widths: Adjusted line item field widths so Qty is wider (to show up to 6 digits) and Rate occupies remaining space flexibly.
+
+### v1.6.3 — GST Slabs, Item Selection UX & Inter-State Detection
+- GST Rate Selector: Replaced free-form GST % text input with predefined tap-to-select pill buttons (0%, 5%, 18%, 40%) styled with orange theme matching the app brand.
+- Item Selection UX: Default line item shows a "Select item..." tap button instead of a text input. Tapping opens an inline dropdown with "Custom Item" at the top, existing items in the middle, and "+ Add New Item" at the bottom. Selecting "Custom Item" switches to a text input for manual entry.
+- Dynamic CGST+SGST vs IGST: Added `businessState` tracking from `/businesses/me` API response. When a customer is selected, compares business state vs customer state to determine inter-state trade. Summary card now dynamically displays "IGST" or "CGST + SGST" accordingly.
+
