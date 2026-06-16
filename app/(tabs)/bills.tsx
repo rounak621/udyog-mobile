@@ -40,12 +40,15 @@ export default function BillsScreen() {
       setAuthToken(token);
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
+      if (!bId) {
+        console.log('Bills load: missing business_id from /businesses/me');
+      }
       setBusinessId(bId);
       const res = await api.get(`/invoices/?limit=50&sort=desc&business_id=${bId}`);
       const invoiceData = res.data;
       setInvoices(Array.isArray(invoiceData) ? invoiceData : Array.isArray(invoiceData?.invoices) ? invoiceData.invoices : Array.isArray(invoiceData?.items) ? invoiceData.items : []);
-    } catch (err) {
-      console.log('Bills load error:', err);
+    } catch (err: any) {
+      console.log('Bills load error:', JSON.stringify(err?.response?.data), err?.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -68,6 +71,23 @@ export default function BillsScreen() {
   });
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background }}>
+        <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
+          <Text style={styles.title}>Bills</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/invoice/create')}>
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -106,14 +126,11 @@ export default function BillsScreen() {
         ))}
       </ScrollView>
 
-      {loading ? (
-        <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={[styles.list, { flexGrow: 1 }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
-        >
+      <ScrollView
+        contentContainerStyle={[styles.list, { flexGrow: 1 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
+      >
           {filtered.length === 0 ? (
             /* v1.0.1 */
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -155,8 +172,7 @@ export default function BillsScreen() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
-      )}
+      </ScrollView>
     </View>
   );
 }

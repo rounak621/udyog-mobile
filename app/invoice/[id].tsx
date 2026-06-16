@@ -11,7 +11,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { WebView } from 'react-native-webview';
+import Pdf from 'react-native-pdf';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -137,7 +137,6 @@ export default function InvoiceDetailScreen() {
 
   const isPaid = invoice.payment_status === 'PAID' || invoice.status === 'PAID';
   const rawPdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
-  const pdfPreviewUrl = `https://docs.google.com/gviewer?embedded=true&url=${encodeURIComponent(rawPdfUrl)}`;
   const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
   return (
@@ -151,7 +150,7 @@ export default function InvoiceDetailScreen() {
           <Ionicons name="share-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => router.push(`/invoice/edit/${id}` as any)}
+          onPress={() => Linking.openURL(`https://app.udyogbook.in/invoices/${id}/edit`)}
           style={{ padding: 4, marginRight: 8 }}
         >
           <Ionicons name="pencil-outline" size={20} color="#F97316" />
@@ -329,7 +328,7 @@ export default function InvoiceDetailScreen() {
 
       {/* PDF Preview Modal */}
       <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
           <View style={[styles.pdfHeader, { paddingTop: insets.top + 8 }]}>
             <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={{ padding: 6 }}>
               <Ionicons name="close" size={24} color="#fff" />
@@ -339,15 +338,12 @@ export default function InvoiceDetailScreen() {
             </Text>
             <View style={{ width: 36 }} />
           </View>
-          <WebView
-            source={{ uri: pdfPreviewUrl }}
-            style={{ flex: 1, backgroundColor: '#000' }}
-            startInLoadingState
-            renderLoading={() => (
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
-                <ActivityIndicator color="#fff" size="large" />
-              </View>
-            )}
+          <Pdf
+            trustAllCerts={false}
+            source={{ uri: rawPdfUrl, cache: true }}
+            style={{ flex: 1, width: '100%', backgroundColor: '#f8fafc' }}
+            onLoadComplete={(numberOfPages) => console.log(`PDF loaded: ${numberOfPages} pages`)}
+            onError={(error) => console.log('PDF error:', error)}
           />
         </View>
       </Modal>

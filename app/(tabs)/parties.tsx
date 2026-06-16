@@ -59,6 +59,23 @@ export default function PartiesScreen() {
 
   const getInitials = (name: string) => name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: Colors.background }}>
+        <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
+          <Text style={styles.title}>Parties</Text>
+          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/party/create')}>
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
@@ -95,14 +112,11 @@ export default function PartiesScreen() {
         })}
       </ScrollView>
 
-      {loading ? (
-        <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={[styles.list, { flexGrow: 1 }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
-        >
+      <ScrollView
+        contentContainerStyle={[styles.list, { flexGrow: 1 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
+      >
           {filtered.length === 0 ? (
             /* v1.0.1 */
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -146,8 +160,7 @@ export default function PartiesScreen() {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
-      )}
+      </ScrollView>
     </View>
   );
 }

@@ -14,7 +14,8 @@ import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { WebView } from 'react-native-webview';
+import Pdf from 'react-native-pdf';
+import { Audio } from 'expo-av';
 
 interface LineItem {
   id: string;
@@ -177,6 +178,16 @@ export default function CreateInvoiceScreen() {
   }, 0);
   const total = subtotal + tax;
 
+  const playSuccessSound = async () => {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://www.soundjay.com/buttons/sounds/button-09a.mp3' },
+        { shouldPlay: true, volume: 0.5 }
+      );
+      setTimeout(() => sound.unloadAsync(), 2000);
+    } catch {}
+  };
+
   const shareInvoicePDF = async (mode: 'whatsapp' | 'download') => {
     if (!createdInvoice?.share_token) return;
     try {
@@ -232,6 +243,7 @@ export default function CreateInvoiceScreen() {
       }
       setCreatedInvoice(invoiceData);
       setShowSuccess(true);
+      playSuccessSound();
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to create invoice');
     } finally {
@@ -725,15 +737,12 @@ export default function CreateInvoiceScreen() {
             <View style={{ width: 36 }} />
           </View>
           {createdInvoice?.share_token ? (
-            <WebView
-              source={{ uri: `https://docs.google.com/gviewer?embedded=true&url=${encodeURIComponent(`https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`)}` }}
-              style={{ flex: 1, backgroundColor: '#000' }}
-              startInLoadingState
-              renderLoading={() => (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
-                  <ActivityIndicator color="#fff" size="large" />
-                </View>
-              )}
+            <Pdf
+              trustAllCerts={false}
+              source={{ uri: `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`, cache: true }}
+              style={{ flex: 1, width: '100%', backgroundColor: '#f8fafc' }}
+              onLoadComplete={(numberOfPages) => console.log(`PDF loaded: ${numberOfPages} pages`)}
+              onError={(error) => console.log('PDF error:', error)}
             />
           ) : null}
         </View>
