@@ -202,7 +202,8 @@ export default function CreateInvoiceScreen() {
       } else {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
-          dialogTitle: `Download Invoice ${createdInvoice.invoice_number}`,
+          dialogTitle: 'Save to Downloads',
+          UTI: 'com.adobe.pdf',
         });
       }
     } catch (err) {
@@ -687,13 +688,13 @@ export default function CreateInvoiceScreen() {
               <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Share on WhatsApp</Text>
             </TouchableOpacity>
 
-            {/* Download PDF */}
+            {/* Save PDF */}
             <TouchableOpacity
               style={{ backgroundColor: '#F97316', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
               onPress={() => shareInvoicePDF('download')}
             >
               <Ionicons name="download-outline" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Download PDF</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Save PDF</Text>
             </TouchableOpacity>
 
             {/* View Invoice — opens PDF preview in-app */}

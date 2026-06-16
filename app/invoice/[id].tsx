@@ -76,7 +76,7 @@ export default function InvoiceDetailScreen() {
       const { uri } = await FileSystem.downloadAsync(pdfUrl, downloadDest);
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
-        dialogTitle: 'Save Invoice PDF',
+        dialogTitle: 'Save to Downloads',
         UTI: 'com.adobe.pdf',
       });
     } catch (err) {
@@ -258,7 +258,7 @@ export default function InvoiceDetailScreen() {
             onPress={handleDownloadPDF}
           >
             <Ionicons name="download-outline" size={18} color="#475569" />
-            <Text style={[styles.actionBtnText, { color: '#475569' }]}>Download</Text>
+            <Text style={[styles.actionBtnText, { color: '#475569' }]}>Save PDF</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
