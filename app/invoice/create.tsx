@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Platform, Modal, FlatList, Animated, Easing
+  Alert, Platform, Modal, FlatList, Animated, Easing, Linking
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -14,7 +14,6 @@ import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import Pdf from 'react-native-pdf';
 import { Audio } from 'expo-av';
 
 interface LineItem {
@@ -736,15 +735,19 @@ export default function CreateInvoiceScreen() {
             </Text>
             <View style={{ width: 36 }} />
           </View>
-          {createdInvoice?.share_token ? (
-            <Pdf
-              trustAllCerts={false}
-              source={{ uri: `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`, cache: true }}
-              style={{ flex: 1, width: '100%', backgroundColor: '#f8fafc' }}
-              onLoadComplete={(numberOfPages) => console.log(`PDF loaded: ${numberOfPages} pages`)}
-              onError={(error) => console.log('PDF error:', error)}
-            />
-          ) : null}
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+            <Ionicons name="document-outline" size={64} color="#CBD5E1" />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#64748B', marginTop: 16 }}>PDF Preview</Text>
+            <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }}>
+              PDF preview available in the full app build
+            </Text>
+            <TouchableOpacity
+              style={{ marginTop: 20, backgroundColor: '#F97316', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+              onPress={() => Linking.openURL(`https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice?.share_token}/pdf`)}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Open in Browser</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>

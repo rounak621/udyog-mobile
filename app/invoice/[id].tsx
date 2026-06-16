@@ -11,7 +11,6 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import Pdf from 'react-native-pdf';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -136,7 +135,6 @@ export default function InvoiceDetailScreen() {
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
 
   const isPaid = invoice.payment_status === 'PAID' || invoice.status === 'PAID';
-  const rawPdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
   const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
   return (
@@ -338,13 +336,19 @@ export default function InvoiceDetailScreen() {
             </Text>
             <View style={{ width: 36 }} />
           </View>
-          <Pdf
-            trustAllCerts={false}
-            source={{ uri: rawPdfUrl, cache: true }}
-            style={{ flex: 1, width: '100%', backgroundColor: '#f8fafc' }}
-            onLoadComplete={(numberOfPages) => console.log(`PDF loaded: ${numberOfPages} pages`)}
-            onError={(error) => console.log('PDF error:', error)}
-          />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+            <Ionicons name="document-outline" size={64} color="#CBD5E1" />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#64748B', marginTop: 16 }}>PDF Preview</Text>
+            <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }}>
+              PDF preview available in the full app build
+            </Text>
+            <TouchableOpacity
+              style={{ marginTop: 20, backgroundColor: '#F97316', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+              onPress={() => Linking.openURL(`https://api.udyogbook.in/api/v1/public/invoice/${invoice?.share_token}/pdf`)}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600' }}>Open in Browser</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
