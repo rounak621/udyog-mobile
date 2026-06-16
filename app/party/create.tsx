@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
@@ -9,6 +9,23 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+
+const Field = ({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize }: any) => (
+  <View style={{ marginBottom: 14 }}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput
+      key={label}
+      blurOnSubmit={false}
+      style={styles.input}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={Colors.textMuted}
+      keyboardType={keyboardType || 'default'}
+      autoCapitalize={autoCapitalize || 'words'}
+    />
+  </View>
+);
 
 export default function CreatePartyScreen() {
   const { getToken } = useAuth();
@@ -20,6 +37,12 @@ export default function CreatePartyScreen() {
   const [address, setAddress] = useState('');
   const [partyType, setPartyType] = useState<'customer' | 'supplier'>('customer');
   const [saving, setSaving] = useState(false);
+
+  const onChangeName = useCallback((text: string) => setName(text), []);
+  const onChangePhone = useCallback((text: string) => setPhone(text), []);
+  const onChangeEmail = useCallback((text: string) => setEmail(text), []);
+  const onChangeGstin = useCallback((text: string) => setGstin(text), []);
+  const onChangeAddress = useCallback((text: string) => setAddress(text), []);
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Party name is required'); return; }
@@ -42,21 +65,6 @@ export default function CreatePartyScreen() {
       setSaving(false);
     }
   };
-
-  const Field = ({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize }: any) => (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.textMuted}
-        keyboardType={keyboardType || 'default'}
-        autoCapitalize={autoCapitalize || 'words'}
-      />
-    </View>
-  );
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: Colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -84,11 +92,11 @@ export default function CreatePartyScreen() {
         </View>
 
         <View style={styles.card}>
-          <Field label="Name *" value={name} onChangeText={setName} placeholder="Party name" />
-          <Field label="Phone" value={phone} onChangeText={setPhone} placeholder="Mobile number" keyboardType="phone-pad" autoCapitalize="none" />
-          <Field label="Email" value={email} onChangeText={setEmail} placeholder="email@example.com" keyboardType="email-address" autoCapitalize="none" />
-          <Field label="GSTIN" value={gstin} onChangeText={setGstin} placeholder="22AAAAA0000A1Z5" autoCapitalize="characters" />
-          <Field label="Address" value={address} onChangeText={setAddress} placeholder="Full address" />
+          <Field key="name" label="Name *" value={name} onChangeText={onChangeName} placeholder="Party name" />
+          <Field key="phone" label="Phone" value={phone} onChangeText={onChangePhone} placeholder="Mobile number" keyboardType="phone-pad" autoCapitalize="none" />
+          <Field key="email" label="Email" value={email} onChangeText={setEmail} placeholder="email@example.com" keyboardType="email-address" autoCapitalize="none" />
+          <Field key="gstin" label="GSTIN" value={gstin} onChangeText={onChangeGstin} placeholder="22AAAAA0000A1Z5" autoCapitalize="characters" />
+          <Field key="address" label="Address" value={address} onChangeText={onChangeAddress} placeholder="Full address" />
         </View>
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>

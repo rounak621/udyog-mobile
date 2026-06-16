@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
@@ -49,8 +49,8 @@ export default function CreateInvoiceScreen() {
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
 
   // Item picker state
-  const [showItemPicker, setShowItemPicker] = useState<string | null>(null);
-  const [itemSearch, setItemSearch] = useState('');
+  const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
+  const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
 
   // Success modal actions states
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
@@ -105,23 +105,11 @@ export default function CreateInvoiceScreen() {
 
   const filteredParties = parties.filter(p => p.name?.toLowerCase().includes(partySearch.toLowerCase()));
 
-  const selectItem = (lineId: string, item: any) => {
-    setLineItems(prev => prev.map(l => l.id === lineId ? {
-      ...l,
-      name: item.name,
-      item_id: item.id,
-      rate: String(item.rate || ''),
-      gst_rate: String(item.gst_rate || '18'),
-      unit: item.unit || 'PCS',
-    } : l));
-    setShowItemPicker(null);
-  };
-
   const addLineItem = () => setLineItems(prev => [...prev, { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS' }]);
   const removeLineItem = (id: string) => setLineItems(prev => prev.filter(l => l.id !== id));
-  const updateLineItem = (id: string, field: keyof LineItem, value: any) => {
+  const updateLineItem = useCallback((id: string, field: keyof LineItem, value: any) => {
     setLineItems(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
-  };
+  }, []);
 
   // Calculations
   const subtotal = lineItems.reduce((sum, l) => sum + (Number(l.rate) * Number(l.qty || 1)), 0);
@@ -309,28 +297,65 @@ export default function CreateInvoiceScreen() {
           </View>
           <View style={styles.card}>
             {lineItems.map((item, index) => (
-              <View key={item.id}>
+              <View key={item.id} style={{ zIndex: showItemDropdown === item.id ? 999 : 1 }}>
                 {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {/* Item name */}
-                  {invoiceType === 'SERVICE' || item.isCustom ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: showItemDropdown === item.id ? 999 : 1 }}>
+                  {/* Item name searchable inline combobox */}
+                  <View style={{ flex: 1, zIndex: showItemDropdown === item.id ? 9999 : 1 }}>
                     <TextInput
-                      style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
-                      placeholder={item.isCustom ? "Enter item name..." : "Enter service name..."}
+                      key={`item_name_${item.id}`}
+                      blurOnSubmit={false}
+                      style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
+                      placeholder="Search or type item name..."
                       placeholderTextColor="#94A3B8"
-                      value={item.name}
-                      onChangeText={t => updateItem(item.id, 'name', t)}
+                      value={itemSearch[item.id] ?? item.name}
+                      onChangeText={text => {
+                        setItemSearch(prev => ({ ...prev, [item.id]: text }));
+                        updateItem(item.id, 'name', text);
+                        updateItem(item.id, 'item_id', null);
+                        setShowItemDropdown(item.id);
+                      }}
+                      onFocus={() => setShowItemDropdown(item.id)}
                     />
-                  ) : (
-                    <TouchableOpacity 
-                      style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, justifyContent: 'center' }} 
-                      onPress={() => setShowItemPicker(item.id)}
-                    >
-                      <Text style={item.name ? { fontSize: 14, fontWeight: '600', color: '#0F172A' } : { fontSize: 14, color: '#94A3B8' }}>
-                        {item.name || '+ Select item...'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                    {showItemDropdown === item.id && (
+                      <View style={{ position: 'absolute', top: 48, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, maxHeight: 200, zIndex: 9999 }}>
+                        <FlatList
+                          data={items.filter(i => i.name?.toLowerCase().includes((itemSearch[item.id] || '').toLowerCase()))}
+                          keyExtractor={i => String(i.id)}
+                          renderItem={({ item: prod }) => (
+                            <TouchableOpacity
+                              style={{ padding: 12, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' }}
+                              onPress={() => {
+                                setLineItems(prev => prev.map(l => l.id === item.id ? {
+                                  ...l,
+                                  name: prod.name,
+                                  item_id: prod.id,
+                                  rate: String(prod.rate || prod.price || ''),
+                                  gst_rate: String(prod.gst_rate || '18'),
+                                } : l));
+                                setItemSearch(prev => ({ ...prev, [item.id]: prod.name }));
+                                setShowItemDropdown(null);
+                              }}
+                            >
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>{prod.name}</Text>
+                              <Text style={{ fontSize: 11, color: '#64748B' }}>₹{prod.rate || prod.price} · {prod.gst_rate}% GST</Text>
+                            </TouchableOpacity>
+                          )}
+                          ListFooterComponent={() => (
+                            <TouchableOpacity
+                              style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                              onPress={() => { setShowItemDropdown(null); router.push('/item/create'); }}
+                            >
+                              <Ionicons name="add-circle-outline" size={18} color="#F97316" />
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>Add New Item</Text>
+                            </TouchableOpacity>
+                          )}
+                          nestedScrollEnabled
+                          keyboardShouldPersistTaps="handled"
+                        />
+                      </View>
+                    )}
+                  </View>
                   {lineItems.length > 1 && (
                     <TouchableOpacity onPress={() => removeItem(item.id)} style={{ marginLeft: 12, padding: 4 }}>
                       <Ionicons name="trash-outline" size={18} color="#EF4444" />
@@ -342,7 +367,9 @@ export default function CreateInvoiceScreen() {
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
                   <TextInput
-                    style={styles.itemInput}
+                    key={`item_qty_${item.id}`}
+                    blurOnSubmit={false}
+                    style={styles.qtyInput}
                     value={String(item.qty)}
                     onChangeText={t => updateItem(item.id, 'qty', t)}
                     keyboardType="numeric"
@@ -350,7 +377,9 @@ export default function CreateInvoiceScreen() {
                   />
                   <Text style={{ color: '#94A3B8' }}>×</Text>
                   <TextInput
-                    style={[styles.itemInput, { flex: 1 }]}
+                    key={`item_rate_${item.id}`}
+                    blurOnSubmit={false}
+                    style={styles.rateInput}
                     value={String(item.rate)}
                     onChangeText={t => updateItem(item.id, 'rate', t)}
                     keyboardType="numeric"
@@ -359,6 +388,8 @@ export default function CreateInvoiceScreen() {
                   {invoiceType !== 'NONGST' && (
                     <View style={styles.gstBadge}>
                       <TextInput
+                        key={`item_gst_${item.id}`}
+                        blurOnSubmit={false}
                         style={{ fontSize: 12, fontWeight: '600', color: '#2563EB', minWidth: 24, textAlign: 'center', padding: 0 }}
                         value={String(item.gst_rate)}
                         onChangeText={t => updateItem(item.id, 'gst_rate', t)}
@@ -381,7 +412,7 @@ export default function CreateInvoiceScreen() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{subtotal.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: '#92400E' }}>GST (CGST + SGST)</Text>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>Tax (GST)</Text>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
@@ -485,79 +516,7 @@ export default function CreateInvoiceScreen() {
         </View>
       </Modal>
 
-      {/* Item Picker Modal */}
-      <Modal
-        visible={showItemPicker !== null}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => { setShowItemPicker(null); setItemSearch(''); }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Item</Text>
-              <TouchableOpacity onPress={() => { setShowItemPicker(null); setItemSearch(''); }}>
-                <Ionicons name="close" size={24} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalSearch}>
-              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
-              <TextInput
-                style={styles.modalSearchInput}
-                placeholder="Search items..."
-                placeholderTextColor="#94A3B8"
-                value={itemSearch}
-                onChangeText={setItemSearch}
-                autoFocus
-              />
-            </View>
-            <TouchableOpacity
-              style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
-              onPress={() => {
-                updateItem(showItemPicker!, 'name', '');
-                updateItem(showItemPicker!, 'item_id', null);
-                updateItem(showItemPicker!, 'isCustom', true);
-                setShowItemPicker(null);
-              }}
-            >
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="create-outline" size={20} color="#F97316" />
-              </View>
-              <View>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#F97316' }}>Custom Item</Text>
-                <Text style={{ fontSize: 12, color: '#64748B' }}>Type any item name manually</Text>
-              </View>
-            </TouchableOpacity>
-            <FlatList
-              data={items.filter(item => item.name?.toLowerCase().includes(itemSearch.toLowerCase()))}
-              keyExtractor={item => String(item.id)}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    if (showItemPicker) {
-                      selectItem(showItemPicker, item);
-                      setItemSearch('');
-                    }
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.modalItemName}>{item.name}</Text>
-                    <Text style={styles.modalItemSub}>{item.unit || 'PCS'} · GST: {item.gst_rate || 0}%</Text>
-                  </View>
-                  <Text style={styles.modalItemPrice}>₹{item.rate || 0}</Text>
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No items found</Text>
-                </View>
-              }
-              keyboardShouldPersistTaps="handled"
-            />
-          </View>
-        </View>
-      </Modal>
+
 
       {/* Success Modal */}
       <Modal visible={showSuccess} transparent animationType="slide">
@@ -756,6 +715,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#0F172A',
     minWidth: 50,
+    textAlign: 'center',
+  },
+  qtyInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: '#0F172A',
+    width: 80,
+    textAlign: 'center',
+  },
+  rateInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 13,
+    color: '#0F172A',
+    flex: 1,
     textAlign: 'center',
   },
   gstBadge: {

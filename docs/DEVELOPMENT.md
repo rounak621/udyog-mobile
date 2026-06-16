@@ -204,3 +204,9 @@ eas build --platform android
 - Custom Customer Creation: Added an "Add New Customer" shortcut at the top of the Customer Picker modal that redirects to the Create Customer screen
 - Editable GST: Converted the GST badge label to an editable `TextInput` field, permitting custom tax percentage modifications per item
 - UI Label truncation fix: Replaced `GST · CGST + SGST` with `GST (CGST + SGST)` to prevent clipping issues
+
+### v1.6.2 — Keyboard & Inline Combobox Fixes
+- Keyboard Dismissal Fix: Added key props to TextInputs and stabilized state callbacks using `useCallback` in `app/party/create.tsx` to prevent keyboard focus loss during typing.
+- Searchable Inline Combobox: Replaced the separate Item Picker Modal in `app/invoice/create.tsx` with an inline text-searchable combobox/dropdown list for each line item, featuring auto-fill on select, support for custom typed items, and a footer link to navigate to item creation.
+- GST Label Update: Shortened `GST (CGST + SGST)` label to `Tax (GST)` to prevent layout truncation.
+- Qty & Rate Widths: Adjusted line item field widths so Qty is wider (to show up to 6 digits) and Rate occupies remaining space flexibly.
