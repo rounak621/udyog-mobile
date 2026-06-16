@@ -8,6 +8,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -43,6 +45,21 @@ export default function InvoiceDetailScreen() {
     } catch {}
   };
 
+  const handleWhatsAppShare = async () => {
+    try {
+      const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
+      const fileUri = (FileSystem as any).cacheDirectory + `invoice_${invoice.invoice_number?.replace('/', '_')}.pdf`;
+      const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Invoice ${invoice.invoice_number}`,
+        UTI: 'com.adobe.pdf',
+      });
+    } catch (err) {
+      Alert.alert('Error', 'Could not share PDF');
+    }
+  };
+
   const handleMarkPaid = async () => {
     Alert.alert('Mark as Paid', 'Mark this invoice as paid?', [
       { text: 'Cancel', style: 'cancel' },
@@ -62,7 +79,7 @@ export default function InvoiceDetailScreen() {
   if (loading) return <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>;
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
 
-  const isPaid = invoice.status === 'PAID';
+  const isPaid = invoice.payment_status === 'PAID' || invoice.status === 'PAID';
   const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
   const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
@@ -83,10 +100,28 @@ export default function InvoiceDetailScreen() {
           <View style={styles.cardHeader}>
             <View>
               <Text style={styles.invoiceNum}>{invoice.invoice_number}</Text>
+              {invoice.invoice_type === 'SERVICE' && (
+                <View style={{ backgroundColor: '#FFF7ED', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: 'flex-start' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#C2410C' }}>Service</Text>
+                </View>
+              )}
+              {invoice.invoice_type === 'NONGST' && (
+                <View style={{ backgroundColor: '#F1F5F9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: 'flex-start' }}>
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569' }}>Non-GST</Text>
+                </View>
+              )}
               <Text style={styles.invoiceDate}>{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}</Text>
             </View>
-            <View style={[styles.badge, isPaid ? styles.paidBadge : styles.unpaidBadge]}>
-              <Text style={[styles.badgeText, isPaid ? styles.paidText : styles.unpaidText]}>{invoice.status || 'UNPAID'}</Text>
+            <View style={[styles.badge, 
+              invoice.payment_status === 'PAID' ? styles.paidBadge : 
+              invoice.payment_status === 'PARTIAL' ? styles.partialBadge : 
+              styles.unpaidBadge
+            ]}>
+              <Text style={[styles.badgeText,
+                invoice.payment_status === 'PAID' ? styles.paidText :
+                invoice.payment_status === 'PARTIAL' ? styles.partialText :
+                styles.unpaidText
+              ]}>{invoice.payment_status || 'UNPAID'}</Text>
             </View>
           </View>
 
@@ -122,6 +157,13 @@ export default function InvoiceDetailScreen() {
           </View>
         </View>
 
+        {invoice.notes && (
+          <View style={styles.card}>
+            <Text style={styles.sectionLabel}>Notes</Text>
+            <Text style={{ fontSize: 13, color: Colors.textSecondary, lineHeight: 20 }}>{invoice.notes}</Text>
+          </View>
+        )}
+
         {!isPaid && (
           <TouchableOpacity style={styles.paidBtn} onPress={handleMarkPaid}>
             <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
@@ -131,11 +173,11 @@ export default function InvoiceDetailScreen() {
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
           <TouchableOpacity
-            style={[styles.actionBtn, { flex: 1, backgroundColor: '#FFF7ED', borderColor: '#FED7AA', borderWidth: 1 }]}
-            onPress={() => Share.share({ message: `Invoice ${invoice.invoice_number}\n${shareUrl}`, url: pdfUrl })}
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
+            onPress={handleWhatsAppShare}
           >
-            <Ionicons name="share-social-outline" size={18} color="#C2410C" />
-            <Text style={[styles.actionBtnText, { color: '#C2410C' }]}>Share</Text>
+            <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
+            <Text style={[styles.actionBtnText, { color: '#16A34A' }]}>WhatsApp</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, { flex: 1, backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', borderWidth: 1 }]}
@@ -178,6 +220,8 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '600' },
   paidText: { color: Colors.success },
   unpaidText: { color: '#EA580C' },
+  partialBadge: { backgroundColor: '#EFF6FF' },
+  partialText: { color: '#2563EB' },
   paidBtn: { backgroundColor: Colors.success, borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   paidBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
   actionBtn: { borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
