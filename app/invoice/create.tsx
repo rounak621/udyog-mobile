@@ -319,11 +319,10 @@ export default function CreateInvoiceScreen() {
                     />
                     {showItemDropdown === item.id && (
                       <View style={{ position: 'absolute', top: 48, left: 0, right: 0, backgroundColor: '#fff', borderRadius: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, maxHeight: 200, zIndex: 9999 }}>
-                        <FlatList
-                          data={items.filter(i => i.name?.toLowerCase().includes((itemSearch[item.id] || '').toLowerCase()))}
-                          keyExtractor={i => String(i.id)}
-                          renderItem={({ item: prod }) => (
+                        <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">
+                          {items.filter(i => i.name?.toLowerCase().includes((itemSearch[item.id] || '').toLowerCase())).map(prod => (
                             <TouchableOpacity
+                              key={String(prod.id)}
                               style={{ padding: 12, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' }}
                               onPress={() => {
                                 setLineItems(prev => prev.map(l => l.id === item.id ? {
@@ -340,19 +339,15 @@ export default function CreateInvoiceScreen() {
                               <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>{prod.name}</Text>
                               <Text style={{ fontSize: 11, color: '#64748B' }}>₹{prod.rate || prod.price} · {prod.gst_rate}% GST</Text>
                             </TouchableOpacity>
-                          )}
-                          ListFooterComponent={() => (
-                            <TouchableOpacity
-                              style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                              onPress={() => { setShowItemDropdown(null); router.push('/item/create'); }}
-                            >
-                              <Ionicons name="add-circle-outline" size={18} color="#F97316" />
-                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>Add New Item</Text>
-                            </TouchableOpacity>
-                          )}
-                          nestedScrollEnabled
-                          keyboardShouldPersistTaps="handled"
-                        />
+                          ))}
+                          <TouchableOpacity
+                            style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                            onPress={() => { setShowItemDropdown(null); router.push('/item/create' as any); }}
+                          >
+                            <Ionicons name="add-circle-outline" size={18} color="#F97316" />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>+ Add New Item</Text>
+                          </TouchableOpacity>
+                        </ScrollView>
                       </View>
                     )}
                   </View>
@@ -385,21 +380,25 @@ export default function CreateInvoiceScreen() {
                     keyboardType="numeric"
                     placeholder="Rate (₹)"
                   />
-                  {invoiceType !== 'NONGST' && (
-                    <View style={styles.gstBadge}>
+                </View>
+                {invoiceType !== 'NONGST' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    <Text style={{ fontSize: 12, color: '#64748B' }}>GST %</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
                       <TextInput
                         key={`item_gst_${item.id}`}
                         blurOnSubmit={false}
-                        style={{ fontSize: 12, fontWeight: '600', color: '#2563EB', minWidth: 24, textAlign: 'center', padding: 0 }}
+                        style={{ fontSize: 13, fontWeight: '600', color: '#2563EB', minWidth: 30, textAlign: 'center', padding: 0 }}
                         value={String(item.gst_rate)}
                         onChangeText={t => updateItem(item.id, 'gst_rate', t)}
                         keyboardType="numeric"
                         maxLength={2}
                       />
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#2563EB' }}>% GST</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#2563EB' }}>%</Text>
                     </View>
-                  )}
-                </View>
+                    <Text style={{ fontSize: 11, color: '#94A3B8' }}>tap to edit</Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -412,8 +411,11 @@ export default function CreateInvoiceScreen() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{subtotal.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: '#92400E' }}>Tax (GST)</Text>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toLocaleString('en-IN')}</Text>
+            <View>
+              <Text style={{ fontSize: 13, color: '#92400E' }}>GST</Text>
+              <Text style={{ fontSize: 11, color: '#B45309' }}>CGST + SGST</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', alignSelf: 'flex-end' }}>₹{tax.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
