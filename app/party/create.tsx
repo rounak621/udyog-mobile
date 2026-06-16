@@ -35,6 +35,9 @@ export default function CreatePartyScreen() {
   const [email, setEmail] = useState('');
   const [gstin, setGstin] = useState('');
   const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pincode, setPincode] = useState('');
   const [partyType, setPartyType] = useState<'customer' | 'supplier'>('customer');
   const [saving, setSaving] = useState(false);
 
@@ -43,6 +46,9 @@ export default function CreatePartyScreen() {
   const onChangeEmail = useCallback((text: string) => setEmail(text), []);
   const onChangeGstin = useCallback((text: string) => setGstin(text), []);
   const onChangeAddress = useCallback((text: string) => setAddress(text), []);
+  const onChangeCity = useCallback((text: string) => setCity(text), []);
+  const onChangeState = useCallback((text: string) => setState(text), []);
+  const onChangePincode = useCallback((text: string) => setPincode(text), []);
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Party name is required'); return; }
@@ -56,6 +62,9 @@ export default function CreatePartyScreen() {
         email: email.trim(),
         gstin: gstin.trim().toUpperCase(),
         address: address.trim(),
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        pincode: pincode.trim() || undefined,
         party_type: partyType,
       });
       router.back();
@@ -97,6 +106,9 @@ export default function CreatePartyScreen() {
           <Field key="email" label="Email" value={email} onChangeText={setEmail} placeholder="email@example.com" keyboardType="email-address" autoCapitalize="none" />
           <Field key="gstin" label="GSTIN" value={gstin} onChangeText={onChangeGstin} placeholder="22AAAAA0000A1Z5" autoCapitalize="characters" />
           <Field key="address" label="Address" value={address} onChangeText={onChangeAddress} placeholder="Full address" />
+          <Field key="city" label="City" value={city} onChangeText={onChangeCity} placeholder="City" />
+          <Field key="state" label="State" value={state} onChangeText={onChangeState} placeholder="e.g. Maharashtra" autoCapitalize="words" />
+          <Field key="pincode" label="Pincode" value={pincode} onChangeText={onChangePincode} placeholder="400001" keyboardType="numeric" />
         </View>
 
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
