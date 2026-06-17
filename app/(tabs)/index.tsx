@@ -175,11 +175,11 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.quickActionsRow}>
-          <TouchableOpacity style={[styles.quickAction, styles.quickActionDark]} onPress={() => router.push('/invoice/create')}>
-            <View style={styles.quickActionIconDark}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/invoice/create')}>
+            <View style={styles.quickActionIcon}>
               <Ionicons name="add" size={20} color="#F97316" />
             </View>
-            <Text style={styles.quickActionLabelDark}>New Sale</Text>
+            <Text style={styles.quickActionLabel}>New Sale</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/party/create')}>
             <View style={styles.quickActionIcon}>
@@ -292,11 +292,8 @@ const styles = StyleSheet.create({
 
   quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 20 },
   quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
-  quickActionDark: { backgroundColor: '#F97316' },
   quickActionIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  quickActionIconDark: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   quickActionLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
-  quickActionLabelDark: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
   section: { marginHorizontal: 16, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
