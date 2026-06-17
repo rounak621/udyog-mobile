@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Spacing, Radius } from '../../constants/theme';
+import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
 interface DashboardStats {
@@ -33,7 +33,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
-  const [businessName, setBusinessName] = useState('');
+  const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -44,7 +44,7 @@ export default function DashboardScreen() {
       // Step 1: Get business info
       const bizRes = await api.get('/businesses/me');
       const biz = bizRes.data;
-      setBusinessName(biz.name || '');
+      setBusiness(biz);
       const businessId = biz.id;
 
       // Step 2: Get stats + invoices in parallel
@@ -90,9 +90,21 @@ export default function DashboardScreen() {
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 3);
   }, [recentInvoices]);
 
+  const unpaidCount = useMemo(() => {
+    return recentInvoices.filter((inv: any) => {
+      const status = inv.payment_status || inv.status;
+      return status && status !== 'PAID';
+    }).length;
+  }, [recentInvoices]);
+
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
-  const initials = businessName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
+  const compactFmt = (n: number) => {
+    const num = Number(n || 0);
+    if (num >= 100000) return '₹' + (num / 100000).toFixed(2) + 'L';
+    if (num >= 1000) return '₹' + (num / 1000).toFixed(1) + 'K';
+    return '₹' + num.toLocaleString('en-IN');
+  };
 
   if (loading) {
     return (
@@ -104,63 +116,93 @@ export default function DashboardScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.bizSelector}>
-          <Text style={styles.bizName} numberOfLines={1}>{businessName || 'My Business'}</Text>
-          <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
-        </TouchableOpacity>
-        <View style={styles.topbarRight}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text style={styles.bizName}>{business?.name || 'My Business'}</Text>
+            <Ionicons name="chevron-down" size={16} color="#0F172A" />
+          </View>
+          <Text style={styles.bizSub}>{business?.gstin ? `GSTIN · ${business.state || ''}` : business?.state || ''}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity style={styles.bellBtn}>
+            <Ionicons name="notifications-outline" size={20} color="#0F172A" />
           </TouchableOpacity>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials}</Text>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{(business?.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}</Text>
           </View>
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
       >
-        <View style={styles.statsGrid}>
-          {[
-            { label: 'Total Sales', value: fmt(stats?.total_sales || 0), color: Colors.text, sub: 'this year' },
-            { label: 'Total Purchases', value: fmt(stats?.total_purchases || 0), color: Colors.danger, sub: 'this year' },
-            { label: 'Receivables', value: fmt(stats?.receivables || 0), color: Colors.primary, sub: 'outstanding' },
-            { label: 'Payables', value: fmt(stats?.payables || 0), color: Colors.info, sub: 'outstanding' },
-          ].map(s => (
-            <View key={s.label} style={styles.statCard}>
-              <Text style={styles.statLabel}>{s.label}</Text>
-              <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-              <Text style={styles.statSub}>{s.sub}</Text>
+        <View style={styles.heroCard}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F97316' }} />
+              <Text style={styles.heroLabel}>RECEIVABLES</Text>
             </View>
-          ))}
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>Outstanding</Text>
+            </View>
+          </View>
+          <Text style={styles.heroAmount}>₹{Number(stats?.receivables || 0).toLocaleString('en-IN')}</Text>
+          <Text style={styles.heroSub}>from {unpaidCount || 0} unpaid invoices</Text>
+          <TouchableOpacity style={styles.heroBtn} onPress={() => router.push('/(tabs)/bills')}>
+            <Ionicons name="eye-outline" size={16} color="#0F172A" />
+            <Text style={styles.heroBtnText}>View Outstanding</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={{ backgroundColor: Colors.card, borderRadius: 16, padding: 8, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 }}>
-          <View style={{ flexDirection: 'row' }}>
-            {[
-              { label: 'New Sale', icon: 'add-circle-outline', route: '/invoice/create' },
-              { label: 'New Party', icon: 'people-outline', route: '/party/create' },
-              { label: 'Reports', icon: 'bar-chart-outline', route: '/reports' },
-            ].map(action => (
-              <TouchableOpacity key={action.label} style={{ flex: 1, alignItems: 'center', padding: 8 }} onPress={() => router.push(action.route as any)}>
-                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                  <Ionicons name={action.icon as any} size={22} color={Colors.primary} />
-                </View>
-                <Text style={{ fontSize: 11, color: Colors.text, fontWeight: '600' }}>{action.label}</Text>
-              </TouchableOpacity>
-            ))}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>SALES</Text>
+            <Text style={[styles.statValue, { color: '#16A34A' }]}>{compactFmt(stats?.total_sales || 0)}</Text>
+            <Text style={styles.statSub}>this year</Text>
           </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>PURCHASES</Text>
+            <Text style={styles.statValue}>{compactFmt(stats?.total_purchases || 0)}</Text>
+            <Text style={styles.statSub}>this year</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>PAYABLES</Text>
+            <Text style={[styles.statValue, { color: '#C2410C' }]}>{compactFmt(stats?.payables || 0)}</Text>
+            <Text style={styles.statSub}>to pay</Text>
+          </View>
+        </View>
+
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity style={[styles.quickAction, styles.quickActionDark]} onPress={() => router.push('/invoice/create')}>
+            <View style={styles.quickActionIconDark}>
+              <Ionicons name="add" size={20} color="#fff" />
+            </View>
+            <Text style={styles.quickActionLabelDark}>New Sale</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/party/create')}>
+            <View style={styles.quickActionIcon}>
+              <Ionicons name="people-outline" size={18} color="#F97316" />
+            </View>
+            <Text style={styles.quickActionLabel}>New Party</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/reports' as any)}>
+            <View style={styles.quickActionIcon}>
+              <Ionicons name="bar-chart-outline" size={18} color="#F97316" />
+            </View>
+            <Text style={styles.quickActionLabel}>Reports</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/bills')}>
-              <Text style={styles.viewAll}>View All</Text>
+              <Text style={styles.viewAll}>View all</Text>
             </TouchableOpacity>
           </View>
 
@@ -173,7 +215,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            recentInvoices.slice(0, 3).map(inv => (
+            recentInvoices.slice(0, 3).map((inv: any) => (
               <TouchableOpacity key={inv.id} style={styles.txnCard} onPress={() => router.push(`/invoice/${inv.id}`)}>
                 <View style={styles.txnIcon}>
                   <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
@@ -194,11 +236,11 @@ export default function DashboardScreen() {
         </View>
 
         {topCustomers.length > 0 && (
-          <View style={{ marginBottom: 20 }}>
+          <View style={{ marginHorizontal: 16, marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: Colors.text }}>Top Customers</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/parties')}>
-                <Text style={{ fontSize: 13, color: Colors.primary }}>View All</Text>
+                <Text style={{ fontSize: 13, color: Colors.primary }}>View all</Text>
               </TouchableOpacity>
             </View>
             {topCustomers.map((customer, index) => (
@@ -228,28 +270,46 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  bizSelector: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
-  bizName: { fontSize: 16, fontWeight: '600', color: Colors.text, flex: 1 },
-  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconBtn: { padding: 4 },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  content: { padding: Spacing.lg, paddingBottom: 100 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  statCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, width: '48%', flex: 1, minWidth: '45%', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
-  statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
-  statValue: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
-  statSub: { fontSize: 10, color: Colors.textMuted },
-  section: { marginBottom: 20 },
+  header: { backgroundColor: Colors.card, paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  bizName: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  bizSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  bellBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
+  heroCard: { backgroundColor: '#0F172A', borderRadius: 20, padding: 20, marginHorizontal: 16, marginTop: 16, marginBottom: 16 },
+  heroLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', letterSpacing: 1 },
+  heroBadge: { backgroundColor: 'rgba(249,115,22,0.15)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#F97316' },
+  heroAmount: { fontSize: 34, fontWeight: '800', color: '#fff', marginTop: 12 },
+  heroSub: { fontSize: 13, color: '#94A3B8', marginTop: 4, marginBottom: 16 },
+  heroBtn: { backgroundColor: '#fff', borderRadius: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  heroBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
+
+  statsRow: { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 16, marginBottom: 16, padding: 16, flexDirection: 'row', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  statItem: { flex: 1, alignItems: 'center' },
+  statDivider: { width: 1, backgroundColor: '#E2E8F0' },
+  statLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4 },
+  statValue: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  statSub: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
+
+  quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 20 },
+  quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  quickActionDark: { backgroundColor: '#0F172A' },
+  quickActionIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  quickActionIconDark: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  quickActionLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  quickActionLabelDark: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  section: { marginHorizontal: 16, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { fontSize: 15, fontWeight: '600', color: Colors.text },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
   viewAll: { fontSize: 13, color: Colors.primary },
-  emptyCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 32, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.border },
+  emptyCard: { backgroundColor: Colors.card, borderRadius: 12, padding: 32, alignItems: 'center', borderWidth: 0.5, borderColor: Colors.border },
   emptyText: { fontSize: 14, color: Colors.textSecondary, marginTop: 8, marginBottom: 16 },
-  emptyBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 20, paddingVertical: 10 },
+  emptyBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  txnCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  txnCard: { backgroundColor: Colors.card, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
   txnIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   txnInfo: { flex: 1, minWidth: 0 },
   txnName: { fontSize: 13, fontWeight: '500', color: Colors.text },
