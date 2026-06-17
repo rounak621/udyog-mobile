@@ -15,6 +15,7 @@ interface DashboardStats {
   total_purchases: number;
   receivables: number;
   payables: number;
+  unpaidCount: number;
 }
 
 interface RecentInvoice {
@@ -60,6 +61,7 @@ export default function DashboardScreen() {
           total_purchases: s.total_purchases || 0,
           receivables: s.you_will_get || s.receivables || 0,
           payables: s.you_have_to_pay || s.payables || 0,
+          unpaidCount: s.unpaid_invoice_count || 0,
         });
       }
       if (invoiceRes.status === 'fulfilled') {
@@ -90,12 +92,7 @@ export default function DashboardScreen() {
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 3);
   }, [recentInvoices]);
 
-  const unpaidCount = useMemo(() => {
-    return recentInvoices.filter((inv: any) => {
-      const status = inv.payment_status || inv.status;
-      return status && status !== 'PAID';
-    }).length;
-  }, [recentInvoices]);
+
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
@@ -142,7 +139,7 @@ export default function DashboardScreen() {
         <View style={styles.heroCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F97316' }} />
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />
               <Text style={styles.heroLabel}>RECEIVABLES</Text>
             </View>
             <View style={styles.heroBadge}>
@@ -150,7 +147,7 @@ export default function DashboardScreen() {
             </View>
           </View>
           <Text style={styles.heroAmount}>₹{Number(stats?.receivables || 0).toLocaleString('en-IN')}</Text>
-          <Text style={styles.heroSub}>from {unpaidCount || 0} unpaid invoices</Text>
+          <Text style={styles.heroSub}>from {stats?.unpaidCount || 0} unpaid invoices</Text>
           <TouchableOpacity style={styles.heroBtn} onPress={() => router.push('/(tabs)/bills')}>
             <Ionicons name="eye-outline" size={16} color="#0F172A" />
             <Text style={styles.heroBtnText}>View Outstanding</Text>
@@ -180,7 +177,7 @@ export default function DashboardScreen() {
         <View style={styles.quickActionsRow}>
           <TouchableOpacity style={[styles.quickAction, styles.quickActionDark]} onPress={() => router.push('/invoice/create')}>
             <View style={styles.quickActionIconDark}>
-              <Ionicons name="add" size={20} color="#fff" />
+              <Ionicons name="add" size={20} color="#F97316" />
             </View>
             <Text style={styles.quickActionLabelDark}>New Sale</Text>
           </TouchableOpacity>
@@ -277,12 +274,12 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
-  heroCard: { backgroundColor: '#0F172A', borderRadius: 20, padding: 20, marginHorizontal: 16, marginTop: 16, marginBottom: 16 },
-  heroLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', letterSpacing: 1 },
-  heroBadge: { backgroundColor: 'rgba(249,115,22,0.15)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
-  heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#F97316' },
+  heroCard: { backgroundColor: '#F97316', borderRadius: 20, padding: 20, marginHorizontal: 16, marginTop: 16, marginBottom: 16 },
+  heroLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
+  heroBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
+  heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#fff' },
   heroAmount: { fontSize: 34, fontWeight: '800', color: '#fff', marginTop: 12 },
-  heroSub: { fontSize: 13, color: '#94A3B8', marginTop: 4, marginBottom: 16 },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 4, marginBottom: 16 },
   heroBtn: { backgroundColor: '#fff', borderRadius: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   heroBtnText: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
 
@@ -295,9 +292,9 @@ const styles = StyleSheet.create({
 
   quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 20 },
   quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
-  quickActionDark: { backgroundColor: '#0F172A' },
+  quickActionDark: { backgroundColor: '#F97316' },
   quickActionIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  quickActionIconDark: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  quickActionIconDark: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   quickActionLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   quickActionLabelDark: { fontSize: 13, fontWeight: '700', color: '#fff' },
 
