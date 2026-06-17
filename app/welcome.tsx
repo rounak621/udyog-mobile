@@ -9,7 +9,7 @@ export default function WelcomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAF9" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View>
@@ -104,9 +104,9 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FAFAF9' },
+  container: { flex: 1, backgroundColor: '#FDF8F3' },
   scrollContent: { flexGrow: 1, justifyContent: 'space-between', paddingTop: 24, paddingBottom: 24 },
-  bottomSection: { marginTop: 20 },
+  bottomSection: { },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, marginTop: 16 },
   logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   voiceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF2E8', borderRadius: 24, paddingVertical: 10, paddingHorizontal: 16, alignSelf: 'flex-start', marginTop: 24, marginHorizontal: 24 },
   voiceChipIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   voiceChipText: { fontSize: 13, fontWeight: '700', color: '#C2410C' },
-  mockupCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, marginHorizontal: 24, marginTop: 28, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 16 },
+  mockupCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, marginHorizontal: 24, marginTop: 28, overflow: 'visible', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 16 },
   mockupAvatar: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   mockupAvatarText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   mockupName: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
@@ -123,15 +123,15 @@ const styles = StyleSheet.create({
   paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FDF4', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },
   paidBadgeText: { fontSize: 11, fontWeight: '700', color: '#16A34A' },
   mockupDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
-  mockupRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  mockupLabel: { fontSize: 13, color: '#64748B', flexShrink: 0 },
-  mockupValue: { fontSize: 13, fontWeight: '600', color: '#0F172A', flexShrink: 0 },
+  mockupRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, minWidth: 0 },
+  mockupLabel: { fontSize: 13, color: '#64748B', flexShrink: 1, minWidth: 0 },
+  mockupValue: { fontSize: 13, fontWeight: '600', color: '#0F172A', flexShrink: 0, marginLeft: 8 },
   mockupTotalLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5 },
   mockupTotal: { fontSize: 24, fontWeight: '800', color: '#0F172A', marginTop: 2 },
   sentBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF7ED', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
   sentBadgeText: { fontSize: 12, fontWeight: '700', color: '#F97316' },
-  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 36, marginHorizontal: 24, flexWrap: 'wrap' },
-  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 28, marginBottom: 8, marginHorizontal: 24 },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 0 },
   statText: { fontSize: 13, color: '#94A3B8' },
   statBold: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
   statDot: { fontSize: 13, color: '#CBD5E1', marginHorizontal: 8 },
