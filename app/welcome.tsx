@@ -51,12 +51,12 @@ export default function WelcomeScreen() {
             </View>
           </View>
           <View style={styles.mockupDivider} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={styles.mockupRow}>
             <Text style={styles.mockupLabel}>Subtotal</Text>
             <Text style={styles.mockupValue}>₹21,000</Text>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
-            <Text style={styles.mockupLabel}>GST · 18%</Text>
+          <View style={[styles.mockupRow, { marginBottom: 16 }]}>
+            <Text style={styles.mockupLabel}>{'GST · 18%'}</Text>
             <Text style={styles.mockupValue}>₹3,750</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -72,11 +72,20 @@ export default function WelcomeScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <Text style={styles.statText}><Text style={styles.statBold}>500+</Text> Businesses</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statBold}>500+</Text>
+            <Text style={styles.statText}>Businesses</Text>
+          </View>
           <Text style={styles.statDot}>·</Text>
-          <Text style={styles.statText}><Text style={styles.statBold}>50K+</Text> Invoices</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statBold}>50K+</Text>
+            <Text style={styles.statText}>Invoices</Text>
+          </View>
           <Text style={styles.statDot}>·</Text>
-          <Text style={styles.statText}><Text style={styles.statBold}>₹2Cr+</Text> Processed</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statBold}>₹2Cr+</Text>
+            <Text style={styles.statText}>Processed</Text>
+          </View>
         </View>
 
         <TouchableOpacity style={styles.ctaBtn} onPress={() => router.push('/(auth)/signup')}>
@@ -109,15 +118,17 @@ const styles = StyleSheet.create({
   paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FDF4', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5 },
   paidBadgeText: { fontSize: 11, fontWeight: '700', color: '#16A34A' },
   mockupDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
-  mockupLabel: { fontSize: 13, color: '#64748B' },
-  mockupValue: { fontSize: 13, fontWeight: '600', color: '#0F172A' },
+  mockupRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  mockupLabel: { fontSize: 13, color: '#64748B', flexShrink: 0 },
+  mockupValue: { fontSize: 13, fontWeight: '600', color: '#0F172A', flexShrink: 0 },
   mockupTotalLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5 },
   mockupTotal: { fontSize: 24, fontWeight: '800', color: '#0F172A', marginTop: 2 },
   sentBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF7ED', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 8 },
   sentBadgeText: { fontSize: 12, fontWeight: '700', color: '#F97316' },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 36, marginHorizontal: 24, flexWrap: 'wrap' },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statText: { fontSize: 13, color: '#94A3B8' },
-  statBold: { fontWeight: '800', color: '#0F172A' },
+  statBold: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
   statDot: { fontSize: 13, color: '#CBD5E1', marginHorizontal: 8 },
   ctaBtn: { backgroundColor: '#F97316', borderRadius: 16, marginHorizontal: 24, marginTop: 20, paddingVertical: 18, alignItems: 'center', elevation: 4, shadowColor: '#F97316', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
