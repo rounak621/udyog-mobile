@@ -1,7 +1,7 @@
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../constants/theme';
 import { setAuthToken } from '../services/api';
@@ -22,17 +22,22 @@ function AuthGuard() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [tokenReady, setTokenReady] = useState(false);
 
   useEffect(() => {
     if (isSignedIn) {
-      getToken().then(token => setAuthToken(token));
+      getToken().then(token => {
+        setAuthToken(token);
+        setTokenReady(true);
+      });
     } else {
       setAuthToken(null);
+      setTokenReady(true);
     }
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || !tokenReady) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inWelcome = segments[0] === 'welcome';
     const inOnboarding = segments[0] === 'onboarding';
@@ -42,7 +47,7 @@ function AuthGuard() {
     } else if (isSignedIn && (inAuthGroup || inWelcome)) {
       router.replace('/(tabs)');
     }
-  }, [isLoaded, isSignedIn, segments]);
+  }, [isLoaded, isSignedIn, segments, tokenReady]);
 
   if (!isLoaded) {
     return (
