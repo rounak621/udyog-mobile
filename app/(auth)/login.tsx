@@ -6,12 +6,14 @@ import {
   StyleSheet, Platform, ActivityIndicator, Alert, Image, StatusBar
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function LoginScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -90,7 +92,7 @@ export default function LoginScreen() {
         <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
 
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { marginTop: insets.top + 12 }]}>
           <TouchableOpacity onPress={() => setShowOTP(false)} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={22} color="#0F172A" />
           </TouchableOpacity>
@@ -148,7 +150,7 @@ export default function LoginScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { marginTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color="#0F172A" />
         </TouchableOpacity>
@@ -159,7 +161,7 @@ export default function LoginScreen() {
       </View>
 
       {/* Heading section */}
-      <View style={{ paddingHorizontal: 24, marginTop: 32 }}>
+      <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
         <Text style={styles.heading}>Welcome back</Text>
         <Text style={styles.subheading}>Sign in to continue billing.</Text>
       </View>
@@ -226,18 +228,24 @@ export default function LoginScreen() {
       </TouchableOpacity>
 
       {/* Footer link */}
-      <View style={{ alignItems: 'center', marginTop: 20 }}>
+      <View style={{ alignItems: 'center', marginTop: 20, paddingHorizontal: 8 }}>
         <Text style={styles.footerText}>
           New to Udyog?{' '}
           <Text style={styles.footerLink} onPress={() => router.push('/(auth)/signup')}>Create account</Text>
         </Text>
+      </View>
+
+      {/* Trust Row */}
+      <View style={styles.trustRow}>
+        <Ionicons name="shield-checkmark-outline" size={14} color="#94A3B8" />
+        <Text style={styles.trustText}>Bank-level security · Trusted by 500+ businesses</Text>
       </View>
     </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, marginTop: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24 },
   backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
@@ -247,14 +255,16 @@ const styles = StyleSheet.create({
   googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginTop: 24, gap: 12 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { fontSize: 12, color: '#94A3B8' },
+  dividerText: { fontSize: 12, color: '#94A3B8', flexShrink: 0, lineHeight: 18 },
   label: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, marginTop: 16 },
   inputBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: '#E2E8F0' },
   input: { flex: 1, fontSize: 14, color: '#0F172A' },
   ctaBtn: { backgroundColor: '#F97316', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginHorizontal: 24, marginTop: 24, elevation: 3, shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  footerText: { fontSize: 13, color: '#64748B' },
-  footerLink: { fontSize: 13, color: '#F97316', fontWeight: '700' },
+  footerText: { fontSize: 13, color: '#64748B', lineHeight: 18 },
+  footerLink: { fontSize: 13, color: '#F97316', fontWeight: '700', lineHeight: 18 },
   otpIconBox: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   forgotLink: { fontSize: 12, color: '#F97316', fontWeight: '600', marginTop: 16 },
+  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32 },
+  trustText: { fontSize: 11, color: '#94A3B8' },
 });

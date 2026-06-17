@@ -6,12 +6,14 @@ import {
   StyleSheet, Platform, ActivityIndicator, Alert, Image, StatusBar
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function SignupScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -19,9 +21,14 @@ export default function SignupScreen() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSignup = async () => {
     if (!isLoaded) return;
+    if (!agreedToTerms) {
+      Alert.alert('Please agree to Terms', 'You must agree to the Terms & Privacy Policy to continue.');
+      return;
+    }
     if (!email || !password) { Alert.alert('Error', 'Please fill all fields'); return; }
     setLoading(true);
     try {
@@ -77,7 +84,7 @@ export default function SignupScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { marginTop: insets.top + 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color="#0F172A" />
         </TouchableOpacity>
@@ -90,7 +97,7 @@ export default function SignupScreen() {
       {!pendingVerification ? (
         <>
           {/* Heading section */}
-          <View style={{ paddingHorizontal: 24, marginTop: 32 }}>
+          <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
             <Text style={styles.heading}>Create account</Text>
             <Text style={styles.subheading}>Join thousands of Indian businesses.</Text>
           </View>
@@ -148,20 +155,35 @@ export default function SignupScreen() {
             </View>
           </View>
 
+          {/* Terms checkbox */}
+          <TouchableOpacity style={styles.checkboxRow} onPress={() => setAgreedToTerms(!agreedToTerms)}>
+            <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+              {agreedToTerms && <Ionicons name="checkmark" size={14} color="#fff" />}
+            </View>
+            <Text style={styles.legalText}>
+              I agree to the{' '}
+              <Text style={styles.legalLink} onPress={() => router.push('/legal/terms')}>Terms & Privacy Policy</Text>
+            </Text>
+          </TouchableOpacity>
+
           {/* Primary CTA */}
           <TouchableOpacity style={styles.ctaBtn} onPress={handleSignup} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaBtnText}>Create Account</Text>}
           </TouchableOpacity>
 
           {/* Footer link */}
-          <View style={{ alignItems: 'center', marginTop: 20 }}>
+          <View style={{ alignItems: 'center', marginTop: 20, paddingHorizontal: 8 }}>
             <Text style={styles.footerText}>
               Already have an account?{' '}
               <Text style={styles.footerLink} onPress={() => router.push('/(auth)/login')}>Sign in</Text>
             </Text>
           </View>
 
-          <Text style={styles.legalText}>By continuing you agree to our Terms & Privacy Policy.</Text>
+          {/* Trust Row */}
+          <View style={styles.trustRow}>
+            <Ionicons name="shield-checkmark-outline" size={14} color="#94A3B8" />
+            <Text style={styles.trustText}>Bank-level security · Trusted by 500+ businesses</Text>
+          </View>
         </>
       ) : (
         /* OTP verification screen */
@@ -202,7 +224,7 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, marginTop: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24 },
   backBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
   logoIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
@@ -212,14 +234,20 @@ const styles = StyleSheet.create({
   googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginTop: 24, gap: 12 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { fontSize: 12, color: '#94A3B8' },
+  dividerText: { fontSize: 12, color: '#94A3B8', flexShrink: 0, lineHeight: 18 },
   label: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, marginTop: 16 },
   inputBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: '#E2E8F0' },
   input: { flex: 1, fontSize: 14, color: '#0F172A' },
   ctaBtn: { backgroundColor: '#F97316', borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginHorizontal: 24, marginTop: 24, elevation: 3, shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  footerText: { fontSize: 13, color: '#64748B' },
-  footerLink: { fontSize: 13, color: '#F97316', fontWeight: '700' },
-  legalText: { fontSize: 11, color: '#94A3B8', textAlign: 'center', marginTop: 16, paddingHorizontal: 40 },
+  footerText: { fontSize: 13, color: '#64748B', lineHeight: 18 },
+  footerLink: { fontSize: 13, color: '#F97316', fontWeight: '700', lineHeight: 18 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 16, paddingHorizontal: 24 },
+  checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center', marginTop: 1, backgroundColor: '#fff' },
+  checkboxChecked: { backgroundColor: '#F97316', borderColor: '#F97316' },
+  legalText: { fontSize: 12, color: '#64748B', flex: 1, lineHeight: 18 },
+  legalLink: { color: '#F97316', fontWeight: '700' },
   otpIconBox: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32 },
+  trustText: { fontSize: 11, color: '#94A3B8' },
 });
