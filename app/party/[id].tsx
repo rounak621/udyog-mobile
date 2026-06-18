@@ -94,8 +94,8 @@ export default function PartyDetailScreen() {
           ].map(item => (
             <View key={item.label} style={styles.detailRow}>
               <Ionicons name={item.icon as any} size={16} color={Colors.textMuted} />
-              <Text style={styles.detailLabel}>{item.label}</Text>
-              <Text style={styles.detailValue}>{item.value}</Text>
+              <Text style={styles.detailLabel} textBreakStrategy="simple">{item.label}</Text>
+              <Text style={styles.detailValue} textBreakStrategy="simple">{item.value}</Text>
             </View>
           ))}
         </View>
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   typeTextBoth: { color: '#7c3aed' },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  detailLabel: { fontSize: 13, color: Colors.textSecondary, width: 60 },
+  detailLabel: { fontSize: 13, color: Colors.textSecondary, width: 60, flexShrink: 1 },
   detailValue: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '500' },
   outstandingCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, alignItems: 'center' },
   outstandingLabel: { fontSize: 12, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },

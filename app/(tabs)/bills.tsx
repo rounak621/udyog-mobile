@@ -149,7 +149,7 @@ export default function BillsScreen() {
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
-                  <Text style={styles.cardSub}>{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
+                  <Text style={styles.cardSub} textBreakStrategy="simple">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
                 </View>
                 <View style={styles.cardRight}>
                   <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   cardIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },
   cardName: { fontSize: 13, fontWeight: '500', color: Colors.text },
-  cardSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  cardSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, flexShrink: 1 },
   cardRight: { alignItems: 'flex-end' },
   cardAmount: { fontSize: 13, fontWeight: '600', color: Colors.text },
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },

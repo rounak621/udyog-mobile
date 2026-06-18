@@ -218,22 +218,22 @@ export default function InvoiceDetailScreen() {
             <View key={i} style={styles.itemRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName}>{item.item_name || item.name}</Text>
-                <Text style={styles.itemSub}>{item.quantity} {item.unit || 'pcs'} × {fmt(item.rate || item.unit_price)} · GST {item.gst_rate || 0}%</Text>
+                <Text style={styles.itemSub} textBreakStrategy="simple">{item.quantity} {item.unit || 'pcs'} × {fmt(item.rate || item.unit_price)} · GST {item.gst_rate || 0}%</Text>
               </View>
-              <Text style={styles.itemAmount}>{fmt(item.line_total || item.amount || item.total)}</Text>
+              <Text style={styles.itemAmount} textBreakStrategy="simple">{fmt(item.line_total || item.amount || item.total)}</Text>
             </View>
           ))}
         </View>
 
         <View style={styles.card}>
-          <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>Subtotal</Text><Text style={styles.totalVal}>{fmt(invoice.taxable_amount || invoice.subtotal)}</Text></View>
-          {invoice.cgst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>CGST</Text><Text style={styles.totalVal}>{fmt(invoice.cgst_amount)}</Text></View>}
-          {invoice.sgst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>SGST</Text><Text style={styles.totalVal}>{fmt(invoice.sgst_amount)}</Text></View>}
-          {invoice.igst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>IGST</Text><Text style={styles.totalVal}>{fmt(invoice.igst_amount)}</Text></View>}
+          <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>Subtotal</Text><Text style={styles.totalVal} textBreakStrategy="simple">{fmt(invoice.taxable_amount || invoice.subtotal)}</Text></View>
+          {invoice.cgst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>CGST</Text><Text style={styles.totalVal} textBreakStrategy="simple">{fmt(invoice.cgst_amount)}</Text></View>}
+          {invoice.sgst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>SGST</Text><Text style={styles.totalVal} textBreakStrategy="simple">{fmt(invoice.sgst_amount)}</Text></View>}
+          {invoice.igst_amount > 0 && <View style={styles.totalRow}><Text style={[styles.totalLabel, { width: 100 }]} numberOfLines={1}>IGST</Text><Text style={styles.totalVal} textBreakStrategy="simple">{fmt(invoice.igst_amount)}</Text></View>}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={[styles.totalLabel, { fontSize: 15, fontWeight: '600', color: Colors.text, width: 100 }]} numberOfLines={1}>Total</Text>
-            <Text style={[styles.totalVal, { fontSize: 16, fontWeight: '700', color: Colors.primary }]}>{fmt(invoice.total_amount)}</Text>
+            <Text style={[styles.totalVal, { fontSize: 16, fontWeight: '700', color: Colors.primary }]} textBreakStrategy="simple">{fmt(invoice.total_amount)}</Text>
           </View>
         </View>
 
@@ -386,10 +386,10 @@ const styles = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   itemName: { fontSize: 13, fontWeight: '500', color: Colors.text },
   itemSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
-  itemAmount: { fontSize: 13, fontWeight: '500', color: Colors.text },
+  itemAmount: { fontSize: 13, fontWeight: '500', color: Colors.text, flexShrink: 1 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   totalLabel: { fontSize: 13, color: Colors.textSecondary },
-  totalVal: { fontSize: 13, color: Colors.text, fontWeight: '500' },
+  totalVal: { fontSize: 13, color: Colors.text, fontWeight: '500', flexShrink: 1 },
   badge: { borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4 },
   paidBadge: { backgroundColor: '#F0FDF4' },
   unpaidBadge: { backgroundColor: '#FFF7ED' },

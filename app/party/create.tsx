@@ -216,7 +216,7 @@ export default function CreatePartyScreen() {
                 setShowStatePicker(true);
               }}
             >
-              <Text style={{ fontSize: 14, color: state ? '#0F172A' : '#94A3B8' }}>
+              <Text style={{ fontSize: 14, color: state ? '#0F172A' : '#94A3B8', flexShrink: 1 }} textBreakStrategy="simple">
                 {state || 'Select State'}
               </Text>
               <Ionicons name="chevron-down" size={18} color="#64748B" />
@@ -444,6 +444,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
+    flexShrink: 1,
   },
   modalSearch: {
     flexDirection: 'row',
@@ -474,5 +475,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#0F172A',
+    flexShrink: 1,
   },
 });

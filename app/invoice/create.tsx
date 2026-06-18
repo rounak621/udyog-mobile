@@ -327,7 +327,7 @@ export default function CreateInvoiceScreen() {
           <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.cardLabel}>DATE</Text>
             <TouchableOpacity onPress={() => setShowDatePicker(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#0F172A', flexShrink: 1 }} textBreakStrategy="simple">
                 {invoiceDate ? new Date(invoiceDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Select date'}
               </Text>
               <Ionicons name="calendar-outline" size={18} color="#94A3B8" />
@@ -375,7 +375,7 @@ export default function CreateInvoiceScreen() {
             <Text style={styles.sectionLabel}>ITEMS · {lineItems.length}</Text>
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={addItem}>
               <Ionicons name="add" size={16} color="#F97316" />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>Add Item</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add Item</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.card}>
@@ -448,7 +448,7 @@ export default function CreateInvoiceScreen() {
                             }}
                           >
                             <Ionicons name="create-outline" size={18} color="#F97316" />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>Custom Item</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Custom Item</Text>
                           </TouchableOpacity>
                           {/* Existing items list */}
                           {items.filter(i => i.name?.toLowerCase().includes((itemSearch[item.id] || '').toLowerCase())).map(prod => (
@@ -478,7 +478,7 @@ export default function CreateInvoiceScreen() {
                             onPress={() => { setShowItemDropdown(null); router.push('/item/create' as any); }}
                           >
                             <Ionicons name="add-circle-outline" size={18} color="#F97316" />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>+ Add New Item</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">+ Add New Item</Text>
                           </TouchableOpacity>
                         </ScrollView>
                       </View>
@@ -547,15 +547,15 @@ export default function CreateInvoiceScreen() {
         {/* Summary card with orange tint */}
         <View style={[styles.card, { marginHorizontal: 16, marginBottom: 16, backgroundColor: '#FFF7ED' }]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-            <Text style={{ fontSize: 13, color: '#92400E' }}>Subtotal (Taxable)</Text>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{subtotal.toLocaleString('en-IN')}</Text>
+            <Text style={{ fontSize: 13, color: '#92400E', flexShrink: 1 }} textBreakStrategy="simple">Subtotal (Taxable)</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', flexShrink: 1 }} textBreakStrategy="simple">₹{subtotal.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, color: '#92400E' }}>GST</Text>
               <Text style={{ fontSize: 11, color: '#B45309' }}>{isInterState ? 'IGST' : 'CGST + SGST'}</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', alignSelf: 'flex-end' }}>₹{tax.toLocaleString('en-IN')}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', alignSelf: 'flex-end', flexShrink: 1 }} textBreakStrategy="simple">₹{tax.toLocaleString('en-IN')}</Text>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -563,7 +563,7 @@ export default function CreateInvoiceScreen() {
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>Total Amount</Text>
               <Text style={{ fontSize: 11, color: '#92400E' }}>Incl. all taxes</Text>
             </View>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#F97316' }}>₹{total.toLocaleString('en-IN')}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">₹{total.toLocaleString('en-IN')}</Text>
           </View>
         </View>
 
@@ -693,7 +693,7 @@ export default function CreateInvoiceScreen() {
               onPress={() => shareInvoicePDF('whatsapp')}
             >
               <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Share on WhatsApp</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">Share on WhatsApp</Text>
             </TouchableOpacity>
 
             {/* Save PDF */}
@@ -702,7 +702,7 @@ export default function CreateInvoiceScreen() {
               onPress={() => shareInvoicePDF('download')}
             >
               <Ionicons name="download-outline" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Save PDF</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">Save PDF</Text>
             </TouchableOpacity>
 
             {/* View Invoice — opens PDF preview in-app */}
@@ -711,7 +711,7 @@ export default function CreateInvoiceScreen() {
               onPress={() => setShowPdfPreview(true)}
             >
               <Ionicons name="eye-outline" size={20} color="#374151" />
-              <Text style={{ color: '#374151', fontSize: 14, fontWeight: '600' }}>View Invoice</Text>
+              <Text style={{ color: '#374151', fontSize: 14, fontWeight: '600', flexShrink: 1 }} textBreakStrategy="simple">View Invoice</Text>
             </TouchableOpacity>
 
             {/* Done — go to the created invoice detail */}
@@ -982,6 +982,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0F172A',
+    flexShrink: 1,
   },
   modalSearch: {
     flexDirection: 'row',
@@ -1021,6 +1022,7 @@ const styles = StyleSheet.create({
   modalItemPhone: {
     fontSize: 12,
     color: '#64748B',
+    flexShrink: 1,
   },
   modalItemPrice: {
     fontSize: 13,

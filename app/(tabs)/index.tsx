@@ -119,7 +119,7 @@ export default function DashboardScreen() {
             <Text style={styles.bizName}>{business?.name || 'My Business'}</Text>
             <Ionicons name="chevron-down" size={16} color="#0F172A" />
           </View>
-          <Text style={styles.bizSub}>{business?.gstin ? `GSTIN · ${business.state || ''}` : business?.state || ''}</Text>
+          <Text style={styles.bizSub} textBreakStrategy="simple">{business?.gstin ? `GSTIN · ${business.state || ''}` : business?.state || ''}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity style={styles.bellBtn}>
@@ -219,7 +219,7 @@ export default function DashboardScreen() {
                 </View>
                 <View style={styles.txnInfo}>
                   <Text style={styles.txnName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
-                  <Text style={styles.txnSub}>{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
+                  <Text style={styles.txnSub} textBreakStrategy="simple">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
                 </View>
                 <View style={styles.txnRight}>
                   <Text style={styles.txnAmount}>{fmt(inv.total_amount)}</Text>
@@ -249,7 +249,7 @@ export default function DashboardScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }} numberOfLines={1}>{customer.name}</Text>
-                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }}>{customer.count} invoice{customer.count > 1 ? 's' : ''}</Text>
+                  <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 2 }} textBreakStrategy="simple">{customer.count} invoice{customer.count > 1 ? 's' : ''}</Text>
                 </View>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{'₹' + customer.total.toLocaleString('en-IN')}</Text>
               </View>
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
   header: { backgroundColor: Colors.card, paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   bizName: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
-  bizSub: { fontSize: 12, color: '#94A3B8', marginTop: 2 },
+  bizSub: { fontSize: 12, color: '#94A3B8', marginTop: 2, flexShrink: 1 },
   bellBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   txnIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   txnInfo: { flex: 1, minWidth: 0 },
   txnName: { fontSize: 13, fontWeight: '500', color: Colors.text },
-  txnSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  txnSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, flexShrink: 1 },
   txnRight: { alignItems: 'flex-end' },
   txnAmount: { fontSize: 13, fontWeight: '600', color: Colors.text },
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },

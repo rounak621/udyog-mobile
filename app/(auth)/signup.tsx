@@ -117,7 +117,7 @@ export default function SignupScreen() {
           {/* Divider */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or sign up with email</Text>
+            <Text style={styles.dividerText} textBreakStrategy="simple">or sign up with email</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -172,17 +172,15 @@ export default function SignupScreen() {
           </TouchableOpacity>
 
           {/* Footer link */}
-          <View style={{ alignItems: 'center', marginTop: 20, paddingHorizontal: 8 }}>
-            <Text style={styles.footerText}>
-              Already have an account?{' '}
-              <Text style={styles.footerLink} onPress={() => router.push('/(auth)/login')}>Sign in</Text>
-            </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 20, paddingHorizontal: 8 }}>
+            <Text style={[styles.footerText, { flexShrink: 1 }]} textBreakStrategy="simple">Already have an account? </Text>
+            <Text style={[styles.footerLink, { flexShrink: 1 }]} textBreakStrategy="simple" onPress={() => router.push('/(auth)/login')}>Sign in</Text>
           </View>
 
           {/* Trust Row */}
           <View style={styles.trustRow}>
             <Ionicons name="shield-checkmark-outline" size={14} color="#94A3B8" />
-            <Text style={styles.trustText}>Bank-level security · Trusted by 500+ businesses</Text>
+            <Text style={styles.trustText} textBreakStrategy="simple">Bank-level security · Trusted by 500+ businesses</Text>
           </View>
         </>
       ) : (
@@ -234,7 +232,7 @@ const styles = StyleSheet.create({
   googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginTop: 24, gap: 12 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { fontSize: 12, color: '#94A3B8', flexShrink: 0, lineHeight: 18 },
+  dividerText: { fontSize: 12, color: '#94A3B8', flexShrink: 1, lineHeight: 18 },
   label: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, marginTop: 16 },
   inputBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: '#E2E8F0' },
   input: { flex: 1, fontSize: 14, color: '#0F172A' },
@@ -249,5 +247,5 @@ const styles = StyleSheet.create({
   legalLink: { color: '#F97316', fontWeight: '700' },
   otpIconBox: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32 },
-  trustText: { fontSize: 11, color: '#94A3B8' },
+  trustText: { fontSize: 11, color: '#94A3B8', flexShrink: 1 },
 });

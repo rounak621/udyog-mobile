@@ -32,7 +32,7 @@ export default function WelcomeScreen() {
             <View style={styles.voiceChipIcon}>
               <Ionicons name="mic" size={14} color="#fff" />
             </View>
-            <Text style={styles.voiceChipText}>Just speak — create invoices by voice</Text>
+            <Text style={styles.voiceChipText} textBreakStrategy="simple">Just speak — create invoices by voice</Text>
           </View>
 
           <View style={styles.mockupCard}>
@@ -74,18 +74,18 @@ export default function WelcomeScreen() {
 
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
-              <Text style={styles.statBold}>500+</Text>
-              <Text style={styles.statText}>Businesses</Text>
+              <Text style={styles.statBold} textBreakStrategy="simple">500+</Text>
+              <Text style={styles.statText} textBreakStrategy="simple">Businesses</Text>
             </View>
             <Text style={styles.statDot}>·</Text>
             <View style={styles.statItem}>
-              <Text style={styles.statBold}>50K+</Text>
-              <Text style={styles.statText}>Invoices</Text>
+              <Text style={styles.statBold} textBreakStrategy="simple">50K+</Text>
+              <Text style={styles.statText} textBreakStrategy="simple">Invoices</Text>
             </View>
             <Text style={styles.statDot}>·</Text>
             <View style={styles.statItem}>
-              <Text style={styles.statBold}>₹2Cr+</Text>
-              <Text style={styles.statText}>Processed</Text>
+              <Text style={styles.statBold} textBreakStrategy="simple">₹2Cr+</Text>
+              <Text style={styles.statText} textBreakStrategy="simple">Processed</Text>
             </View>
           </View>
         </View>
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   subline: { fontSize: 15, color: '#64748B', marginTop: 14, lineHeight: 22 },
   voiceChip: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF2E8', borderRadius: 24, paddingVertical: 10, paddingHorizontal: 16, alignSelf: 'flex-start', marginTop: 24, marginHorizontal: 24 },
   voiceChipIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
-  voiceChipText: { fontSize: 13, fontWeight: '700', color: '#C2410C' },
+  voiceChipText: { fontSize: 13, fontWeight: '700', color: '#C2410C', flexShrink: 1 },
   mockupCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, marginHorizontal: 24, marginTop: 28, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 16 },
   mockupAvatar: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   mockupAvatarText: { color: '#fff', fontSize: 14, fontWeight: '700' },
@@ -132,8 +132,8 @@ const styles = StyleSheet.create({
   sentBadgeText: { fontSize: 12, fontWeight: '700', color: '#F97316' },
   statsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 28, marginBottom: 8, marginHorizontal: 16, flexWrap: 'wrap', rowGap: 6 },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  statText: { fontSize: 12, color: '#94A3B8' },
-  statBold: { fontSize: 12, fontWeight: '800', color: '#0F172A' },
+  statText: { fontSize: 12, color: '#94A3B8', flexShrink: 1 },
+  statBold: { fontSize: 12, fontWeight: '800', color: '#0F172A', flexShrink: 1 },
   statDot: { fontSize: 12, color: '#CBD5E1', marginHorizontal: 6 },
   ctaBtn: { backgroundColor: '#F97316', borderRadius: 16, marginHorizontal: 24, marginTop: 20, paddingVertical: 18, alignItems: 'center', elevation: 4, shadowColor: '#F97316', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12 },
   ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },

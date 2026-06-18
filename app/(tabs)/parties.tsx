@@ -145,7 +145,7 @@ export default function PartiesScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.cardSub} numberOfLines={1}>
+                  <Text style={styles.cardSub} numberOfLines={1} textBreakStrategy="simple">
                     {party.phone || party.gstin || '—'}
                   </Text>
                 </View>
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   typeBadgeTextBoth: { color: '#7c3aed' },
   cardInfo: { flex: 1, minWidth: 0 },
   cardName: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  cardSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  cardSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, flexShrink: 1 },
   cardRight: { alignItems: 'flex-end', gap: 4 },
   outstanding: { fontSize: 12, fontWeight: '600' },
   receivable: { color: Colors.success },
