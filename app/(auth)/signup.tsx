@@ -179,8 +179,10 @@ export default function SignupScreen() {
 
           {/* Trust Row */}
           <View style={styles.trustRow}>
-            <Ionicons name="shield-checkmark-outline" size={14} color="#94A3B8" />
-            <Text style={styles.trustText} textBreakStrategy="simple">Bank-level security · Trusted by 500+ businesses</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="shield-checkmark-outline" size={14} color="#94A3B8" />
+              <Text style={styles.trustText} textBreakStrategy="simple">Bank-level security · 500+ businesses</Text>
+            </View>
           </View>
         </>
       ) : (
@@ -230,9 +232,9 @@ const styles = StyleSheet.create({
   subheading: { fontSize: 14, color: '#64748B', marginTop: 6 },
   googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 14, paddingVertical: 16, marginHorizontal: 24, marginTop: 28, borderWidth: 1.5, borderColor: '#E2E8F0' },
   googleBtnText: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginTop: 24, gap: 12 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginTop: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E2E8F0' },
-  dividerText: { fontSize: 12, color: '#94A3B8', flexShrink: 1, lineHeight: 18 },
+  dividerText: { fontSize: 12, color: '#94A3B8', paddingHorizontal: 12, flexShrink: 0 },
   label: { fontSize: 11, fontWeight: '700', color: '#64748B', letterSpacing: 0.5, marginBottom: 8, marginTop: 16 },
   inputBox: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: '#E2E8F0' },
   input: { flex: 1, fontSize: 14, color: '#0F172A' },
@@ -246,6 +248,6 @@ const styles = StyleSheet.create({
   legalText: { fontSize: 12, color: '#64748B', flex: 1, lineHeight: 18 },
   legalLink: { color: '#F97316', fontWeight: '700' },
   otpIconBox: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  trustRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 32 },
-  trustText: { fontSize: 11, color: '#94A3B8', flexShrink: 1 },
+  trustRow: { alignItems: 'center', marginTop: 32 },
+  trustText: { fontSize: 11, color: '#94A3B8' },
 });
