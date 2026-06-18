@@ -235,9 +235,9 @@ export default function LoginScreen() {
 
       {/* Trust Row */}
       <View style={styles.trustRow}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 280, justifyContent: 'center' }}>
           <Ionicons name="shield-checkmark-outline" size={14} color="#94A3B8" />
-          <Text style={styles.trustText} textBreakStrategy="simple">Bank-level security · 500+ businesses</Text>
+          <Text style={styles.trustText} textBreakStrategy="simple" numberOfLines={2}>Bank-level security · 500+ businesses</Text>
         </View>
       </View>
     </KeyboardAwareScrollView>
@@ -265,6 +265,6 @@ const styles = StyleSheet.create({
   footerLink: { fontSize: 13, color: '#F97316', fontWeight: '700', lineHeight: 18 },
   otpIconBox: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   forgotLink: { fontSize: 12, color: '#F97316', fontWeight: '600', marginTop: 16 },
-  trustRow: { alignItems: 'center', marginTop: 32 },
-  trustText: { fontSize: 11, color: '#94A3B8' },
+  trustRow: { alignItems: 'center', marginTop: 32, paddingHorizontal: 24 },
+  trustText: { fontSize: 11, color: '#94A3B8', flexShrink: 1, flexWrap: 'wrap' },
 });
