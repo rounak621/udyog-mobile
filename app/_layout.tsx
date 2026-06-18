@@ -41,8 +41,9 @@ function AuthGuard() {
     const inAuthGroup = segments[0] === '(auth)';
     const inWelcome = segments[0] === 'welcome';
     const inOnboarding = segments[0] === 'onboarding';
+    const inLegal = segments[0] === 'legal';
 
-    if (!isSignedIn && !inAuthGroup && !inWelcome) {
+    if (!isSignedIn && !inAuthGroup && !inWelcome && !inLegal) {
       router.replace('/welcome');
     } else if (isSignedIn && (inAuthGroup || inWelcome)) {
       router.replace('/(tabs)');
