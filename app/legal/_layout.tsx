@@ -8,6 +8,7 @@ export default function LegalLayout() {
   useEffect(() => {
     const onBackPress = () => {
       console.log('[BackHandler] legal hardwareBackPress fired');
+      console.log('[BackHandler] canGoBack:', router.canGoBack());
       router.back();
       return true;
     };

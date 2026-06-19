@@ -8,6 +8,7 @@ export default function SettingsLayout() {
   useEffect(() => {
     const onBackPress = () => {
       console.log('[BackHandler] settings hardwareBackPress fired');
+      console.log('[BackHandler] canGoBack:', router.canGoBack());
       router.back();
       return true;
     };
