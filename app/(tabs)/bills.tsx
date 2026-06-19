@@ -104,17 +104,23 @@ export default function BillsScreen() {
         ) : null}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8, height: 44 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
-        {['All', 'Unpaid', 'Paid', 'Partial'].map(f => (
-          <TouchableOpacity
-            key={f}
-            onPress={() => setFilter(f)}
-            style={[styles.chip, filter === f && styles.chipActive]}
-          >
-            <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={{ height: 44, marginBottom: 8 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center', height: 44 }}
+        >
+          {['All', 'Unpaid', 'Paid', 'Partial'].map(f => (
+            <TouchableOpacity
+              key={f}
+              onPress={() => setFilter(f)}
+              style={[styles.chip, filter === f && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, filter === f && styles.chipTextActive]}>{f}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       <ScrollView
         contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
