@@ -77,22 +77,7 @@ export default function BillsScreen() {
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background }}>
-        <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-          <Text style={styles.title}>Bills</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/invoice/create')}>
-            <Ionicons name="add" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
-        </View>
-      </View>
-    );
-  }
+
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -132,17 +117,22 @@ export default function BillsScreen() {
       </ScrollView>
 
       <ScrollView
-        contentContainerStyle={[styles.list, filtered.length === 0 && { flexGrow: 1 }]}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
       >
-          {filtered.length === 0 ? (
-            /* v1.0.1 */
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
-              <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
-            </View>
-          ) : filtered.map(inv => {
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          /* v1.0.1 */
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
+            <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
+          </View>
+        ) : filtered.map(inv => {
             const ps = (inv.payment_status || (inv.status === 'DRAFT' ? 'DRAFT' : 'UNPAID')).toUpperCase();
             const isPaid = ps === 'PAID';
             const isPartial = ps === 'PARTIAL';

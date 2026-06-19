@@ -59,22 +59,7 @@ export default function PartiesScreen() {
 
   const getInitials = (name: string) => name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: Colors.background }}>
-        <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-          <Text style={styles.title}>Parties</Text>
-          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/party/create')}>
-            <Ionicons name="add" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
-        </View>
-      </View>
-    );
-  }
+
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -113,20 +98,25 @@ export default function PartiesScreen() {
       </ScrollView>
 
       <ScrollView
-        contentContainerStyle={[styles.list, filtered.length === 0 && { flexGrow: 1 }]}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
       >
-          {filtered.length === 0 ? (
-            /* v1.0.1 */
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Ionicons name="people-outline" size={48} color="#cbd5e1" />
-              <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No parties</Text>
-              <TouchableOpacity style={{ backgroundColor: '#F97316', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10, marginTop: 16 }} onPress={() => router.push('/party/create')}>
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add First Party</Text>
-              </TouchableOpacity>
-            </View>
-          ) : filtered.map(party => {
+        {loading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          /* v1.0.1 */
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Ionicons name="people-outline" size={48} color="#cbd5e1" />
+            <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No parties</Text>
+            <TouchableOpacity style={{ backgroundColor: '#F97316', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10, marginTop: 16 }} onPress={() => router.push('/party/create')}>
+              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add First Party</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filtered.map(party => {
             const pt = String(party.party_type || 'customer').toLowerCase();
             const typeLabel = pt === 'supplier' ? 'Supplier' : pt === 'both' ? 'Both' : 'Customer';
             const isSupplier = pt === 'supplier';
