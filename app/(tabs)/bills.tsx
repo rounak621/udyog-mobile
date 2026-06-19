@@ -127,7 +127,7 @@ export default function BillsScreen() {
       </ScrollView>
 
       <ScrollView
-        contentContainerStyle={[styles.list, { flexGrow: 1 }]}
+        contentContainerStyle={[styles.list, filtered.length === 0 && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
       >
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: '#64748b', fontWeight: '500' },
   chipTextActive: { color: '#fff', fontWeight: '600' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { flexGrow: 1, padding: 12, paddingBottom: 80, gap: 8 },
+  list: { padding: 12, paddingBottom: 80, gap: 8 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   cardInfo: { flex: 1, minWidth: 0 },
