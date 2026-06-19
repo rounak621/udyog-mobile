@@ -202,7 +202,7 @@ export default function LoginScreen() {
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <Text style={[styles.label, { marginBottom: 0, marginTop: 16 }]}>PASSWORD</Text>
-          <TouchableOpacity onPress={() => Alert.alert('Forgot Password', 'Reset password functionality is not configured. Please use Continue with Google or contact support.')}>
+          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
             <Text style={styles.forgotLink}>Forgot?</Text>
           </TouchableOpacity>
         </View>

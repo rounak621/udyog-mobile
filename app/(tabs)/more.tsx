@@ -72,15 +72,6 @@ export default function MoreScreen() {
           </View>
         </View>
 
-        {/* Data */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data & Exports</Text>
-          <View style={styles.card}>
-            <MenuItem icon="download-outline" label="Export to Tally" onPress={() => router.push('/settings/exports')} />
-            <MenuItem icon="stats-chart-outline" label="GST Reports" onPress={() => router.push('/reports')} />
-          </View>
-        </View>
-
         {/* Subscription */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>

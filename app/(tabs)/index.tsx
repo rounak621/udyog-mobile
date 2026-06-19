@@ -187,11 +187,11 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.quickActionLabel}>New Party</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/reports' as any)}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/rental' as any)}>
             <View style={styles.quickActionIcon}>
-              <Ionicons name="bar-chart-outline" size={18} color="#F97316" />
+              <Ionicons name="calendar-outline" size={18} color="#F97316" />
             </View>
-            <Text style={styles.quickActionLabel}>Reports</Text>
+            <Text style={styles.quickActionLabel}>Rental</Text>
           </TouchableOpacity>
         </View>
 
