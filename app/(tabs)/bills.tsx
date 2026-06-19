@@ -11,7 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
-const FILTERS = ['All', 'Unpaid', 'Paid', 'Draft'];
+const FILTERS = ['All', 'Unpaid', 'Paid', 'Partial'];
 
 interface Invoice {
   id: string;
@@ -64,9 +64,14 @@ export default function BillsScreen() {
   const filtered = invoices.filter(inv => {
     const matchSearch = !search || inv.customer_name?.toLowerCase().includes(search.toLowerCase()) || inv.invoice_number?.toLowerCase().includes(search.toLowerCase());
     const ps = (inv.payment_status || inv.status || '').toUpperCase();
-    const matchFilter =
-      filter === 'All' ||
-      (filter === 'Draft' ? inv.status?.toUpperCase() === 'DRAFT' : ps === filter.toUpperCase());
+    let matchFilter = true;
+    if (filter === 'Unpaid') {
+      matchFilter = ps === 'UNPAID';
+    } else if (filter === 'Partial') {
+      matchFilter = ps === 'PARTIAL';
+    } else if (filter === 'Paid') {
+      matchFilter = ps === 'PAID';
+    }
     return matchSearch && matchFilter;
   });
 
@@ -115,7 +120,7 @@ export default function BillsScreen() {
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, height: 48 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}>
-        {['All', 'Unpaid', 'Paid', 'Draft'].map(f => (
+        {['All', 'Unpaid', 'Paid', 'Partial'].map(f => (
           <TouchableOpacity
             key={f}
             onPress={() => setFilter(f)}
