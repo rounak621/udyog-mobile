@@ -44,7 +44,7 @@ export default function BusinessSettingsScreen() {
     try {
       const token = await getToken();
       setAuthToken(token);
-      await api.put('/businesses/me', {
+      await api.put('/businesses/settings', {
         name: form.name,
         gst_number: form.gstin,
         phone: form.phone,
