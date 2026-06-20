@@ -57,7 +57,7 @@ export default function MoreScreen() {
             <Text style={styles.profileEmail} numberOfLines={1}>{email}</Text>
             <Text style={styles.profileRole}>Business Owner</Text>
           </View>
-          <TouchableOpacity style={styles.editBtn}>
+          <TouchableOpacity style={styles.editBtn} onPress={() => router.push('/profile')}>
             <Ionicons name="pencil-outline" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>
@@ -67,7 +67,6 @@ export default function MoreScreen() {
           <Text style={styles.sectionTitle}>Business</Text>
           <View style={styles.card}>
             <MenuItem icon="business-outline" label="Business Settings" onPress={() => router.push('/settings/business')} />
-            <MenuItem icon="people-outline" label="Manage Users" onPress={() => router.push('/settings/users')} />
             <MenuItem icon="document-text-outline" label="Invoice Settings" onPress={() => router.push('/settings/invoice')} />
           </View>
         </View>
@@ -84,7 +83,7 @@ export default function MoreScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.card}>
-            <MenuItem icon="help-circle-outline" label="Help & Support" onPress={() => {}} />
+            <MenuItem icon="help-circle-outline" label="Help & Support" onPress={() => router.push('/help')} />
             <MenuItem icon="log-out-outline" label="Sign Out" onPress={handleLogout} danger />
           </View>
         </View>

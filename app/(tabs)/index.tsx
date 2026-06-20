@@ -1,11 +1,11 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, RefreshControl, ActivityIndicator
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -37,6 +37,7 @@ export default function DashboardScreen() {
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadData = async () => {
     try {
@@ -48,10 +49,11 @@ export default function DashboardScreen() {
       setBusiness(biz);
       const businessId = biz.id;
 
-      // Step 2: Get stats + invoices in parallel
-      const [statsRes, invoiceRes] = await Promise.allSettled([
+      // Step 2: Get stats + invoices + notifications in parallel
+      const [statsRes, invoiceRes, notifRes] = await Promise.allSettled([
         api.get(`/reports/dashboard-stats?business_id=${businessId}`),
         api.get(`/invoices/?limit=10&sort=desc&business_id=${businessId}`),
+        api.get(`/notifications?business_id=${businessId}&limit=50`),
       ]);
 
       if (statsRes.status === 'fulfilled') {
@@ -68,6 +70,13 @@ export default function DashboardScreen() {
         const invData = invoiceRes.value.data;
         setRecentInvoices(Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : Array.isArray(invData?.items) ? invData.items : []);
       }
+      if (notifRes.status === 'fulfilled') {
+        const notifs = notifRes.value.data;
+        if (Array.isArray(notifs)) {
+          const count = notifs.filter((n: any) => n.read_at === null).length;
+          setUnreadCount(count);
+        }
+      }
     } catch (err) {
       console.log('Dashboard load error:', err);
     } finally {
@@ -76,7 +85,11 @@ export default function DashboardScreen() {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [])
+  );
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
@@ -122,12 +135,19 @@ export default function DashboardScreen() {
           <Text style={styles.bizSub} textBreakStrategy="simple">{business?.gstin ? `GSTIN · ${business.state || ''}` : business?.state || ''}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity style={styles.bellBtn}>
+          <TouchableOpacity
+            style={styles.bellBtn}
+            onPress={() => router.push('/notifications')}
+            activeOpacity={0.7}
+          >
             <Ionicons name="notifications-outline" size={20} color="#0F172A" />
+            {unreadCount > 0 && <View style={styles.badgeDot} />}
           </TouchableOpacity>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{(business?.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}</Text>
-          </View>
+          <TouchableOpacity onPress={() => router.push('/profile')}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{(business?.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -137,6 +157,15 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
       >
         <View style={styles.heroCard}>
+          <View style={{ position: 'absolute', bottom: 70, right: -10, flexDirection: 'row', gap: 4, opacity: 0.5 }}>
+            <View style={{ width: 14, height: 22, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+            <View style={{ width: 14, height: 28, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            <View style={{ width: 14, height: 34, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+            <View style={{ width: 14, height: 40, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.2)' }} />
+            <View style={{ width: 14, height: 46, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+            <View style={{ width: 14, height: 52, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.25)' }} />
+            <View style={{ width: 14, height: 58, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' }} />
+          </View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />
@@ -148,7 +177,7 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.heroAmount}>₹{Number(stats?.receivables || 0).toLocaleString('en-IN')}</Text>
           <Text style={styles.heroSub}>from {stats?.unpaidCount || 0} unpaid invoices</Text>
-          <TouchableOpacity style={styles.heroBtn} onPress={() => router.push('/(tabs)/bills')}>
+          <TouchableOpacity style={styles.heroBtn} onPress={() => router.push({ pathname: '/(tabs)/bills', params: { initialFilter: 'Outstanding' } })}>
             <Ionicons name="eye-outline" size={16} color="#0F172A" />
             <Text style={styles.heroBtnText}>View Outstanding</Text>
           </TouchableOpacity>
@@ -271,10 +300,21 @@ const styles = StyleSheet.create({
   bizName: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
   bizSub: { fontSize: 12, color: '#94A3B8', marginTop: 2, flexShrink: 1 },
   bellBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  badgeDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+  },
   avatarCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
-  heroCard: { backgroundColor: '#F97316', borderRadius: 20, padding: 20, marginHorizontal: 16, marginTop: 16, marginBottom: 16 },
+  heroCard: { backgroundColor: '#F97316', borderRadius: 20, padding: 20, marginHorizontal: 16, marginTop: 16, marginBottom: 16, position: 'relative', overflow: 'hidden' },
   heroLabel: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 1 },
   heroBadge: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
   heroBadgeText: { fontSize: 11, fontWeight: '600', color: '#fff' },

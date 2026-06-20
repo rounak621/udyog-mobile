@@ -27,7 +27,7 @@ export default function PartyDetailScreen() {
         if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
-          const allInvoices = Array.isArray(invData) ? invData : Array.isArray(invData?.invoices) ? invData.invoices : [];
+          const allInvoices = Array.isArray(invData) ? invData : Array.isArray(invData?.items) ? invData.items : Array.isArray(invData?.invoices) ? invData.invoices : [];
           setInvoices(allInvoices.filter((inv: any) => String(inv.customer_id) === String(id) || String(inv.customer?.id) === String(id)));
         }
       } catch (err) {

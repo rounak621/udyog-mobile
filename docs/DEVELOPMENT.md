@@ -20,6 +20,10 @@ github.com/rounak621/udyog-mobile
 - Navigation: Expo Router with tab + stack navigation
 - State: React hooks + Context (no Redux)
 
+## Infrastructure Notes
+- Production database is AWS RDS PostgreSQL (`udyog-prod.c7smismgi9rk.ap-south-1.rds.amazonaws.com`, db: `udyog_prod`), connection string in `~/billmitra-backend/.env.production` on EC2 — NOT Neon. Any references to Neon as the production database elsewhere are outdated.
+- Backend already runs two other APScheduler jobs in-process (rental reminders at 00:05, subscription expiry checks at 00:10) prior to the notifications scheduler (00:15) — this is an established pattern in this codebase, not a new architecture introduced solely for notifications.
+
 ## Screens
 | Screen | Path | Status |
 |--------|------|--------|
@@ -39,7 +43,11 @@ github.com/rounak621/udyog-mobile
 | Invoice Settings | app/settings/invoice.tsx | ✅ Done |
 | Subscription | app/settings/subscription.tsx | ✅ Done |
 | Tally Export | app/settings/exports.tsx | ✅ Done |
-| Manage Users | app/settings/users.tsx | ✅ Done |
+| Profile | app/profile/index.tsx | ✅ Done |
+| Help & Support | app/help/index.tsx | ✅ Done |
+| Notifications | app/notifications/index.tsx | ✅ Done |
+
+> Note: Some screens above were marked Done in earlier docs but may need re-verification against current backend/web app parity — see backlog discussion in project chat history.
 
 ## Color Theme
 - Primary: #F97316 (orange)
@@ -227,5 +235,45 @@ eas build --platform android
 - Selected Item Detail & Change UX: For already selected line items in `app/invoice/create.tsx`, replaced the plain "Select item..." button with a detailed row showing the selected item's name, rate, and tax rate alongside a pencil icon and "Change" action to reopen the dropdown.
 - Custom Item Revert Action: Added a clear/remove circle icon next to the custom item text input in `app/invoice/create.tsx`, permitting the user to reset a line item back to selector mode.
 
+### v1.7.0 — Android Hardware Back Button Fix
+- Fixed Android hardware back button incorrectly navigating to Home instead of previous screen from nested route groups (settings, legal)
+- Root cause: root app/_layout.tsx uses <Slot /> with no shared native stack across route groups, so nested stacks had no parent to pop into on hardware back
+- Fix: added BackHandler listener in app/settings/_layout.tsx and app/legal/_layout.tsx using router.replace('/(tabs)/more') instead of router.back() (no JS history existed to pop to)
 
+### v1.8.0 — Bills & Parties Filter and Layout Fixes
+- Replaced "Draft" filter with "Partial" on Bills screen; Unpaid filter now excludes partially-paid invoices
+- Added combined "Outstanding" filter state (Unpaid + Partial) reachable only via Home screen's "View Outstanding" button deep link, not a visible chip
+- Fixed excess empty space on Bills/Parties when filtered results are few (removed redundant flexGrow: 1 double-application)
+- Fixed chip text rendering corruption caused by overly-tight chip height; restored safe padding/lineHeight values
+- Locked searchBox and chips row heights to prevent visual jump/shift on render
+- Restructured loading state to render header/search/chips immediately on mount instead of swapping full layouts, eliminating load-transition jump
 
+### v1.9.0 — Party Detail Bug Fix
+- Fixed Party Detail screen showing ₹0 outstanding and empty Recent Bills despite party having real invoices
+- Root cause: invoice list extraction only checked invData.invoices, missed backend's actual InvoicePaginatedResponse.items key
+- Fix: added items as a checked key in the extraction fallback chain
+
+### v2.0.0 — Manage Users Removed
+- Removed "Manage Users" menu item and app/settings/users.tsx entirely — app uses shared full-access accounts, no per-user role system exists
+
+### v2.1.0 — Native Profile Screen
+- Added app/profile/index.tsx using Clerk useUser() hooks: edit name, email list with primary badge, add-email OTP verification flow, password change (or "Signed in with [provider]" for SSO accounts)
+- Wired Home screen avatar and More tab's edit (pencil) button to navigate to /profile
+
+### v2.2.0 — Receivables Hero Card Graphic
+- Added decorative ascending bar-chart graphic as absolutely-positioned background layer on Home screen's Receivables card, behind existing text/button content
+
+### v2.3.0 — Help & Support Screen
+- Added app/help/index.tsx: email/WhatsApp contact links, FAQ accordion, app version display, Report a Problem mailto link, link to existing Terms & Privacy screen
+- Wired More tab's "Help & Support" menu item to navigate to /help
+
+### v2.4.0 — Notifications System (Backend + Mobile)
+- Backend: new `notifications` and `device_tokens` tables (migration 5849710769fb) on production RDS database
+- Backend: GET /notifications, POST /notifications/{id}/mark-read, POST /device-tokens endpoints
+- Backend: push delivery service via Expo Push API, with per-token error isolation
+- Backend: Razorpay webhook now triggers subscription_renewed and payment_failed notifications (wrapped in try/except for webhook safety)
+- Backend: daily APScheduler job (00:15) checks trial_ending, subscription_expiring, subscription_expired, inactivity_nudge with 7-day dedup per business+type
+- Mobile: app/notifications/index.tsx — list, mark-read, deep-link navigation, pull-to-refresh, empty state
+- Mobile: bell icon + unread badge on Home screen, refetches on focus
+- Mobile: push token registration on sign-in, guarded against Expo Go (which removed remote push support in SDK 53) via dynamic import — registration only runs in real dev/production builds
+- Note: actual push delivery to device is untestable until production APK build exists; in-app notification list/badge fully functional in Expo Go

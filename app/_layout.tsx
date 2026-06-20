@@ -4,7 +4,9 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Colors } from '../constants/theme';
-import { setAuthToken } from '../services/api';
+import { setAuthToken, api } from '../services/api';
+import Constants from 'expo-constants';
+import { registerForPushNotificationsAsync, registerDeviceToken } from '../services/notifications';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -23,6 +25,36 @@ function AuthGuard() {
   const segments = useSegments();
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
+  const [pushRegistered, setPushRegistered] = useState(false);
+
+  useEffect(() => {
+    if (isSignedIn && tokenReady && !pushRegistered) {
+      setPushRegistered(true);
+      const setupPush = async () => {
+        try {
+          if (Constants.appOwnership === 'expo') {
+            console.log('Push notifications skipped in app layout — running in Expo Go');
+            return;
+          }
+          const bizRes = await api.get('/businesses/me');
+          const businessId = bizRes.data?.id;
+          if (businessId) {
+            try {
+              const token = await registerForPushNotificationsAsync();
+              if (token) {
+                await registerDeviceToken(businessId, token);
+              }
+            } catch (notifErr) {
+              console.log('Push registration failed inside layout:', notifErr);
+            }
+          }
+        } catch (error) {
+          console.log('Push setup failed:', error);
+        }
+      };
+      setupPush();
+    }
+  }, [isSignedIn, tokenReady, pushRegistered]);
 
   useEffect(() => {
     if (isSignedIn) {

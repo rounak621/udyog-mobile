@@ -1,12 +1,12 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
   ActivityIndicator
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -27,12 +27,19 @@ export default function BillsScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { initialFilter } = useLocalSearchParams<{ initialFilter?: string }>();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [businessId, setBusinessId] = useState<string>('');
+
+  useEffect(() => {
+    if (initialFilter === 'Outstanding') {
+      setFilter('Outstanding');
+    }
+  }, [initialFilter]);
 
   const loadInvoices = async () => {
     try {
@@ -71,6 +78,8 @@ export default function BillsScreen() {
       matchFilter = ps === 'PARTIAL';
     } else if (filter === 'Paid') {
       matchFilter = ps === 'PAID';
+    } else if (filter === 'Outstanding') {
+      matchFilter = ps === 'UNPAID' || ps === 'PARTIAL';
     }
     return matchSearch && matchFilter;
   });
