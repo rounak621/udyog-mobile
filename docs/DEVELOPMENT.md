@@ -56,12 +56,141 @@ github.com/rounak621/udyog-mobile
 - Text: #0F172A
 - Secondary Text: #64748B
 
-## API Endpoints Used
-- GET /api/v1/businesses/me — current business info
-- GET /api/v1/invoices — invoice list
-- POST /api/v1/invoices — create invoice
-- GET /api/v1/customers — parties list
-- GET /api/v1/items — inventory
+## API Endpoints — Full Reference
+All mobile API interactions are routed through the shared Axios client instance exported from [services/api.ts](file:///Users/rounak/Projects/BillMitra/udyog-mobile/services/api.ts). The following is the comprehensive reference of endpoints consumed by the mobile application:
+
+### Auth & User Onboarding
+*   **`PUT /users/me/role`**
+    *   **HTTP Method:** PUT
+    *   **Calling File:** [app/onboarding.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/onboarding.tsx)
+    *   **Description:** Updates the onboarding role status of the user on the server (e.g., setting role to `USER` upon completing onboarding).
+
+### Business Settings
+*   **`GET /businesses/me`**
+    *   **HTTP Method:** GET
+    *   **Calling Files:**
+        *   [app/_layout.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/_layout.tsx)
+        *   [app/(tabs)/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/index.tsx)
+        *   [app/(tabs)/bills.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/bills.tsx)
+        *   [app/(tabs)/parties.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/parties.tsx)
+        *   [app/party/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/party/create.tsx)
+        *   [app/party/[id].tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/party/[id].tsx)
+        *   [app/invoice/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/create.tsx)
+        *   [app/settings/business.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/business.tsx)
+        *   [app/settings/invoice.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/invoice.tsx)
+        *   [app/settings/subscription.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/subscription.tsx)
+        *   [app/notifications/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/notifications/index.tsx)
+    *   **Description:** Fetches details of the currently active business profile, configuration, and subscription status.
+*   **`PUT /businesses/settings`**
+    *   **HTTP Method:** PUT
+    *   **Calling Files:**
+        *   [app/settings/business.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/business.tsx)
+        *   [app/settings/invoice.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/invoice.tsx)
+    *   **Description:** Updates core business settings (name, address, GSTIN, phone) and invoice preferences (theme, declaration, terms & conditions).
+
+### Invoices
+*   **`GET /invoices/`**
+    *   **HTTP Method:** GET
+    *   **Calling Files:**
+        *   [app/(tabs)/bills.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/bills.tsx)
+        *   [app/(tabs)/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/index.tsx)
+        *   [app/party/[id].tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/party/[id].tsx)
+    *   **Description:** Retrieves a list of invoices filtered by `business_id` with support for pagination (`limit`, `offset`), sorting, and optional filtering by customer/party.
+*   **`GET /invoices/{id}`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/invoice/[id].tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/[id].tsx)
+    *   **Description:** Fetches detailed info for a specific invoice by its database ID.
+*   **`POST /invoices/?business_id={businessId}`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [app/invoice/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/create.tsx)
+    *   **Description:** Creates a new invoice (GST, Service, or Non-GST) under the specified business.
+*   **`DELETE /invoices/{id}?business_id={businessId}`**
+    *   **HTTP Method:** DELETE
+    *   **Calling File:** [app/invoice/[id].tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/[id].tsx)
+    *   **Description:** Deletes a specific invoice record.
+*   **`POST /invoices/{id}/mark-paid`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [app/invoice/[id].tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/[id].tsx)
+    *   **Description:** Records a payment for an invoice and updates its status to Paid.
+*   **`GET /invoices/numbering-config?business_id={businessId}`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/settings/invoice.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/invoice.tsx)
+    *   **Description:** Retrieves the invoice numbering configuration (prefix, suffix, padding, next number) for the business.
+*   **`POST /invoices/configure-numbering?business_id={businessId}`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [app/settings/invoice.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/invoice.tsx)
+    *   **Description:** Saves numbering configuration changes (prefix, suffix, padding, next number) for the business.
+*   **`GET /invoices/next-number?business_id={businessId}&invoice_type={invoiceType}`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/invoice/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/create.tsx)
+    *   **Description:** Previews the next sequence invoice number for the selected invoice type.
+
+### Parties (Customers & Suppliers)
+*   **`GET /customers/?business_id={businessId}`**
+    *   **HTTP Method:** GET
+    *   **Calling Files:**
+        *   [app/(tabs)/parties.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/parties.tsx)
+        *   [app/invoice/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/create.tsx)
+    *   **Description:** Fetches a list of customers and suppliers associated with the active business.
+*   **`GET /customers/{id}?business_id={businessId}`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/party/[id].tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/party/[id].tsx)
+    *   **Description:** Fetches profile details, GSTIN, state, and ledger balances for a specific customer or supplier.
+*   **`POST /customers/?business_id={businessId}`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [app/party/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/party/create.tsx)
+    *   **Description:** Creates a new customer/supplier profile under the active business.
+
+### Items & Inventory
+*   **`GET /items/?business_id={businessId}&limit=100`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/invoice/create.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/invoice/create.tsx)
+    *   **Description:** Retrieves inventory items (products/services) for selection during invoice creation.
+
+### Reports & Exports
+*   **`GET /reports/dashboard-stats?business_id={businessId}`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/(tabs)/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/index.tsx)
+    *   **Description:** Fetches dashboard statistics (sales totals, unpaid count, receivables, payables) for the active business.
+*   **`GET /reports/summary`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/reports.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/reports.tsx)
+    *   **Description:** Fetches summarized metrics and report categories.
+*   **`GET /data-integration/tally/{type}`**
+    *   **HTTP Method:** GET
+    *   **Calling File:** [app/settings/exports.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/settings/exports.tsx)
+    *   **Description:** Downloads Tally-compatible XML data formats (sales, receipts, vouchers).
+
+### Notifications & Device Tokens
+*   **`GET /notifications?business_id={businessId}&limit=50`**
+    *   **HTTP Method:** GET
+    *   **Calling Files:**
+        *   [app/(tabs)/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/index.tsx)
+        *   [app/notifications/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/notifications/index.tsx)
+    *   **Description:** Retrieves recent push/in-app notifications for the active business.
+*   **`POST /notifications/{id}/mark-read`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [app/notifications/index.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/notifications/index.tsx)
+    *   **Description:** Marks a specific notification record as read.
+*   **`POST /device-tokens`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [services/notifications.ts](file:///Users/rounak/Projects/BillMitra/udyog-mobile/services/notifications.ts)
+    *   **Description:** Registers a physical device's Expo Push Token with the backend for sending push notifications.
+
+### Maya AI Assistant
+*   **`POST /maya/parse`**
+    *   **HTTP Method:** POST
+    *   **Calling File:** [app/(tabs)/maya.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/maya.tsx)
+    *   **Description:** Submits natural language text/voice transcript prompts to parse invoice commands via Maya AI.
+
+## Known Backend Quirks
+Mobile developers interacting with the Udyog API should keep the following backend behaviors in mind:
+
+*   **Business Settings Resolution:** The `PUT /businesses/settings` endpoint resolves the business target using the user's `active_business_id` (routed through the shared `resolve_current_business()` helper as of backend commit [7021f11](file:///Users/rounak/Projects/BillMitra/billmitra-backend/app/api/businesses.py#L7)). Previously, settings updates target resolved the "first" business query return, causing inconsistent data saves on multi-business accounts compared to the `GET /businesses/me` resolution path.
+*   **GSTIN Snapshotting on Invoices:** The `customer_gstin` field stored on invoices is a hard snapshot copied from the party record at the exact moment of invoice creation. If a customer's GSTIN is corrected or updated on their party record later, this change **does not** retroactively update the `customer_gstin` on past invoices. Retroactive corrections require running target data-fix scripts directly on the production database.
+*   **Optional Fields and `exclude_unset=True`:** The customer edit endpoint (`PUT /customers/{id}`) processes request data using Pydantic's `.model_dump(exclude_unset=True)`. This means fields omitted from the PUT request payload are left unchanged. To explicitly clear/nullify an optional field (e.g., Phone, Email, GSTIN, Address), it **must** be sent in the payload with a value of `null` or an empty string, rather than being excluded from the payload altogether.
+*   **Non-GST Auto-Numbering Sequence:** Non-GST invoices automatically use a distinct hardcoded prefix/sequence (`NONGST-XXX`) that is managed independently by the server. This numbering sequence is **not** configurable via the invoice numbering settings page (which only manages prefixes and next numbers for GST sales and Service invoice types).
+
 
 ## Environment Variables
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=<clerk_key>
@@ -276,4 +405,17 @@ eas build --platform android
 - Mobile: app/notifications/index.tsx — list, mark-read, deep-link navigation, pull-to-refresh, empty state
 - Mobile: bell icon + unread badge on Home screen, refetches on focus
 - Mobile: push token registration on sign-in, guarded against Expo Go (which removed remote push support in SDK 53) via dynamic import — registration only runs in real dev/production builds
+- Mobile: Implemented unread notifications count query parallelized alongside dashboard stats/invoices, using `useFocusEffect` to ensure the badge updates in real time whenever the user returns to the Home/Dashboard tab.
 - Note: actual push delivery to device is untestable until production APK build exists; in-app notification list/badge fully functional in Expo Go
+
+### v2.5.0 — Invoice Settings Rebuild & Multi-Business Fix
+- **Invoice Settings Full Rebuild**: Overhauled the invoice settings screen (`app/settings/invoice.tsx`) to manage the complete invoice numbering configuration (prefix, suffix, next number, padding) calling the new `/invoices/numbering-config` (GET) and `/invoices/configure-numbering` (POST) endpoints, as well as general preferences (invoice theme, declaration toggle, and terms & conditions).
+- **Settings Endpoint Corrections**: Fixed a bug where both `app/settings/business.tsx` and `app/settings/invoice.tsx` attempted to save configurations using a non-existent `PUT /businesses/me` endpoint. Corrected both to target the `PUT /businesses/settings` endpoint.
+- **Backend Multi-Business Resolution Fix**: Resolved a critical backend bug where settings updates via `PUT /businesses/settings` resolved the target business using the first business query result in multi-business accounts. Standardized the backend to use the unified `resolve_current_business()` helper (referencing the active user's `active_business_id`) to match the `GET /businesses/me` resolution.
+
+### v2.6.0 — Keyboard Avoidance, Template Repair & Customer Edit Patches
+- **Android Keyboard Avoidance**: Replaced the traditional `KeyboardAvoidingView` + `ScrollView` layout wrapper in `app/settings/invoice.tsx` with `KeyboardAwareScrollView` from `react-native-keyboard-aware-scroll-view` to prevent the software keyboard on Android from covering the lower Terms & Conditions and Declaration inputs. Set `extraScrollHeight={180}` and `enableAutomaticScroll={true}` to ensure the focused input scrolls into view.
+- **Rental Invoice Template Fix**: Restored production availability of rental order previews and PDF downloads by resolving a `TemplateSyntaxError` at line 611 in `app/templates/invoices/rental_invoice.html`. Removed a corrupted duplicate block containing a mangled `</tr>ass="tax-row">` fragment and orphan `{% endif %}` tags, and restored the unclosed `{% endif %}` on the ghost-row condition block.
+- **Customer Form Field Clear Fix**: Updated `CustomerForm.tsx` (web, but relevant to shared endpoints) to explicitly include empty optional fields (phone, email, gstin, address) as `null` in the PUT payload. Previously, the backend's `exclude_unset=True` logic left empty fields untouched, preventing users from clearing previously set values.
+- **Production CI/CD Fix**: Configured the deployment workflow in `.github/workflows/deploy.yml` to run `docker-compose down --remove-orphans` and `docker system prune -f || true` before rebuilding to prevent deployment failures caused by stale container orphans or running out of disk space on the EC2 host.
+- **Database GSTIN Snap Correction**: Conducted a database data-correction script (`scratch/fix_gstin.py`) to update the snapshot `customer_gstin` field from the invalid value `27AAFP57531R1ZV` to `27AAFPS7531R1ZV` on historical invoices #19 and #32 for customer "Sweet Lady".
