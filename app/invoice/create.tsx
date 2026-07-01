@@ -31,7 +31,7 @@ export default function CreateInvoiceScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ customer_id?: string; party_id?: string }>();
+  const params = useLocalSearchParams<{ customer_id?: string; party_id?: string; maya_data?: string }>();
   const preselectCustomerId = params.customer_id || params.party_id;
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessState, setBusinessState] = useState('');
@@ -128,6 +128,52 @@ export default function CreateInvoiceScreen() {
       }
     }
   }, [preselectCustomerId, parties, businessState]);
+
+  // Pre-fill from Maya draft data if maya_data was passed in route params
+  useEffect(() => {
+    if (!params.maya_data || parties.length === 0) return;
+    try {
+      const draft = JSON.parse(params.maya_data as string);
+      // Match customer by name
+      if (draft.customer_name && !selectedParty) {
+        const match = parties.find(
+          (p: any) => p.name?.toLowerCase().trim() === draft.customer_name.toLowerCase().trim()
+        );
+        if (match) {
+          setSelectedParty(match);
+          const customerState = match.state || '';
+          const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
+          setIsInterState(!!interState);
+        }
+      }
+      // Pre-fill line items
+      if (draft.items && draft.items.length > 0) {
+        const newLineItems: LineItem[] = draft.items.map((di: any) => {
+          // Try to match against existing items catalog by name
+          const catalogMatch = items.find(
+            (it: any) => it.name?.toLowerCase().trim() === (di.name || '').toLowerCase().trim()
+          );
+          return {
+            id: Math.random().toString(),
+            item_id: catalogMatch?.id || di.item_id || null,
+            name: di.name || '',
+            qty: String(di.qty || di.quantity || 1),
+            rate: String(di.rate || di.unit_price || catalogMatch?.price || ''),
+            gst_rate: String(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || '18'),
+            unit: di.unit || catalogMatch?.unit || 'PCS',
+            isCustom: !catalogMatch,
+          };
+        });
+        setLineItems(newLineItems);
+      }
+      // Pre-fill invoice date
+      if (draft.invoice_date) {
+        setInvoiceDate(draft.invoice_date);
+      }
+    } catch (err) {
+      console.log('Maya data parse error:', err);
+    }
+  }, [params.maya_data, parties, items, businessState]);
 
   // Animate success checkmark (Google Pay-style: circle scales in, then check draws).
   // Tuned to complete in under ~500ms total.
