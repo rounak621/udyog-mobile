@@ -1,12 +1,16 @@
-import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import { ClerkProvider, useAuth, useUser } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 import { Colors } from '../constants/theme';
 import { setAuthToken, api } from '../services/api';
 import Constants from 'expo-constants';
 import { registerForPushNotificationsAsync, registerDeviceToken } from '../services/notifications';
+import { BusinessProvider, useBusiness } from '../context/BusinessContext';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -22,13 +26,69 @@ const tokenCache = {
 
 function AuthGuard() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
   const segments = useSegments();
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
   const [pushRegistered, setPushRegistered] = useState(false);
 
+  const [roleSetupDone, setRoleSetupDone] = useState(false);
+  const [businessCheckDone, setBusinessCheckDone] = useState(false);
+  const { hasBusiness, setHasBusiness, refreshBusinesses, business } = useBusiness();
+  const [checkingBusiness, setCheckingBusiness] = useState(false);
+
   useEffect(() => {
-    if (isSignedIn && tokenReady && !pushRegistered) {
+    if (!isSignedIn) {
+      setBusinessCheckDone(false);
+      setHasBusiness(false);
+      setRoleSetupDone(false);
+    }
+  }, [isSignedIn]);
+
+  // Silent role setup in background (only once per user session)
+  useEffect(() => {
+    if (isSignedIn && user && !roleSetupDone) {
+      const existingRole = user.publicMetadata?.role;
+      if (existingRole === 'user' || existingRole === 'owner' || existingRole === 'ca' || existingRole === 'admin') {
+        setRoleSetupDone(true);
+        return;
+      }
+      
+      const setupRole = async () => {
+        try {
+          const token = await getToken();
+          setAuthToken(token);
+          await api.put('/users/me/role', { role: 'USER' });
+          setRoleSetupDone(true);
+          await user.reload();
+        } catch (err) {
+          console.log('Silent role setup failed:', err);
+        }
+      };
+      setupRole();
+    }
+  }, [isSignedIn, user, roleSetupDone]);
+
+  // Check if business exists on backend
+  useEffect(() => {
+    if (isSignedIn && tokenReady && !businessCheckDone && !checkingBusiness) {
+      setCheckingBusiness(true);
+      const checkBusiness = async () => {
+        try {
+          await refreshBusinesses();
+        } catch (err) {
+          console.log('Error checking business in AuthGuard:', err);
+        } finally {
+          setBusinessCheckDone(true);
+          setCheckingBusiness(false);
+        }
+      };
+      checkBusiness();
+    }
+  }, [isSignedIn, tokenReady, businessCheckDone, checkingBusiness, refreshBusinesses]);
+
+  useEffect(() => {
+    if (isSignedIn && tokenReady && hasBusiness && !pushRegistered) {
       setPushRegistered(true);
       const setupPush = async () => {
         try {
@@ -54,7 +114,7 @@ function AuthGuard() {
       };
       setupPush();
     }
-  }, [isSignedIn, tokenReady, pushRegistered]);
+  }, [isSignedIn, tokenReady, hasBusiness, pushRegistered]);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -70,19 +130,37 @@ function AuthGuard() {
 
   useEffect(() => {
     if (!isLoaded || !tokenReady) return;
+    if (isSignedIn && !businessCheckDone) return;
+
     const inAuthGroup = segments[0] === '(auth)';
     const inWelcome = segments[0] === 'welcome';
     const inOnboarding = segments[0] === 'onboarding';
     const inLegal = segments[0] === 'legal';
+    const inBusinessSetup = segments[0] === 'business-setup';
+    const inSubscriptionLocked = segments[0] === 'subscription-locked';
 
     if (!isSignedIn && !inAuthGroup && !inWelcome && !inLegal) {
       router.replace('/welcome');
-    } else if (isSignedIn && (inAuthGroup || inWelcome)) {
-      router.replace('/(tabs)');
-    }
-  }, [isLoaded, isSignedIn, segments, tokenReady]);
+    } else if (isSignedIn) {
+      const isExpired = business?.subscription_status?.toLowerCase() === 'expired';
 
-  if (!isLoaded) {
+      if (isExpired) {
+        if (!inSubscriptionLocked && !inLegal) {
+          router.replace('/subscription-locked');
+        }
+      } else if (hasBusiness) {
+        if (inAuthGroup || inWelcome || inOnboarding || inBusinessSetup || inSubscriptionLocked) {
+          router.replace('/(tabs)');
+        }
+      } else {
+        if (!inBusinessSetup && !inLegal) {
+          router.replace('/business-setup');
+        }
+      }
+    }
+  }, [isLoaded, isSignedIn, segments, tokenReady, businessCheckDone, hasBusiness, business]);
+
+  if (!isLoaded || (isSignedIn && !businessCheckDone)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.primary }}>
         <View style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
@@ -99,7 +177,9 @@ export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <AuthGuard />
+      <BusinessProvider>
+        <AuthGuard />
+      </BusinessProvider>
     </ClerkProvider>
   );
 }

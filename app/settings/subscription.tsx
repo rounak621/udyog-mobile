@@ -37,6 +37,19 @@ export default function SubscriptionScreen() {
     return Math.max(0, Math.floor((new Date(end).getTime() - Date.now()) / 86400000));
   };
 
+  const handleUpgrade = async (planId: string) => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const res = await api.post('/subscriptions/handover-token');
+      const redirectTarget = encodeURIComponent(`https://app.udyogbook.in/subscribe?plan=${planId}`);
+      const finalUrl = `${res.data.url}&redirect_url=${redirectTarget}`;
+      await Linking.openURL(finalUrl);
+    } catch (err: any) {
+      Alert.alert('Error', 'Could not open subscription page. Please try again.');
+    }
+  };
+
   if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background }}><ActivityIndicator color={Colors.primary} /></View>;
 
   return (
@@ -84,21 +97,63 @@ export default function SubscriptionScreen() {
           ))}
         </View>
 
-        {/* Pricing */}
-        <View style={styles.priceCard}>
-          <Text style={styles.priceLabel}>Basic Plan</Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>₹149</Text>
-            <Text style={styles.pricePer}>/month</Text>
-          </View>
-          <Text style={styles.priceNote}>₹1,499/year (save 2 months)</Text>
-        </View>
-
         {!isActive && (
-          <TouchableOpacity style={styles.upgradeBtn} onPress={() => Linking.openURL('https://app.udyogbook.in/subscribe')}>
-            <Ionicons name="card-outline" size={18} color="#fff" />
-            <Text style={styles.upgradeBtnText}>{isTrial ? 'Upgrade Now' : 'Renew Subscription'}</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 16, marginTop: 12 }}>
+            <Text style={styles.sectionTitle}>Upgrade or Renew</Text>
+
+            {/* Saral Card */}
+            <View style={styles.planCard}>
+              <View style={styles.planHeader}>
+                <View>
+                  <Text style={styles.planName}>Saral</Text>
+                  <Text style={styles.planTagline}>Mobile Billing</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.planPrice}>₹799</Text>
+                  <Text style={styles.planPriceSub}>/ year</Text>
+                </View>
+              </View>
+              <View style={styles.planDivider} />
+              <View style={styles.planFeatures}>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>2 Businesses Limit</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>30 E-Way Bills / Month</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Maya AI Voice Billing</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Core GST Billing & Invoicing</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /><Text style={[styles.planFeatureText, { color: Colors.textMuted }]}>No CA Access</Text></View>
+              </View>
+              <TouchableOpacity style={styles.planBtn} onPress={() => handleUpgrade('saral')}>
+                <Text style={styles.planBtnText}>Choose Saral</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Vistaar Card (Recommended) */}
+            <View style={[styles.planCard, styles.planCardRecommended]}>
+              <View style={styles.recommendedBadge}>
+                <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
+              </View>
+              <View style={styles.planHeader}>
+                <View>
+                  <Text style={styles.planName}>Vistaar</Text>
+                  <Text style={styles.planTagline}>Expansion Pack</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.planPrice}>₹999</Text>
+                  <Text style={styles.planPriceSub}>/ year</Text>
+                </View>
+              </View>
+              <View style={styles.planDivider} />
+              <View style={styles.planFeatures}>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>6 Businesses Limit</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>75 E-Way Bills / Month</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>1 CA Collaboration Access</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Maya AI Voice Billing</Text></View>
+                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Core GST Billing & Invoicing</Text></View>
+              </View>
+              <TouchableOpacity style={[styles.planBtn, styles.planBtnRecommended]} onPress={() => handleUpgrade('vistaar')}>
+                <Text style={styles.planBtnTextRecommended}>Choose Vistaar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
 
         <Text style={styles.note}>Payments are processed securely via Razorpay on the web app.</Text>
@@ -123,13 +178,23 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 14 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
   featureText: { fontSize: 13, color: Colors.text },
-  priceCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 20, borderWidth: 0.5, borderColor: Colors.border, alignItems: 'center' },
-  priceLabel: { fontSize: 12, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  price: { fontSize: 36, fontWeight: '800', color: Colors.text, letterSpacing: -1 },
-  pricePer: { fontSize: 16, color: Colors.textSecondary },
-  priceNote: { fontSize: 12, color: Colors.success, marginTop: 6 },
-  upgradeBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  upgradeBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  note: { textAlign: 'center', fontSize: 12, color: Colors.textMuted, lineHeight: 18 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginTop: 12, marginBottom: 4 },
+  planCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 20, borderWidth: 0.5, borderColor: Colors.border, position: 'relative' },
+  planCardRecommended: { borderColor: Colors.primary, borderWidth: 1.5, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  recommendedBadge: { position: 'absolute', top: -10, right: 20, backgroundColor: Colors.primary, paddingHorizontal: 10, paddingVertical: 2, borderRadius: Radius.sm },
+  recommendedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  planName: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  planTagline: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  planPrice: { fontSize: 24, fontWeight: '800', color: Colors.text },
+  planPriceSub: { fontSize: 12, color: Colors.textSecondary },
+  planDivider: { height: 0.5, backgroundColor: Colors.border, marginVertical: 16 },
+  planFeatures: { gap: 10, marginBottom: 20 },
+  planFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  planFeatureText: { fontSize: 13, color: Colors.text },
+  planBtn: { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, padding: 12, alignItems: 'center' },
+  planBtnRecommended: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  planBtnText: { color: Colors.text, fontSize: 14, fontWeight: '600' },
+  planBtnTextRecommended: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  note: { textAlign: 'center', fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
 });

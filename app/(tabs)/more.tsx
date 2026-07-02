@@ -3,10 +3,13 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, Switch
+  ScrollView, Alert, Switch, Modal, ActivityIndicator
 } from 'react-native';
+import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Radius, Spacing } from '../../constants/theme';
+import { useBusiness } from '../../context/BusinessContext';
+import BusinessSwitcherModal from '../../components/BusinessSwitcherModal';
 
 const MenuItem = ({ icon, label, value, onPress, danger, rightElement }: any) => (
   <TouchableOpacity style={styles.menuItem} onPress={onPress}>
@@ -24,6 +27,10 @@ export default function MoreScreen() {
   const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  
+  const { business } = useBusiness();
+
+  const [showSwitcher, setShowSwitcher] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -62,12 +69,35 @@ export default function MoreScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Active Business Switcher Card */}
+        {business && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Active Business</Text>
+            <TouchableOpacity 
+              style={styles.businessSwitcherCard} 
+              onPress={() => setShowSwitcher(true)}
+            >
+              <View style={styles.businessIconContainer}>
+                <Ionicons name="business" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.businessName} numberOfLines={1}>{business.name}</Text>
+                <Text style={styles.businessGst}>
+                  {business.gst_enabled ? `GSTIN: ${business.gst_number}` : 'GST: Unregistered'}
+                </Text>
+              </View>
+              <Ionicons name="swap-horizontal" size={18} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Business */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Business</Text>
           <View style={styles.card}>
             <MenuItem icon="business-outline" label="Business Settings" onPress={() => router.push('/settings/business')} />
             <MenuItem icon="document-text-outline" label="Invoice Settings" onPress={() => router.push('/settings/invoice')} />
+            <MenuItem icon="receipt-outline" label="Purchase Bills" onPress={() => router.push('/purchase-bills')} />
           </View>
         </View>
 
@@ -90,6 +120,12 @@ export default function MoreScreen() {
 
         <Text style={styles.version}>Udyog v1.0.0 · Made in India 🇮🇳</Text>
       </ScrollView>
+
+      {/* Business Switcher Modal */}
+      <BusinessSwitcherModal
+        visible={showSwitcher}
+        onClose={() => setShowSwitcher(false)}
+      />
     </View>
   );
 }
@@ -103,6 +139,12 @@ const styles = StyleSheet.create({
   profileEmail: { fontSize: 14, fontWeight: '600', color: Colors.text },
   profileRole: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
   editBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#fff7ed', alignItems: 'center', justifyContent: 'center' },
+  
+  businessSwitcherCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.card, marginHorizontal: 4, borderRadius: Radius.md, padding: 14, borderWidth: 0.5, borderColor: Colors.border, marginBottom: 12 },
+  businessIconContainer: { width: 38, height: 38, borderRadius: 8, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  businessName: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  businessGst: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+
   section: { paddingHorizontal: 12, marginBottom: 4 },
   sectionTitle: { fontSize: 11, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6, marginLeft: 4 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 0.5, borderColor: Colors.border, overflow: 'hidden' },
