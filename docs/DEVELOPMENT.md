@@ -178,10 +178,11 @@ All mobile API interactions are routed through the shared Axios client instance 
     *   **Description:** Registers a physical device's Expo Push Token with the backend for sending push notifications.
 
 ### Maya AI Assistant
-*   **`POST /maya/parse`**
-    *   **HTTP Method:** POST
+*   **`POST /ai/maya-chat`**
+    *   **HTTP Method:** POST (multipart/form-data)
     *   **Calling File:** [app/(tabs)/maya.tsx](file:///Users/rounak/Projects/BillMitra/udyog-mobile/app/(tabs)/maya.tsx)
-    *   **Description:** Submits natural language text/voice transcript prompts to parse invoice commands via Maya AI.
+    *   **Description:** Submits natural language text prompts to Maya AI for text-based billing commands. Requires `business_id` (Form), `conversation_history` (Form, JSON string), and `text` (Form). Returns `current_draft` (invoice draft object), `action_type`, `reply_text`, `user_transcript`, and `audio_b64` (TTS reply audio). Response follows the `MayaChatResponse` schema — draft data arrives in `current_draft`, not `extracted_data` (that field belongs to the separate voice-only `/ai/maya-command` endpoint, which requires an audio file and is not usable in Expo Go).
+    *   **Timeout:** 60000ms (Gemini response latency ~30s+).
 
 ## Known Backend Quirks
 Mobile developers interacting with the Udyog API should keep the following backend behaviors in mind:
@@ -419,3 +420,23 @@ eas build --platform android
 - **Customer Form Field Clear Fix**: Updated `CustomerForm.tsx` (web, but relevant to shared endpoints) to explicitly include empty optional fields (phone, email, gstin, address) as `null` in the PUT payload. Previously, the backend's `exclude_unset=True` logic left empty fields untouched, preventing users from clearing previously set values.
 - **Production CI/CD Fix**: Configured the deployment workflow in `.github/workflows/deploy.yml` to run `docker-compose down --remove-orphans` and `docker system prune -f || true` before rebuilding to prevent deployment failures caused by stale container orphans or running out of disk space on the EC2 host.
 - **Database GSTIN Snap Correction**: Conducted a database data-correction script (`scratch/fix_gstin.py`) to update the snapshot `customer_gstin` field from the invalid value `27AAFP57531R1ZV` to `27AAFPS7531R1ZV` on historical invoices #19 and #32 for customer "Sweet Lady".
+
+### v2.7.0 — Maya Text Chat Fix (Web Parity)
+- Fixed Maya screen calling nonexistent `/maya/parse` endpoint (404); switched to the correct working endpoint `/ai/maya-chat` with proper multipart/form-data request (business_id, conversation_history, text)
+- Rebuilt response parsing to match real backend schema: reads draft from `current_draft` (customer_name, items[], total_amount) instead of the old incorrect flat shape
+- Added TTS playback via `expo-av`: decodes and plays `audio_b64` from Maya's response
+- Fixed `app/invoice/create.tsx` silently discarding the `maya_data` route param — draft was previously lost entirely on "Create Invoice →" tap; now parses and pre-fills customer (name match against parties) and line items (catalog match, falls back to custom item with Maya-provided rate/qty/unit/GST)
+- Backend fix required and shipped separately (`billmitra-backend`, `ai_billing.py`): `current_draft` was being silently dropped by `MayaChatResponse` serialization — the raw dict's `extracted_data` was never mapped to the `current_draft` field. One-line fix added to remap before response construction.
+- Known limitation: voice input still blocked in Expo Go (unchanged, requires production APK) — this fix covers text-input Maya only
+- Status: mobile-side code complete and reviewed via diff; backend fix verified live on production via direct API test; mobile branch (`fix/maya-text-endpoint`) not yet tested on-device or merged to `dev`
+
+### v2.8.0 — Maya Screen Redesign & Layout Fixes
+- Removed duplicate top mic button; press-and-hold recording now lives on the tab bar Maya icon and a bottom composer mic button (both call the same `MayaRecordingContext`)
+- Fixed dead empty space appearing below chat messages — was caused by a status area unconditionally rendering even during active conversations
+- Added aesthetic empty-state illustration (orange icon circle + "Bolo aur Bill Banao!" heading) replacing the removed mic block
+- Added close (X) button in header, navigates to Home tab
+- Fixed Android 3-button navigation bar overlapping the custom tab bar on some devices — added dynamic `useSafeAreaInsets()` bottom padding to `app/(tabs)/_layout.tsx`, matching the pattern already used in other screens
+- Redesigned bill draft card to match Claude Design mockup: avatar initials, DRAFT badge, itemized rows, Cancel/Edit/Create Bill button row (Cancel clears the draft from that message; Edit is a placeholder, not yet wired)
+- Fixed text truncation and message bubble wrapping (`flexShrink: 1` on `msgBubble`)
+- Suggestion chips moved from a separate "Try saying" card to a horizontal scroll row directly above the composer
+- Status: implemented on branch `fix/maya-text-endpoint`, most changes visually confirmed on-device; close button and nav-bar-overlap fix pending final on-device confirmation
