@@ -12,6 +12,7 @@ import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import * as ImagePicker from 'expo-image-picker';
 
 interface LineItem {
   id: string;
@@ -49,6 +50,159 @@ export default function CreatePurchaseBillScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+
+  const uploadAndScanImage = async (uri: string) => {
+    setScanning(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'bill.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      // React Native FormData expects an object with uri, name, type
+      formData.append('file', {
+        uri,
+        name: filename,
+        type,
+      } as any);
+
+      if (businessId) {
+        formData.append('business_id', businessId);
+      }
+
+      const res = await api.post('/ai/scan-purchase-bill', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 60000, // 60 seconds timeout as requested
+      });
+
+      const data = res.data;
+      if (!data) throw new Error('No data returned');
+
+      if (data.invoice_number) setInvoiceNumber(data.invoice_number);
+      if (data.bill_date) setBillDate(data.bill_date);
+
+      // Resolve supplier
+      let matchedSupplier = null;
+      if (data.supplier_id) {
+        matchedSupplier = suppliers.find(s => String(s.id) === String(data.supplier_id));
+      }
+      
+      if (!matchedSupplier && data.supplier_name) {
+        const nameKey = data.supplier_name.toLowerCase().trim();
+        matchedSupplier = suppliers.find(s => s.name?.toLowerCase().trim() === nameKey);
+      }
+
+      if (!matchedSupplier && data.supplier_id) {
+        // Supplier might have been auto-created but not fetched yet in our local state. Reload.
+        try {
+          const bizRes = await api.get('/businesses/me');
+          const bId = bizRes.data.id;
+          const supRes = await api.get(`/suppliers/?business_id=${bId}`);
+          const newSuppliers = supRes.data || [];
+          setSuppliers(newSuppliers);
+          matchedSupplier = newSuppliers.find((s: any) => String(s.id) === String(data.supplier_id) || s.name?.toLowerCase().trim() === data.supplier_name?.toLowerCase().trim());
+        } catch {}
+      }
+
+      if (matchedSupplier) {
+        setSelectedSupplier(matchedSupplier);
+        const customerState = matchedSupplier.state || '';
+        const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
+        setIsInterState(!!interState);
+      }
+
+      // Line items mapping
+      let calculatedGstPercent = '18';
+      if (data.taxable_value && data.taxable_value > 0) {
+        const totalTax = (data.cgst_amount || 0) + (data.sgst_amount || 0) + (data.igst_amount || 0);
+        if (totalTax > 0) {
+          const gstRate = Math.round((totalTax / data.taxable_value) * 100);
+          const standardRates = [0, 5, 12, 18, 28];
+          const nearest = standardRates.reduce((prev, curr) => 
+            Math.abs(curr - gstRate) < Math.abs(prev - gstRate) ? curr : prev
+          );
+          calculatedGstPercent = String(nearest);
+        }
+      }
+
+      if (data.line_items && data.line_items.length > 0) {
+        const mapped = data.line_items.map((item: any) => {
+          const catalogMatch = items.find(
+            (i: any) => i.id === item.item_id || i.name?.toLowerCase().trim() === item.description?.toLowerCase().trim()
+          );
+
+          return {
+            id: Math.random().toString(),
+            item_id: catalogMatch?.id || item.item_id || null,
+            name: item.description || catalogMatch?.name || 'Scanned Item',
+            qty: String(item.quantity || 1),
+            rate: String(item.unit_price || catalogMatch?.price || 0),
+            gst_rate: String(item.gst_percent || catalogMatch?.gst_rate || calculatedGstPercent),
+            discount_percent: String(item.discount_percent || 0),
+            unit: (item.unit || catalogMatch?.unit || 'PCS').toUpperCase(),
+            isCustom: !catalogMatch,
+          };
+        });
+        setLineItems(mapped);
+      } else if (data.taxable_value && data.taxable_value > 0) {
+        // Fallback: single line item with aggregate total
+        setLineItems([{
+          id: Math.random().toString(),
+          item_id: null,
+          name: 'Goods / Services (from bill)',
+          qty: '1',
+          rate: String(data.taxable_value),
+          gst_rate: calculatedGstPercent,
+          discount_percent: '0',
+          unit: 'PCS',
+          isCustom: true
+        }]);
+      }
+
+      Alert.alert('Scan Success', 'Bill scanned and fields pre-filled!');
+    } catch (err: any) {
+      console.log('AI scan error:', err);
+      Alert.alert(
+        'Scan Failed',
+        err.response?.data?.detail || 'AI extraction failed. Please try again or fill in manually.'
+      );
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleScan = async (useCamera: boolean) => {
+    try {
+      const permissionResult = useCamera 
+        ? await ImagePicker.requestCameraPermissionsAsync() 
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Denied', `Permission to access ${useCamera ? 'camera' : 'photos'} is required.`);
+        return;
+      }
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedAsset = result.assets[0];
+      await uploadAndScanImage(selectedAsset.uri);
+    } catch (err) {
+      console.log('Scan launch error:', err);
+      Alert.alert('Error', 'Failed to pick image.');
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -189,8 +343,29 @@ export default function CreatePurchaseBillScreen() {
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
       >
+        {/* AI Scan Container */}
+        <View style={styles.scanContainer}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <Ionicons name="sparkles" size={16} color={Colors.primary} />
+            <Text style={styles.scanTitle}>Scan Bill with Maya AI</Text>
+          </View>
+          <Text style={styles.scanSubtitle}>
+            Upload or take a photo of your purchase bill. Maya will read and pre-fill the fields.
+          </Text>
+          <View style={styles.scanButtons}>
+            <TouchableOpacity style={styles.scanBtnAction} onPress={() => handleScan(true)}>
+              <Ionicons name="camera-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.scanBtnTextAction}>Use Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.scanBtnAction, styles.scanBtnGallery]} onPress={() => handleScan(false)}>
+              <Ionicons name="images-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+              <Text style={[styles.scanBtnTextAction, { color: Colors.primary }]}>Choose Photo</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Invoice No + Date row */}
-        <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 16, marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 4, marginBottom: 16 }}>
           <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.cardLabel}>BILL / INVOICE NO.</Text>
             <TextInput
@@ -500,6 +675,17 @@ export default function CreatePurchaseBillScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* AI Scanning Modal */}
+      <Modal visible={scanning} transparent animationType="fade">
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingTitle}>Reading Bill with Maya AI...</Text>
+            <Text style={styles.loadingSubtitle}>Extracting items, tax rates, dates, invoice numbers and supplier details.</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -531,5 +717,16 @@ const styles = StyleSheet.create({
   modalItemSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   modalItemPhone: { fontSize: 13, color: Colors.textSecondary },
   emptyContainer: { padding: 40, alignItems: 'center' },
-  emptyText: { color: Colors.textSecondary, fontSize: 14 }
+  emptyText: { color: Colors.textSecondary, fontSize: 14 },
+  scanContainer: { backgroundColor: '#F8FAFC', borderRadius: Radius.md, padding: 16, marginHorizontal: 16, marginTop: 16, marginBottom: 8, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed' },
+  scanTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
+  scanSubtitle: { fontSize: 11, color: Colors.textSecondary, marginTop: 2, lineHeight: 16 },
+  scanButtons: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  scanBtnAction: { flex: 1, backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  scanBtnGallery: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' },
+  scanBtnTextAction: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  loadingOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.65)', justifyContent: 'center', alignItems: 'center' },
+  loadingContent: { backgroundColor: '#fff', borderRadius: Radius.lg, padding: 24, width: '80%', alignItems: 'center', gap: 12 },
+  loadingTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  loadingSubtitle: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', lineHeight: 18 },
 });
