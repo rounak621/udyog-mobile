@@ -51,6 +51,7 @@ export default function CreatePurchaseBillScreen() {
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [customRoundOff, setCustomRoundOff] = useState<string | null>(null);
 
   const uploadAndScanImage = async (uri: string) => {
     setScanning(true);
@@ -268,7 +269,11 @@ export default function CreatePurchaseBillScreen() {
     return sum + (amount * gstRateVal / 100);
   }, 0);
 
-  const total = subtotal + tax;
+  const exactTotal = subtotal + tax;
+  const roundedTotal = Math.round(exactTotal);
+  const autoRoundOff = roundedTotal - exactTotal;
+  const roundOff = customRoundOff !== null ? (Number(customRoundOff) || 0) : autoRoundOff;
+  const finalTotal = exactTotal + roundOff;
 
   const handleSave = async () => {
     if (!selectedSupplier) { Alert.alert('Error', 'Please select a supplier'); return; }
@@ -287,7 +292,7 @@ export default function CreatePurchaseBillScreen() {
         supplier_invoice_number: invoiceNumber.trim(),
         subtotal: Number(subtotal.toFixed(2)),
         tax_amount: Number(tax.toFixed(2)),
-        total_amount: Number(total.toFixed(2)),
+        total_amount: Number(finalTotal.toFixed(2)),
         line_items: lineItems.map(l => ({
           item_id: l.item_id || null,
           description: l.name,
@@ -593,14 +598,51 @@ export default function CreatePurchaseBillScreen() {
             <Text style={{ fontSize: 13, color: '#92400E' }}>Subtotal (Taxable)</Text>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{subtotal.toFixed(2)}</Text>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
             <Text style={{ fontSize: 13, color: '#92400E' }}>{isInterState ? 'IGST' : 'CGST + SGST'}</Text>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toFixed(2)}</Text>
           </View>
+
+          {/* Round Off Line with manual input override */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>Round Off</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TextInput
+                style={{
+                  fontSize: 13,
+                  fontWeight: '600',
+                  color: '#92400E',
+                  backgroundColor: '#FED7AA',
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: 4,
+                  minWidth: 60,
+                  textAlign: 'right',
+                }}
+                keyboardType="numeric"
+                value={customRoundOff !== null ? customRoundOff : roundOff.toFixed(2)}
+                placeholder="0.00"
+                onChangeText={(text) => {
+                  setCustomRoundOff(text);
+                }}
+                onBlur={() => {
+                  if (customRoundOff === '') {
+                    setCustomRoundOff(null);
+                  }
+                }}
+              />
+              {customRoundOff !== null && (
+                <TouchableOpacity onPress={() => setCustomRoundOff(null)}>
+                  <Ionicons name="refresh-circle" size={16} color="#92400E" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
           <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginBottom: 10 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>Total Amount</Text>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.primary }}>₹{total.toFixed(2)}</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.primary }}>₹{finalTotal.toFixed(2)}</Text>
           </View>
         </View>
       </KeyboardAwareScrollView>
@@ -691,7 +733,7 @@ export default function CreatePurchaseBillScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { height: 60, paddingHorizontal: 16, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  header: { minHeight: 60, paddingHorizontal: 16, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', paddingBottom: 12 },
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
   headerSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
