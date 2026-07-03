@@ -15,18 +15,29 @@ export default function ReportsScreen() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const token = await getToken();
-        setAuthToken(token);
-        const res = await api.get('/reports/summary');
-        setStats(res.data);
-      } catch {}
+  const loadStats = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      
+      const res = await api.get(`/reports/summary?business_id=${bId}`);
+      setStats(res.data);
+    } catch (err) {
+      console.log('Reports summary error:', err);
+    } finally {
       setLoading(false);
-    };
-    load();
-  }, []);
+    }
+  }, [getToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadStats();
+    }, [loadStats])
+  );
 
   useFocusEffect(
     useCallback(() => {
