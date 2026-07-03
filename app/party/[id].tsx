@@ -12,7 +12,7 @@ export default function PartyDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [party, setParty] = useState<any>(null);
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,16 +20,53 @@ export default function PartyDetailScreen() {
       try {
         const bizRes = await api.get('/businesses/me');
         const bId = bizRes.data.id;
-        const [partyRes, invRes] = await Promise.allSettled([
-          api.get(`/customers/${id}?business_id=${bId}`),
-          api.get(`/invoices/?business_id=${bId}&limit=20&sort=desc`),
+        
+        const partyRes = await api.get(`/customers/${id}?business_id=${bId}`);
+        const partyData = partyRes.data;
+        setParty(partyData);
+
+        const pt = String(partyData?.party_type || 'customer').toLowerCase();
+        const isSupplier = pt === 'supplier' || pt === 'both';
+
+        const [invRes, pbRes] = await Promise.allSettled([
+          api.get(`/invoices/?business_id=${bId}&customer_id=${id}&limit=1000&skip=0`),
+          isSupplier ? api.get(`/purchase-bills/?business_id=${bId}&supplier_id=${id}`) : Promise.resolve({ data: [] }),
         ]);
-        if (partyRes.status === 'fulfilled') setParty(partyRes.value.data);
+
+        let invoiceList: any[] = [];
         if (invRes.status === 'fulfilled') {
           const invData = invRes.value.data;
-          const allInvoices = Array.isArray(invData) ? invData : Array.isArray(invData?.items) ? invData.items : Array.isArray(invData?.invoices) ? invData.invoices : [];
-          setInvoices(allInvoices.filter((inv: any) => String(inv.customer_id) === String(id) || String(inv.customer?.id) === String(id)));
+          invoiceList = Array.isArray(invData) ? invData : Array.isArray(invData?.items) ? invData.items : Array.isArray(invData?.invoices) ? invData.invoices : [];
         }
+
+        let pbList: any[] = [];
+        if (pbRes.status === 'fulfilled') {
+          const pbData = (pbRes.value as any)?.data;
+          pbList = Array.isArray(pbData) ? pbData : Array.isArray(pbData?.items) ? pbData.items : Array.isArray(pbData?.purchase_bills) ? pbData.purchase_bills : [];
+        }
+
+        const combined = [
+          ...invoiceList.map((inv: any) => ({
+            id: inv.id,
+            date: inv.invoice_date || inv.created_at,
+            billNumber: inv.invoice_number || '—',
+            amount: Number(inv.total_amount || 0),
+            paidAmount: Number(inv.paid_amount || inv.amount_paid || 0),
+            type: 'INVOICE',
+            status: Math.round(Number(inv.paid_amount || inv.amount_paid || 0)) >= Math.round(Number(inv.total_amount || 0)) ? 'PAID' : Number(inv.paid_amount || inv.amount_paid || 0) > 0 ? 'PARTIAL' : 'UNPAID',
+          })),
+          ...pbList.map((pb: any) => ({
+            id: pb.id,
+            date: pb.bill_date || pb.created_at,
+            billNumber: pb.supplier_invoice_number || '—',
+            amount: Number(pb.total_amount || 0),
+            paidAmount: Number(pb.paid_amount || pb.amount_paid || 0),
+            type: 'PURCHASE',
+            status: pb.payment_status || 'UNPAID',
+          }))
+        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        setBills(combined);
       } catch (err) {
         console.log('Party detail error:', err);
       } finally {
@@ -56,9 +93,21 @@ export default function PartyDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle} numberOfLines={1}>{party.name}</Text>
-        <TouchableOpacity style={styles.newInvBtn} onPress={() => router.push({ pathname: '/invoice/create', params: { customer_id: String(id) } })}>
+        <TouchableOpacity
+          style={styles.newInvBtn}
+          onPress={() => {
+            const pt = String(party?.party_type || 'customer').toLowerCase();
+            if (pt === 'supplier') {
+              router.push('/purchase-bills/create');
+            } else {
+              router.push({ pathname: '/invoice/create', params: { customer_id: String(id) } });
+            }
+          }}
+        >
           <Ionicons name="add" size={16} color="#fff" />
-          <Text style={styles.newInvBtnText}>New Invoice</Text>
+          <Text style={styles.newInvBtnText}>
+            {String(party?.party_type || 'customer').toLowerCase() === 'supplier' ? 'New Bill' : 'New Invoice'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -102,25 +151,73 @@ export default function PartyDetailScreen() {
 
         {/* Outstanding — Invoiced vs Paid */}
         {(() => {
-          const totalInvoiced = invoices.reduce((s, i) => s + (Number(i.total_amount) || 0), 0);
-          const totalPaid = invoices.reduce((s, i) => s + (Number(i.amount_paid ?? (i.payment_status === 'PAID' ? i.total_amount : 0)) || 0), 0);
-          const outstanding = totalInvoiced - totalPaid;
+          const totalSalesInvoiced = bills.filter(b => b.type === 'INVOICE').reduce((s, b) => s + b.amount, 0);
+          const totalSalesPaid = bills.filter(b => b.type === 'INVOICE').reduce((s, b) => s + b.paidAmount, 0);
+          
+          const totalPurchaseInvoiced = bills.filter(b => b.type === 'PURCHASE').reduce((s, b) => s + b.amount, 0);
+          const totalPurchasePaid = bills.filter(b => b.type === 'PURCHASE').reduce((s, b) => s + b.paidAmount, 0);
+          
+          const salesOutstanding = totalSalesInvoiced - totalSalesPaid;
+          const purchaseOutstanding = totalPurchaseInvoiced - totalPurchasePaid;
+          
+          const netOutstanding = salesOutstanding - purchaseOutstanding;
+          
+          const pt = String(party.party_type || 'customer').toLowerCase();
+          const isSupplierOnly = pt === 'supplier';
+          const isBoth = pt === 'both';
+          
           return (
             <View style={styles.balanceCard}>
-              <Text style={styles.balanceLabel}>Outstanding Balance</Text>
-              <Text style={[styles.balanceValue, outstanding > 0 ? styles.receivable : styles.receivableZero]}>
-                {fmt(Math.abs(outstanding))}
+              <Text style={styles.balanceLabel}>
+                {isSupplierOnly ? 'Net Payable Balance' : isBoth ? 'Net Outstanding Balance' : 'Outstanding Balance'}
               </Text>
+              <Text style={[
+                styles.balanceValue, 
+                netOutstanding > 0 ? styles.receivable : 
+                netOutstanding < 0 ? styles.payable : 
+                styles.receivableZero
+              ]}>
+                {fmt(Math.abs(netOutstanding))}
+              </Text>
+              
               <View style={styles.balanceRow}>
-                <View style={styles.balanceCol}>
-                  <Text style={styles.balanceSubLabel}>Total Invoiced</Text>
-                  <Text style={styles.balanceSubVal}>{fmt(totalInvoiced)}</Text>
-                </View>
-                <View style={styles.balanceDivider} />
-                <View style={styles.balanceCol}>
-                  <Text style={styles.balanceSubLabel}>Total Paid</Text>
-                  <Text style={[styles.balanceSubVal, { color: Colors.success }]}>{fmt(totalPaid)}</Text>
-                </View>
+                {isSupplierOnly ? (
+                  <>
+                    <View style={styles.balanceCol}>
+                      <Text style={styles.balanceSubLabel}>Total Purchase</Text>
+                      <Text style={styles.balanceSubVal}>{fmt(totalPurchaseInvoiced)}</Text>
+                    </View>
+                    <View style={styles.balanceDivider} />
+                    <View style={styles.balanceCol}>
+                      <Text style={styles.balanceSubLabel}>Total Paid</Text>
+                      <Text style={[styles.balanceSubVal, { color: Colors.success }]}>{fmt(totalPurchasePaid)}</Text>
+                    </View>
+                  </>
+                ) : isBoth ? (
+                  <>
+                    <View style={styles.balanceCol}>
+                      <Text style={styles.balanceSubLabel}>To Receive (Sales)</Text>
+                      <Text style={[styles.balanceSubVal, { color: Colors.success }]}>{fmt(salesOutstanding)}</Text>
+                    </View>
+                    <View style={styles.balanceDivider} />
+                    <View style={styles.balanceCol}>
+                      <Text style={styles.balanceSubLabel}>To Pay (Purchases)</Text>
+                      <Text style={[styles.balanceSubVal, { color: Colors.danger }]}>{fmt(purchaseOutstanding)}</Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.balanceCol}>
+                      <Text style={styles.balanceSubLabel}>Total Invoiced</Text>
+                      <Text style={styles.balanceSubVal}>{fmt(totalSalesInvoiced)}</Text>
+                    </View>
+                    <View style={styles.balanceDivider} />
+                    <View style={styles.balanceCol}>
+                      <Text style={styles.balanceSubLabel}>Total Paid</Text>
+                      <Text style={[styles.balanceSubVal, { color: Colors.success }]}>{fmt(totalSalesPaid)}</Text>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           );
@@ -129,22 +226,44 @@ export default function PartyDetailScreen() {
         {/* Recent Invoices */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Bills</Text>
-          {invoices.length === 0 ? (
+          {bills.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>No bills yet</Text>
             </View>
-          ) : invoices.map(inv => {
-            const ps = (inv.payment_status || inv.status || 'UNPAID').toUpperCase();
+          ) : bills.map(bill => {
+            const ps = (bill.status || 'UNPAID').toUpperCase();
             const isPaid = ps === 'PAID';
             const isPartial = ps === 'PARTIAL';
+            const isInvoice = bill.type === 'INVOICE';
+            
             return (
-              <TouchableOpacity key={inv.id} style={styles.invCard} onPress={() => router.push(`/invoice/${inv.id}`)}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.invNum}>{inv.invoice_number}</Text>
-                  <Text style={styles.invDate}>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN') : ''}</Text>
+              <TouchableOpacity 
+                key={`${bill.type}_${bill.id}`} 
+                style={styles.invCard} 
+                onPress={() => router.push(isInvoice ? `/invoice/${bill.id}` : `/purchase-bills/${bill.id}`)}
+              >
+                <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.invNum}>{bill.billNumber}</Text>
+                    <View style={{
+                      paddingHorizontal: 6,
+                      paddingVertical: 1.5,
+                      borderRadius: 10,
+                      backgroundColor: isInvoice ? '#EFF6FF' : '#FAF5FF',
+                    }}>
+                      <Text style={{
+                        fontSize: 9,
+                        fontWeight: '700',
+                        color: isInvoice ? '#1D4ED8' : '#6B21A8',
+                      }}>
+                        {isInvoice ? 'Sale' : 'Purchase'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.invDate}>{bill.date ? new Date(bill.date).toLocaleDateString('en-IN') : ''}</Text>
                 </View>
                 <View style={styles.invRight}>
-                  <Text style={styles.invAmount}>{fmt(inv.total_amount)}</Text>
+                  <Text style={styles.invAmount}>{fmt(bill.amount)}</Text>
                   <View style={[styles.badge, isPaid ? styles.paidBadge : isPartial ? styles.partialBadge : styles.unpaidBadge]}>
                     <Text style={[styles.badgeText, isPaid ? styles.paidText : isPartial ? styles.partialText : styles.unpaidText]}>{ps}</Text>
                   </View>
