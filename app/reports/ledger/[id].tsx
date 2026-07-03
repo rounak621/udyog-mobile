@@ -28,6 +28,8 @@ export default function LedgerDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [partyName, setPartyName] = useState('Unknown Party');
   const [statement, setStatement] = useState<LedgerLine[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [purchaseBills, setPurchaseBills] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -39,14 +41,18 @@ export default function LedgerDetailScreen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
 
-      // Parallel fetch party info and statement
-      const [partyRes, stmtRes] = await Promise.all([
+      // Parallel fetch party details, statement, invoices, and purchase bills
+      const [partyRes, stmtRes, invRes, billsRes] = await Promise.all([
         api.get(`/customers/${id}?business_id=${bId}`),
-        api.get(`/ledger/party/${id}?business_id=${bId}`)
+        api.get(`/ledger/party/${id}?business_id=${bId}`),
+        api.get(`/invoices/?business_id=${bId}&customer_id=${id}&skip=0&limit=200`),
+        api.get(`/purchase-bills/?business_id=${bId}&supplier_id=${id}&skip=0&limit=200`)
       ]);
 
       setPartyName(partyRes.data.name || 'Unknown Party');
       setStatement(stmtRes.data.statement || []);
+      setInvoices(Array.isArray(invRes.data) ? invRes.data : invRes.data?.items || []);
+      setPurchaseBills(Array.isArray(billsRes.data) ? billsRes.data : billsRes.data?.items || []);
       setError(null);
     } catch (err: any) {
       console.log('Ledger detail fetch error:', err);
@@ -71,6 +77,28 @@ export default function LedgerDetailScreen() {
       return () => sub.remove();
     }, [router])
   );
+
+  const getDocumentLink = (narration: string) => {
+    // Check if sales invoice reference
+    const invMatch = narration.match(/(?:Invoice #|Payment for Invoice #)([A-Za-z0-9-]+)/i);
+    if (invMatch) {
+      const invNum = invMatch[1];
+      const matched = invoices.find(inv => inv.invoice_number === invNum);
+      if (matched) {
+        return { type: 'SALE', id: matched.id, docNum: invNum };
+      }
+    }
+    // Check if purchase bill reference
+    const pbMatch = narration.match(/Purchase Bill ([A-Za-z0-9-]+)/i);
+    if (pbMatch) {
+      const billNum = pbMatch[1];
+      const matched = purchaseBills.find(bill => bill.supplier_invoice_number === billNum || bill.bill_number === billNum);
+      if (matched) {
+        return { type: 'PURCHASE', id: matched.id, docNum: billNum };
+      }
+    }
+    return null;
+  };
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
   const parseVal = (str: string) => Number(str) || 0;
@@ -157,12 +185,52 @@ export default function LedgerDetailScreen() {
               {statement.map((line, idx) => {
                 const debitVal = parseVal(line.debit);
                 const creditVal = parseVal(line.credit);
+                const docLink = getDocumentLink(line.narration);
                 
                 return (
-                  <View key={idx} style={styles.stmtRow}>
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.stmtRow}
+                    disabled={!docLink}
+                    onPress={() => {
+                      if (docLink) {
+                        if (docLink.type === 'SALE') {
+                          router.push(`/invoice/${docLink.id}`);
+                        } else if (docLink.type === 'PURCHASE') {
+                          router.push(`/purchase-bills/${docLink.id}`);
+                        }
+                      }
+                    }}
+                  >
                     <View style={styles.rowTop}>
                       <Text style={styles.stmtDate}>{formatDate(line.transaction_date)}</Text>
-                      <Text style={styles.stmtNarration} numberOfLines={2}>{line.narration}</Text>
+                      
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          {line.narration.toLowerCase().includes('payment') ? (
+                            <View style={[styles.typeBadge, styles.badgePayment]}>
+                              <Ionicons name="cash" size={10} color="#16a34a" />
+                              <Text style={[styles.typeBadgeText, { color: '#16a34a' }]}>Payment</Text>
+                            </View>
+                          ) : docLink ? (
+                            <View style={[styles.typeBadge, docLink.type === 'SALE' ? styles.badgeSale : styles.badgePurchase]}>
+                              <Ionicons name="document-text" size={10} color={docLink.type === 'SALE' ? '#7c3aed' : '#0284c7'} />
+                              <Text style={[styles.typeBadgeText, docLink.type === 'SALE' ? { color: '#7c3aed' } : { color: '#0284c7' }]}>
+                                {docLink.type === 'SALE' ? 'Sale' : 'Purchase'}
+                              </Text>
+                            </View>
+                          ) : null}
+                          
+                          {docLink && (
+                            <Text style={styles.linkIndicator}>
+                              Click to view bill <Ionicons name="open-outline" size={10} color={Colors.primary} />
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={[styles.stmtNarration, docLink && { color: Colors.primary, fontWeight: '500' }]} numberOfLines={2}>
+                          {line.narration}
+                        </Text>
+                      </View>
                       
                       {debitVal > 0 ? (
                         <Text style={[styles.amount, { color: Colors.danger }]}>
@@ -177,12 +245,12 @@ export default function LedgerDetailScreen() {
                       )}
                     </View>
                     <View style={styles.rowBot}>
-                      <Text style={styles.runningBalLabel}>Running Balance:</Text>
+                      <Text style={styles.runningBalLabel}>Balance:</Text>
                       <Text style={styles.runningBalVal}>
                         {fmt(parseVal(line.running_balance))} ({line.balance_type})
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -214,5 +282,11 @@ const styles = StyleSheet.create({
   amount: { fontSize: 12.5, fontWeight: '700', textAlign: 'right', width: 80 },
   rowBot: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
   runningBalLabel: { fontSize: 9.5, color: Colors.textMuted },
-  runningBalVal: { fontSize: 10.5, fontWeight: '600', color: Colors.textSecondary }
+  runningBalVal: { fontSize: 10.5, fontWeight: '600', color: Colors.textSecondary },
+  typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, borderWidth: 0.5 },
+  badgeSale: { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' },
+  badgePurchase: { backgroundColor: '#f0f9ff', borderColor: '#bae6fd' },
+  badgePayment: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  typeBadgeText: { fontSize: 8.5, fontWeight: '700', textTransform: 'uppercase' },
+  linkIndicator: { fontSize: 9, color: Colors.primary, fontWeight: '600' }
 });
