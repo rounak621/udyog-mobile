@@ -24,7 +24,7 @@ export default function ReportsScreen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
       
-      const res = await api.get(`/reports/summary?business_id=${bId}`);
+      const res = await api.get(`/reports/dashboard-stats?business_id=${bId}`);
       setStats(res.data);
     } catch (err) {
       console.log('Reports summary error:', err);
@@ -87,8 +87,8 @@ export default function ReportsScreen() {
             {[
               { label: 'Total Sales', value: fmt(stats?.total_sales || 0), color: Colors.primary },
               { label: 'Total Purchases', value: fmt(stats?.total_purchases || 0), color: Colors.info },
-              { label: 'Receivables', value: fmt(stats?.receivables || 0), color: Colors.success },
-              { label: 'Payables', value: fmt(stats?.payables || 0), color: Colors.danger },
+              { label: 'Receivables', value: fmt(stats?.you_will_get || 0), color: Colors.success },
+              { label: 'Payables', value: fmt(stats?.you_have_to_pay || 0), color: Colors.danger },
             ].map(s => (
               <View key={s.label} style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>{s.label}</Text>
