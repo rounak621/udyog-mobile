@@ -75,12 +75,18 @@ export default function ReportsScreen() {
     { icon: 'people-outline', title: 'Party Ledger', sub: 'Customer & supplier ledger', color: Colors.success, route: '/reports/ledger' },
     { icon: 'book-outline', title: 'Day Book', sub: 'Master ledger of all accounts', color: '#14b8a6', route: '/reports/day-book' },
     { icon: 'receipt-outline', title: 'GSTR-1', sub: 'Outward supplies summary', color: '#8b5cf6', route: '/reports/gstr1' },
-    { icon: 'calculator-outline', title: 'GSTR-3B', sub: 'Monthly GST summary', color: '#f59e0b', route: '/reports/gstr3b' },
     { icon: 'bar-chart-outline', title: 'Profit & Loss', sub: 'Income vs expense', color: Colors.danger, route: '/reports/profit-loss' },
   ];
 
   const handlePressReport = (r: typeof reports[0]) => {
-    const activeRoutes = ['/reports/sales', '/reports/purchase', '/reports/profit-loss', '/reports/day-book'];
+    const activeRoutes = [
+      '/reports/sales',
+      '/reports/purchase',
+      '/reports/profit-loss',
+      '/reports/day-book',
+      '/reports/ledger',
+      '/reports/gstr1'
+    ];
     if (activeRoutes.includes(r.route)) {
       router.push(r.route as any);
     } else {
