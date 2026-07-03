@@ -1,80 +1,123 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator
+  TouchableOpacity, ActivityIndicator, Alert
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useAuth } from '@clerk/clerk-expo';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api } from '../../services/api';
+import { api, setAuthToken } from '../../services/api';
 
 export default function PartyDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { getToken } = useAuth();
   const [party, setParty] = useState<any>(null);
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const bizRes = await api.get('/businesses/me');
-        const bId = bizRes.data.id;
-        
-        const partyRes = await api.get(`/customers/${id}?business_id=${bId}`);
-        const partyData = partyRes.data;
-        setParty(partyData);
+  const load = useCallback(async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      
+      const partyRes = await api.get(`/customers/${id}?business_id=${bId}`);
+      const partyData = partyRes.data;
+      setParty(partyData);
 
-        const pt = String(partyData?.party_type || 'customer').toLowerCase();
-        const isSupplier = pt === 'supplier' || pt === 'both';
+      const pt = String(partyData?.party_type || 'customer').toLowerCase();
+      const isSupplier = pt === 'supplier' || pt === 'both';
 
-        const [invRes, pbRes] = await Promise.allSettled([
-          api.get(`/invoices/?business_id=${bId}&customer_id=${id}&limit=1000&skip=0`),
-          isSupplier ? api.get(`/purchase-bills/?business_id=${bId}&supplier_id=${id}`) : Promise.resolve({ data: [] }),
-        ]);
+      const [invRes, pbRes] = await Promise.allSettled([
+        api.get(`/invoices/?business_id=${bId}&customer_id=${id}&limit=1000&skip=0`),
+        isSupplier ? api.get(`/purchase-bills/?business_id=${bId}&supplier_id=${id}`) : Promise.resolve({ data: [] }),
+      ]);
 
-        let invoiceList: any[] = [];
-        if (invRes.status === 'fulfilled') {
-          const invData = invRes.value.data;
-          invoiceList = Array.isArray(invData) ? invData : Array.isArray(invData?.items) ? invData.items : Array.isArray(invData?.invoices) ? invData.invoices : [];
-        }
-
-        let pbList: any[] = [];
-        if (pbRes.status === 'fulfilled') {
-          const pbData = (pbRes.value as any)?.data;
-          pbList = Array.isArray(pbData) ? pbData : Array.isArray(pbData?.items) ? pbData.items : Array.isArray(pbData?.purchase_bills) ? pbData.purchase_bills : [];
-        }
-
-        const combined = [
-          ...invoiceList.map((inv: any) => ({
-            id: inv.id,
-            date: inv.invoice_date || inv.created_at,
-            billNumber: inv.invoice_number || '—',
-            amount: Number(inv.total_amount || 0),
-            paidAmount: Number(inv.paid_amount || inv.amount_paid || 0),
-            type: 'INVOICE',
-            status: Math.round(Number(inv.paid_amount || inv.amount_paid || 0)) >= Math.round(Number(inv.total_amount || 0)) ? 'PAID' : Number(inv.paid_amount || inv.amount_paid || 0) > 0 ? 'PARTIAL' : 'UNPAID',
-          })),
-          ...pbList.map((pb: any) => ({
-            id: pb.id,
-            date: pb.bill_date || pb.created_at,
-            billNumber: pb.supplier_invoice_number || '—',
-            amount: Number(pb.total_amount || 0),
-            paidAmount: Number(pb.paid_amount || pb.amount_paid || 0),
-            type: 'PURCHASE',
-            status: pb.payment_status || 'UNPAID',
-          }))
-        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-        setBills(combined);
-      } catch (err) {
-        console.log('Party detail error:', err);
-      } finally {
-        setLoading(false);
+      let invoiceList: any[] = [];
+      if (invRes.status === 'fulfilled') {
+        const invData = invRes.value.data;
+        invoiceList = Array.isArray(invData) ? invData : Array.isArray(invData?.items) ? invData.items : Array.isArray(invData?.invoices) ? invData.invoices : [];
       }
-    };
-    load();
-  }, [id]);
+
+      let pbList: any[] = [];
+      if (pbRes.status === 'fulfilled') {
+        const pbData = (pbRes.value as any)?.data;
+        pbList = Array.isArray(pbData) ? pbData : Array.isArray(pbData?.items) ? pbData.items : Array.isArray(pbData?.purchase_bills) ? pbData.purchase_bills : [];
+      }
+
+      const combined = [
+        ...invoiceList.map((inv: any) => ({
+          id: inv.id,
+          date: inv.invoice_date || inv.created_at,
+          billNumber: inv.invoice_number || '—',
+          amount: Number(inv.total_amount || 0),
+          paidAmount: Number(inv.paid_amount || inv.amount_paid || 0),
+          type: 'INVOICE',
+          status: Math.round(Number(inv.paid_amount || inv.amount_paid || 0)) >= Math.round(Number(inv.total_amount || 0)) ? 'PAID' : Number(inv.paid_amount || inv.amount_paid || 0) > 0 ? 'PARTIAL' : 'UNPAID',
+        })),
+        ...pbList.map((pb: any) => ({
+          id: pb.id,
+          date: pb.bill_date || pb.created_at,
+          billNumber: pb.supplier_invoice_number || '—',
+          amount: Number(pb.total_amount || 0),
+          paidAmount: Number(pb.paid_amount || pb.amount_paid || 0),
+          type: 'PURCHASE',
+          status: pb.payment_status || 'UNPAID',
+        }))
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      setBills(combined);
+    } catch (err) {
+      console.log('Party detail error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, getToken]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const handleEdit = () => {
+    router.push(`/party/create?id=${id}`);
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Party?',
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await getToken();
+              setAuthToken(token);
+              const bizRes = await api.get('/businesses/me');
+              const bId = bizRes.data.id;
+              await api.delete(`/customers/${id}?business_id=${bId}`);
+              Alert.alert('Deleted', 'Party deleted successfully.');
+              router.back();
+            } catch (err: any) {
+              if (err.response?.status === 409) {
+                const errMsg = err.response?.data?.detail || 'Cannot delete party: active invoices or purchase bills exist.';
+                Alert.alert('Cannot Delete', errMsg);
+              } else {
+                Alert.alert('Error', 'Failed to delete party. Please try again.');
+              }
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
   const getInitials = (name: string) => name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
@@ -93,22 +136,30 @@ export default function PartyDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle} numberOfLines={1}>{party.name}</Text>
-        <TouchableOpacity
-          style={styles.newInvBtn}
-          onPress={() => {
-            const pt = String(party?.party_type || 'customer').toLowerCase();
-            if (pt === 'supplier') {
-              router.push('/purchase-bills/create');
-            } else {
-              router.push({ pathname: '/invoice/create', params: { customer_id: String(id) } });
-            }
-          }}
-        >
-          <Ionicons name="add" size={16} color="#fff" />
-          <Text style={styles.newInvBtnText}>
-            {String(party?.party_type || 'customer').toLowerCase() === 'supplier' ? 'New Bill' : 'New Invoice'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <TouchableOpacity onPress={handleEdit} style={{ padding: 2 }}>
+            <Ionicons name="pencil-outline" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDelete} style={{ padding: 2 }}>
+            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.newInvBtn}
+            onPress={() => {
+              const pt = String(party?.party_type || 'customer').toLowerCase();
+              if (pt === 'supplier') {
+                router.push('/purchase-bills/create');
+              } else {
+                router.push({ pathname: '/invoice/create', params: { customer_id: String(id) } });
+              }
+            }}
+          >
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={styles.newInvBtnText}>
+              {String(party?.party_type || 'customer').toLowerCase() === 'supplier' ? 'New Bill' : 'New Invoice'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

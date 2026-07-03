@@ -5,7 +5,7 @@ import {
   TouchableOpacity, TextInput, ActivityIndicator,
   Alert, Platform, Modal, FlatList
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -26,6 +26,7 @@ export default function CreatePartyScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { id } = useLocalSearchParams<{ id: string }>();
   
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -48,18 +49,31 @@ export default function CreatePartyScreen() {
   const onChangeAddress = useCallback((text: string) => setAddress(text), []);
 
   useEffect(() => {
-    const loadBusiness = async () => {
+    const loadBusinessAndParty = async () => {
       try {
         const token = await getToken();
         setAuthToken(token);
         const bizRes = await api.get('/businesses/me');
-        setBusinessId(bizRes.data.id);
+        const bId = bizRes.data.id;
+        setBusinessId(bId);
+
+        if (id) {
+          const res = await api.get(`/customers/${id}?business_id=${bId}`);
+          const p = res.data;
+          setName(p.name || '');
+          setPhone(p.phone || '');
+          setEmail(p.email || '');
+          setGstin(p.gstin || '');
+          setState(p.state || '');
+          setAddress(p.address || '');
+          setPartyType(p.party_type?.toLowerCase() || 'customer');
+        }
       } catch (err) {
-        console.log('Error loading business in party create:', err);
+        console.log('Error loading business/party in edit:', err);
       }
     };
-    loadBusiness();
-  }, []);
+    loadBusinessAndParty();
+  }, [id]);
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Party name is required'); return; }
@@ -78,20 +92,32 @@ export default function CreatePartyScreen() {
       const token = await getToken();
       setAuthToken(token);
 
-      const payload = {
-        name: name.trim(),
-        party_type: partyType.toLowerCase(),
-        phone: phone.trim() || undefined,
-        email: email.trim() || undefined,
-        gstin: gstin.trim().toUpperCase() || undefined,
-        state: state.trim() || undefined,
-        address: address.trim() || undefined,
-      };
-
-      await api.post(`/customers/?business_id=${businessId}`, payload);
+      if (id) {
+        const editPayload = {
+          name: name.trim(),
+          party_type: partyType.toLowerCase(),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+          gstin: gstin.trim().toUpperCase() || null,
+          state: state.trim() || null,
+          address: address.trim() || null,
+        };
+        await api.put(`/customers/${id}?business_id=${businessId}`, editPayload);
+      } else {
+        const payload = {
+          name: name.trim(),
+          party_type: partyType.toLowerCase(),
+          phone: phone.trim() || undefined,
+          email: email.trim() || undefined,
+          gstin: gstin.trim().toUpperCase() || undefined,
+          state: state.trim() || undefined,
+          address: address.trim() || undefined,
+        };
+        await api.post(`/customers/?business_id=${businessId}`, payload);
+      }
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create party');
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save party');
     } finally {
       setSaving(false);
     }
@@ -105,8 +131,8 @@ export default function CreatePartyScreen() {
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.headerTitle}>New Party</Text>
-          <Text style={styles.headerSub}>Draft · auto-saved</Text>
+          <Text style={styles.headerTitle}>{id ? 'Edit Party' : 'New Party'}</Text>
+          <Text style={styles.headerSub}>{id ? 'Update profile' : 'Draft · auto-saved'}</Text>
         </View>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
           {saving ? (
@@ -242,7 +268,7 @@ export default function CreatePartyScreen() {
 
         {/* Add Party Submit Button */}
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Add Party</Text>}
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{id ? 'Save Changes' : 'Add Party'}</Text>}
         </TouchableOpacity>
       </KeyboardAwareScrollView>
 
