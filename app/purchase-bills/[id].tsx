@@ -69,6 +69,47 @@ export default function PurchaseBillDetailScreen() {
     loadBill();
   }, [id]);
 
+  const handleEdit = () => {
+    if (!bill) return;
+    if (bill.payment_status !== 'UNPAID') {
+      Alert.alert(
+        'Cannot Edit',
+        'This purchase bill is already paid or partially paid and cannot be edited.'
+      );
+      return;
+    }
+    router.push(`/purchase-bills/create?id=${bill.id}`);
+  };
+
+  const handleDelete = () => {
+    if (!bill) return;
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to delete this purchase bill?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await getToken();
+              setAuthToken(token);
+              const bizRes = await api.get('/businesses/me');
+              const bId = bizRes.data.id;
+              await api.delete(`/purchase-bills/${bill.id}?business_id=${bId}`);
+              Alert.alert('Success', 'Purchase bill deleted successfully');
+              router.back();
+            } catch (err: any) {
+              const errMsg = err.response?.data?.detail || 'Failed to delete purchase bill';
+              Alert.alert('Error', errMsg);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (loading) {
@@ -92,6 +133,14 @@ export default function PurchaseBillDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Bill Details</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+          <TouchableOpacity onPress={handleEdit}>
+            <Ionicons name="pencil-outline" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>

@@ -5,7 +5,7 @@ import {
   TouchableOpacity, TextInput, ActivityIndicator,
   Alert, Modal, FlatList
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -30,6 +30,8 @@ export default function CreatePurchaseBillScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const editId = params.id;
   
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessState, setBusinessState] = useState('');
@@ -220,15 +222,70 @@ export default function CreatePurchaseBillScreen() {
         api.get(`/items/?business_id=${bId}&limit=100`),
       ]);
       
+      let fetchedSuppliers: any[] = [];
       if (supRes.status === 'fulfilled') {
-        setSuppliers(supRes.value.data || []);
+        fetchedSuppliers = supRes.value.data || [];
+        setSuppliers(fetchedSuppliers);
       }
+      
+      let fetchedItems: any[] = [];
       if (itemRes.status === 'fulfilled') {
         const data = itemRes.value.data;
-        setItems(Array.isArray(data) ? data : data.items || []);
+        fetchedItems = Array.isArray(data) ? data : data.items || [];
+        setItems(fetchedItems);
       }
-    } catch (err) {
+
+      if (editId) {
+        const billRes = await api.get(`/purchase-bills/${editId}?business_id=${bId}`);
+        const billData = billRes.data;
+        if (billData) {
+          if (billData.payment_status !== 'UNPAID') {
+            Alert.alert(
+              'Cannot Edit',
+              'This purchase bill is already paid or partially paid and cannot be edited.',
+              [{ text: 'OK', onPress: () => router.back() }]
+            );
+            return;
+          }
+          
+          setInvoiceNumber(billData.supplier_invoice_number || '');
+          setBillDate(billData.bill_date);
+          setCustomRoundOff(billData.round_off !== 0 ? String(billData.round_off) : null);
+          
+          if (billData.supplier) {
+            setSelectedSupplier(billData.supplier);
+            const customerState = billData.supplier.state || '';
+            const interState = bizRes.data.state && customerState && bizRes.data.state.toLowerCase().trim() !== customerState.toLowerCase().trim();
+            setIsInterState(!!interState);
+          }
+          
+          if (billData.items && billData.items.length > 0) {
+            const mapped = billData.items.map((item: any) => {
+              const catalogMatch = fetchedItems.find(
+                (i: any) => i.id === item.item_id || i.name?.toLowerCase().trim() === item.description?.toLowerCase().trim()
+              );
+              return {
+                id: Math.random().toString(),
+                item_id: item.item_id || null,
+                name: item.description,
+                qty: String(item.quantity),
+                rate: String(item.unit_price),
+                gst_rate: String(item.gst_percent),
+                discount_percent: String(item.discount_percent),
+                unit: (catalogMatch?.unit || 'PCS').toUpperCase(),
+                isCustom: !catalogMatch,
+              };
+            });
+            setLineItems(mapped);
+          }
+        }
+      }
+    } catch (err: any) {
       console.log('Load error in create purchase bill:', err);
+      if (editId) {
+        Alert.alert('Error', 'Failed to load purchase bill details');
+        router.back();
+      }
     }
   };
 
@@ -303,11 +360,16 @@ export default function CreatePurchaseBillScreen() {
         })),
       };
       
-      await api.post(`/purchase-bills/?business_id=${businessId}`, payload);
-      Alert.alert('Success', 'Purchase bill recorded successfully');
+      if (editId) {
+        await api.put(`/purchase-bills/${editId}?business_id=${businessId}`, payload);
+        Alert.alert('Success', 'Purchase bill updated successfully');
+      } else {
+        await api.post(`/purchase-bills/?business_id=${businessId}`, payload);
+        Alert.alert('Success', 'Purchase bill recorded successfully');
+      }
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create purchase bill');
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save purchase bill');
     } finally {
       setSaving(false);
     }
@@ -326,8 +388,8 @@ export default function CreatePurchaseBillScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.headerTitle}>New Purchase Bill</Text>
-          <Text style={styles.headerSub}>Manual Entry</Text>
+          <Text style={styles.headerTitle}>{editId ? 'Edit Purchase Bill' : 'New Purchase Bill'}</Text>
+          <Text style={styles.headerSub}>{editId ? 'Update Bill Details' : 'Manual Entry'}</Text>
         </View>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
           {saving ? (
