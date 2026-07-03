@@ -1,10 +1,10 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert
+  TouchableOpacity, ActivityIndicator, Alert, BackHandler
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
@@ -28,21 +28,42 @@ export default function ReportsScreen() {
     load();
   }, []);
 
-  const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
+  useFocusEffect(
+    useCallback(() => {
+      const onBack = () => {
+        router.replace('/(tabs)/more');
+        return true;
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+      return () => sub.remove();
+    }, [router])
+  );
+
+  const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
   const reports = [
     { icon: 'trending-up-outline', title: 'Sales Report', sub: 'Invoice-wise sales summary', color: Colors.primary, route: '/reports/sales' },
-    { icon: 'trending-down-outline', title: 'Purchase Report', sub: 'Purchase bill summary', color: Colors.info, route: '/reports/purchases' },
+    { icon: 'trending-down-outline', title: 'Purchase Report', sub: 'Purchase bill summary', color: Colors.info, route: '/reports/purchase' },
     { icon: 'people-outline', title: 'Party Ledger', sub: 'Customer & supplier ledger', color: Colors.success, route: '/reports/ledger' },
+    { icon: 'book-outline', title: 'Day Book', sub: 'Master ledger of all accounts', color: '#14b8a6', route: '/reports/day-book' },
     { icon: 'receipt-outline', title: 'GSTR-1', sub: 'Outward supplies summary', color: '#8b5cf6', route: '/reports/gstr1' },
     { icon: 'calculator-outline', title: 'GSTR-3B', sub: 'Monthly GST summary', color: '#f59e0b', route: '/reports/gstr3b' },
-    { icon: 'bar-chart-outline', title: 'Profit & Loss', sub: 'Income vs expense', color: Colors.danger, route: '/reports/pl' },
+    { icon: 'bar-chart-outline', title: 'Profit & Loss', sub: 'Income vs expense', color: Colors.danger, route: '/reports/profit-loss' },
   ];
+
+  const handlePressReport = (r: typeof reports[0]) => {
+    const activeRoutes = ['/reports/sales', '/reports/purchase', '/reports/profit-loss', '/reports/day-book'];
+    if (activeRoutes.includes(r.route)) {
+      router.push(r.route as any);
+    } else {
+      Alert.alert('Coming Soon', `${r.title} report will be available in the next update.`);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => router.replace('/(tabs)/more')} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Reports</Text>
@@ -69,7 +90,7 @@ export default function ReportsScreen() {
         <Text style={styles.sectionTitle}>Available Reports</Text>
         <View style={styles.reportsGrid}>
           {reports.map(r => (
-            <TouchableOpacity key={r.title} style={styles.reportCard} onPress={() => Alert.alert('Coming Soon', `${r.title} report will be available in the next update.`)}>
+            <TouchableOpacity key={r.title} style={styles.reportCard} onPress={() => handlePressReport(r)}>
               <View style={[styles.reportIcon, { backgroundColor: r.color + '15' }]}>
                 <Ionicons name={r.icon as any} size={24} color={r.color} />
               </View>
@@ -93,7 +114,7 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 16, fontWeight: '700' },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 12 },
   reportsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  reportCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, width: '47%', flex: 1 },
+  reportCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, width: '47%', flex: 1, minWidth: '45%' },
   reportIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   reportTitle: { fontSize: 13, fontWeight: '600', color: Colors.text, marginBottom: 4 },
   reportSub: { fontSize: 11, color: Colors.textSecondary, lineHeight: 15 },
