@@ -50,7 +50,24 @@ export default function ReportsScreen() {
     }, [router])
   );
 
-  const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  const formatIndianStyle = (n: number) => {
+    if (!n) return '₹0';
+    const abs = Math.abs(n);
+    const isNegative = n < 0;
+    let formatted = '';
+    if (abs >= 10000000) {
+      formatted = (abs / 10000000).toFixed(2) + 'Cr';
+    } else if (abs >= 100000) {
+      formatted = (abs / 100000).toFixed(2) + 'L';
+    } else if (abs >= 1000) {
+      formatted = (abs / 1000).toFixed(1) + 'K';
+    } else {
+      formatted = abs.toString();
+    }
+    formatted = formatted.replace(/\.0+([A-Za-z]+)$/, '$1');
+    formatted = formatted.replace(/(\.[0-9])0+([A-Za-z]+)$/, '$1$2');
+    return (isNegative ? '-₹' : '₹') + formatted;
+  };
 
   const reports = [
     { icon: 'trending-up-outline', title: 'Sales Report', sub: 'Invoice-wise sales summary', color: Colors.primary, route: '/reports/sales' },
@@ -85,14 +102,14 @@ export default function ReportsScreen() {
         {loading ? <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} /> : (
           <View style={styles.summaryRow}>
             {[
-              { label: 'Total Sales', value: fmt(stats?.total_sales || 0), color: Colors.primary },
-              { label: 'Total Purchases', value: fmt(stats?.total_purchases || 0), color: Colors.info },
-              { label: 'Receivables', value: fmt(stats?.you_will_get || 0), color: Colors.success },
-              { label: 'Payables', value: fmt(stats?.you_have_to_pay || 0), color: Colors.danger },
+              { label: 'Total Sales', value: formatIndianStyle(stats?.total_sales || 0), color: Colors.primary },
+              { label: 'Total Purchases', value: formatIndianStyle(stats?.total_purchases || 0), color: Colors.info },
+              { label: 'Receivables', value: formatIndianStyle(stats?.you_will_get || 0), color: Colors.success },
+              { label: 'Payables', value: formatIndianStyle(stats?.you_have_to_pay || 0), color: Colors.danger },
             ].map(s => (
               <View key={s.label} style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>{s.label}</Text>
-                <Text style={[styles.summaryValue, { color: s.color }]}>{s.value}</Text>
+                <Text style={[styles.summaryValue, { color: s.color }]} numberOfLines={1} adjustsFontSizeToFit>{s.value}</Text>
               </View>
             ))}
           </View>
@@ -120,9 +137,9 @@ const styles = StyleSheet.create({
   topbarTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
   content: { padding: 12, paddingBottom: 40 },
   summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
-  summaryCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 14, borderWidth: 0.5, borderColor: Colors.border, width: '47%', flex: 1 },
+  summaryCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, width: '47%', flex: 1 },
   summaryLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
-  summaryValue: { fontSize: 16, fontWeight: '700' },
+  summaryValue: { fontSize: 15, fontWeight: '700' },
   sectionTitle: { fontSize: 15, fontWeight: '600', color: Colors.text, marginBottom: 12 },
   reportsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   reportCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, width: '47%', flex: 1, minWidth: '45%' },
