@@ -6,8 +6,8 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Spacing, Radius } from '../constants/theme';
-import { api, setAuthToken } from '../services/api';
+import { Colors, Spacing, Radius } from '../../constants/theme';
+import { api, setAuthToken } from '../../services/api';
 
 export default function ReportsScreen() {
   const { getToken } = useAuth();
