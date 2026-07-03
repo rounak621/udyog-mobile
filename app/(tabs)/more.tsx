@@ -100,6 +100,7 @@ export default function MoreScreen() {
             <MenuItem icon="receipt-outline" label="Purchase Bills" onPress={() => router.push('/purchase-bills')} />
             <MenuItem icon="cube-outline" label="Items" onPress={() => router.push('/items')} />
             <MenuItem icon="layers-outline" label="Inventory" onPress={() => router.push('/inventory')} />
+            <MenuItem icon="bar-chart-outline" label="Reports" onPress={() => router.push('/reports')} />
           </View>
         </View>
 
