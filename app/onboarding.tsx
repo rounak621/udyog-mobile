@@ -70,7 +70,7 @@ export default function OnboardingScreen() {
           <View style={styles.caNotice}>
             <Ionicons name="information-circle-outline" size={20} color={Colors.info} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.caNoticeText}>CA features are available on the web platform only.</Text>
+              <Text style={styles.caNoticeText}>The CA auditor workspace is available on the web portal. Clients can assign you from Settings in their app.</Text>
               <TouchableOpacity onPress={() => Linking.openURL('https://app.udyogbook.in')}>
                 <Text style={styles.caLink}>Open Udyog Web →</Text>
               </TouchableOpacity>
