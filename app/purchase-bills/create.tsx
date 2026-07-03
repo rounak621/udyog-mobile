@@ -146,7 +146,7 @@ export default function CreatePurchaseBillScreen() {
             name: item.description || catalogMatch?.name || 'Scanned Item',
             qty: String(item.quantity || 1),
             rate: String(item.unit_price || catalogMatch?.price || 0),
-            gst_rate: String(item.gst_percent || catalogMatch?.gst_rate || calculatedGstPercent),
+            gst_rate: String(Math.round(Number(item.gst_percent || catalogMatch?.gst_rate || calculatedGstPercent || 0))),
             discount_percent: String(item.discount_percent || 0),
             unit: (item.unit || catalogMatch?.unit || 'PCS').toUpperCase(),
             isCustom: !catalogMatch,
@@ -270,7 +270,7 @@ export default function CreatePurchaseBillScreen() {
                 name: item.description,
                 qty: String(item.quantity),
                 rate: String(item.unit_price),
-                gst_rate: String(item.gst_percent),
+                gst_rate: String(Math.round(Number(item.gst_percent || 0))),
                 discount_percent: String(item.discount_percent),
                 unit: (catalogMatch?.unit || 'PCS').toUpperCase(),
                 isCustom: !catalogMatch,
@@ -665,8 +665,17 @@ export default function CreatePurchaseBillScreen() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toFixed(2)}</Text>
           </View>
 
-          {/* Round Off Line with manual input override */}
+          <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginVertical: 8 }} />
+          
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>Total Amount</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.primary }}>₹{finalTotal.toFixed(2)}</Text>
+          </View>
+
+          <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginBottom: 12 }} />
+
+          {/* Round Off Line with manual input override */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 13, color: '#92400E' }}>Round Off</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <TextInput
@@ -699,12 +708,6 @@ export default function CreatePurchaseBillScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          </View>
-
-          <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginBottom: 10 }} />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>Total Amount</Text>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.primary }}>₹{finalTotal.toFixed(2)}</Text>
           </View>
         </View>
       </KeyboardAwareScrollView>
