@@ -405,7 +405,7 @@ export default function CreatePurchaseBillScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1, backgroundColor: Colors.background }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={{ paddingBottom: 150 }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
@@ -665,17 +665,8 @@ export default function CreatePurchaseBillScreen() {
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E' }}>₹{tax.toFixed(2)}</Text>
           </View>
 
-          <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginVertical: 8 }} />
-          
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>Total Amount</Text>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.primary }}>₹{finalTotal.toFixed(2)}</Text>
-          </View>
-
-          <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginBottom: 12 }} />
-
           {/* Round Off Line with manual input override */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 4 }}>
             <Text style={{ fontSize: 13, color: '#92400E' }}>Round Off</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <TextInput
@@ -708,6 +699,12 @@ export default function CreatePurchaseBillScreen() {
                 </TouchableOpacity>
               )}
             </View>
+          </View>
+
+          <View style={{ height: 0.5, backgroundColor: '#FED7AA', marginBottom: 10 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#92400E' }}>Total Amount</Text>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: Colors.primary }}>₹{finalTotal.toFixed(2)}</Text>
           </View>
         </View>
       </KeyboardAwareScrollView>
