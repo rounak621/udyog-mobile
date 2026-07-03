@@ -9,6 +9,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { useBusiness } from '../../context/BusinessContext';
+import BusinessSwitcherModal from '../../components/BusinessSwitcherModal';
 
 interface DashboardStats {
   total_sales: number;
@@ -34,20 +36,18 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
-  const [business, setBusiness] = useState<any>(null);
+  const { business } = useBusiness();
+  const [showSwitcher, setShowSwitcher] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const loadData = async () => {
+    if (!business?.id) return;
     try {
       const token = await getToken();
       setAuthToken(token);
-      // Step 1: Get business info
-      const bizRes = await api.get('/businesses/me');
-      const biz = bizRes.data;
-      setBusiness(biz);
-      const businessId = biz.id;
+      const businessId = business.id;
 
       // Step 2: Get stats + invoices + notifications in parallel
       const [statsRes, invoiceRes, notifRes] = await Promise.allSettled([
@@ -88,8 +88,14 @@ export default function DashboardScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [business?.id])
   );
+
+  useEffect(() => {
+    if (business?.id) {
+      loadData();
+    }
+  }, [business?.id]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
@@ -124,16 +130,23 @@ export default function DashboardScreen() {
     );
   }
 
+  const gstinVal = business?.gst_number || (business as any)?.gstin;
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => setShowSwitcher(true)}
+        >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={styles.bizName}>{business?.name || 'My Business'}</Text>
             <Ionicons name="chevron-down" size={16} color="#0F172A" />
           </View>
-          <Text style={styles.bizSub} textBreakStrategy="simple">{business?.gstin ? `GSTIN · ${business.state || ''}` : business?.state || ''}</Text>
-        </View>
+          <Text style={styles.bizSub} textBreakStrategy="simple">
+            {gstinVal ? `GSTIN · ${business?.state || ''}` : business?.state || ''}
+          </Text>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity
             style={styles.bellBtn}
@@ -290,6 +303,11 @@ export default function DashboardScreen() {
       <TouchableOpacity style={styles.createFab} onPress={() => router.push('/invoice/create')}>
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
+
+      <BusinessSwitcherModal
+        visible={showSwitcher}
+        onClose={() => setShowSwitcher(false)}
+      />
     </View>
   );
 }

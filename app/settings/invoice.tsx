@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, Modal,
-  FlatList
+  Alert, Modal, FlatList
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -130,7 +130,7 @@ export default function InvoiceSettingsScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: Colors.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
@@ -138,7 +138,14 @@ export default function InvoiceSettingsScreen() {
         <Text style={styles.topbarTitle}>Invoice Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.content}
+        enableOnAndroid={true}
+        enableAutomaticScroll={true}
+        extraScrollHeight={180}
+        keyboardShouldPersistTaps="handled"
+      >
         
         {/* SECTION 1: INVOICE NUMBERING */}
         <View style={styles.card}>
@@ -257,7 +264,7 @@ export default function InvoiceSettingsScreen() {
           </TouchableOpacity>
         </View>
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Theme Modal */}
       <Modal visible={themeModalVisible} animationType="slide" transparent={true} onRequestClose={() => setThemeModalVisible(false)}>
@@ -293,7 +300,7 @@ export default function InvoiceSettingsScreen() {
         </View>
       </Modal>
 
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
