@@ -440,3 +440,11 @@ eas build --platform android
 - Fixed text truncation and message bubble wrapping (`flexShrink: 1` on `msgBubble`)
 - Suggestion chips moved from a separate "Try saying" card to a horizontal scroll row directly above the composer
 - Status: implemented on branch `fix/maya-text-endpoint`, most changes visually confirmed on-device; close button and nav-bar-overlap fix pending final on-device confirmation
+
+### v2.9.0 — Purchase Bills Edit/Delete + UX Fixes
+- Added native edit mode to `app/purchase-bills/create.tsx` via `?id=` param (unlike invoices, which still deep-link to web for editing) — pre-fills supplier, line items, round-off from `GET /purchase-bills/{id}`
+- Edit/delete restricted to UNPAID bills only, matching backend enforcement; clear warning shown for paid bills
+- Added Edit/Delete actions to `app/purchase-bills/[id].tsx` detail header
+- Fixed GST rate chip not highlighting on edit load — root cause was string/number mismatch (`"18.00" !== "18"`); normalized via `String(Math.round(Number(item.gst_percent || 0)))`
+- Fixed summary card order: Subtotal → Tax → Round Off (input) → Total Amount, with increased `KeyboardAwareScrollView` padding/scroll height so both Round Off and Total stay visible above the keyboard
+- Status: all changes committed (`5b7d225`, `5ff186e`, `e6ace08`) and confirmed working on-device
