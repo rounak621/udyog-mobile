@@ -1,6 +1,7 @@
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as Linking from 'expo-linking';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Platform, ActivityIndicator, Alert, Image, StatusBar
@@ -47,7 +48,9 @@ export default function LoginScreen() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     try {
-      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
+      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow({
+        redirectUrl: Linking.createURL('/(tabs)', { scheme: 'udyog' }),
+      });
       if (createdSessionId) {
         await setActiveOAuth!({ session: createdSessionId });
         router.replace('/(tabs)');

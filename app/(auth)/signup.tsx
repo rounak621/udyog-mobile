@@ -1,6 +1,7 @@
 import { useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import * as Linking from 'expo-linking';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Platform, ActivityIndicator, Alert, Image, StatusBar
@@ -49,7 +50,7 @@ export default function SignupScreen() {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === 'complete') {
         await setActive({ session: result.createdSessionId });
-        router.replace('/onboarding');
+        router.replace('/business-setup');
       }
     } catch (err: any) {
       Alert.alert('Verification Failed', err.errors?.[0]?.message || 'Invalid code');
@@ -61,10 +62,12 @@ export default function SignupScreen() {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     try {
-      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow();
+      const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow({
+        redirectUrl: Linking.createURL('/business-setup', { scheme: 'udyog' }),
+      });
       if (createdSessionId) {
         await setActiveOAuth!({ session: createdSessionId });
-        router.replace('/onboarding');
+        router.replace('/business-setup');
       }
     } catch (err: any) {
       Alert.alert('Google Sign In Failed', err.message || 'Something went wrong');
