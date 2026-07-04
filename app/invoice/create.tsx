@@ -70,7 +70,8 @@ export default function CreateInvoiceScreen() {
   const checkScale = useRef(new Animated.Value(0.4)).current;
 
   const scrollViewRef = useRef<any>(null);
-  const itemRefs = useRef<{ [key: string]: View | null }>({});
+  const itemPositions = useRef<{ [key: string]: number }>({});
+  const lineItemsSectionY = useRef(0);
 
   // Helper aliases to match mockup JSX names perfectly (moved below definitions)
 
@@ -215,17 +216,11 @@ export default function CreateInvoiceScreen() {
     const newId = Math.random().toString();
     setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', isCustom: false }]);
     setTimeout(() => {
-      const node = itemRefs.current[newId];
-      if (node && scrollViewRef.current) {
-        node.measureLayout(
-          scrollViewRef.current.getScrollResponder ? scrollViewRef.current.getScrollResponder() : scrollViewRef.current,
-          (x: number, y: number) => {
-            scrollViewRef.current.scrollToPosition(0, Math.max(0, y - 150), true);
-          },
-          () => {}
-        );
+      const y = itemPositions.current[newId];
+      if (typeof y === 'number' && scrollViewRef.current) {
+        scrollViewRef.current.scrollToPosition(0, Math.max(0, lineItemsSectionY.current + y - 150), true);
       }
-    }, 150);
+    }, 200);
   };
   const removeLineItem = (id: string) => setLineItems(prev => prev.filter(l => l.id !== id));
   const updateLineItem = useCallback((id: string, field: keyof LineItem, value: any) => {
@@ -435,11 +430,11 @@ export default function CreateInvoiceScreen() {
         </View>
 
         {/* Items Section */}
-        <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+        <View style={{ marginHorizontal: 16, marginBottom: 16 }} onLayout={(e) => { lineItemsSectionY.current = e.nativeEvent.layout.y; }}>
           <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>ITEMS · {lineItems.length}</Text>
           <View style={styles.card}>
             {lineItems.map((item, index) => (
-              <View key={item.id} ref={(el) => { itemRefs.current[item.id] = el; }}>
+              <View key={item.id} onLayout={(e) => { itemPositions.current[item.id] = e.nativeEvent.layout.y; }}>
                 {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   {/* Item name: Select button or Custom TextInput */}

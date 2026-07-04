@@ -67,7 +67,8 @@ export default function OrderCreateScreen() {
   const checkScale = useRef(new Animated.Value(0.4)).current;
 
   const scrollViewRef = useRef<any>(null);
-  const itemRefs = useRef<{ [key: string]: View | null }>({});
+  const itemPositions = useRef<{ [key: string]: number }>({});
+  const lineItemsSectionY = useRef(0);
 
   useEffect(() => {
     if (showSuccess) {
@@ -270,17 +271,11 @@ export default function OrderCreateScreen() {
       }
     ]);
     setTimeout(() => {
-      const node = itemRefs.current[newId];
-      if (node && scrollViewRef.current) {
-        node.measureLayout(
-          scrollViewRef.current.getScrollResponder ? scrollViewRef.current.getScrollResponder() : scrollViewRef.current,
-          (x: number, y: number) => {
-            scrollViewRef.current.scrollToPosition(0, Math.max(0, y - 150), true);
-          },
-          () => {}
-        );
+      const y = itemPositions.current[newId];
+      if (typeof y === 'number' && scrollViewRef.current) {
+        scrollViewRef.current.scrollToPosition(0, Math.max(0, lineItemsSectionY.current + y - 150), true);
       }
-    }, 150);
+    }, 200);
   };
 
   const handleRemoveField = (index: number) => {
@@ -645,11 +640,11 @@ export default function OrderCreateScreen() {
         </View>
 
         {/* Line Items Section */}
-        <View style={styles.section}>
+        <View style={styles.section} onLayout={(e) => { lineItemsSectionY.current = e.nativeEvent.layout.y; }}>
           <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>Line Items</Text>
 
           {items.map((row, index) => (
-            <View key={row.id} ref={(el) => { itemRefs.current[row.id] = el; }} style={styles.itemCard}>
+            <View key={row.id} onLayout={(e) => { itemPositions.current[row.id] = e.nativeEvent.layout.y; }} style={styles.itemCard}>
               <View style={styles.itemHeader}>
                 <Text style={styles.itemNumber}>Item #{index + 1}</Text>
                 <TouchableOpacity onPress={() => handleRemoveField(index)}>
