@@ -165,7 +165,7 @@ export default function RentalOverdueScreen() {
                 key={ord.id}
                 style={styles.card}
                 activeOpacity={0.8}
-                onPress={() => Alert.alert('Coming Soon', 'Order Details will be available in Phase 6.')}
+                onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
               >
                 {/* Top Section */}
                 <View style={styles.cardHeader}>
@@ -226,24 +226,6 @@ export default function RentalOverdueScreen() {
                       {paymentStatus}
                     </Text>
                   </View>
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => Alert.alert('Coming Soon', 'Record Return will be available in Phase 6.')}
-                  >
-                    <Ionicons name="enter-outline" size={15} color={Colors.primary} />
-                    <Text style={styles.actionButtonText}>Return</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, { borderLeftWidth: 1, borderLeftColor: Colors.border }]}
-                    onPress={() => Alert.alert('Coming Soon', 'Waive Late Fee will be available in Phase 6.')}
-                  >
-                    <Ionicons name="cut-outline" size={15} color={Colors.primary} />
-                    <Text style={styles.actionButtonText}>Waive Fee</Text>
-                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             );

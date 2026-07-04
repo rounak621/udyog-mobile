@@ -198,7 +198,7 @@ export default function RentalHistoryScreen() {
                 key={ord.id}
                 style={styles.card}
                 activeOpacity={0.8}
-                onPress={() => Alert.alert('Coming Soon', 'Order Details will be available in Phase 6.')}
+                onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
               >
                 {/* Top Section */}
                 <View style={styles.cardHeader}>
