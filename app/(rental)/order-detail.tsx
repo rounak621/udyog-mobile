@@ -179,7 +179,14 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await Sharing.shareAsync(fileUri);
+        Alert.alert(
+          'Invoice Downloaded',
+          `Saved to Udyog folder as ${fileName}`,
+          [
+            { text: 'Share', onPress: () => Sharing.shareAsync(fileUri) },
+            { text: 'Done', style: 'cancel' }
+          ]
+        );
       } else {
         Alert.alert('Error', 'Failed to generate invoice PDF.');
       }
@@ -219,7 +226,14 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await Sharing.shareAsync(fileUri);
+        Alert.alert(
+          'Statement Downloaded',
+          `Saved to Udyog folder as ${fileName}`,
+          [
+            { text: 'Share', onPress: () => Sharing.shareAsync(fileUri) },
+            { text: 'Done', style: 'cancel' }
+          ]
+        );
       } else {
         Alert.alert('Error', 'Failed to generate statement PDF.');
       }
