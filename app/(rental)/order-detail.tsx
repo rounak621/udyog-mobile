@@ -90,18 +90,28 @@ export default function OrderDetailScreen() {
   const [paymentNotes, setPaymentNotes] = useState('');
   const [showPayDatePicker, setShowPayDatePicker] = useState(false);
 
+  const [payments, setPayments] = useState<any[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [downloadingStatement, setDownloadingStatement] = useState(false);
+
   const loadOrderDetails = useCallback(async () => {
     if (!id || !business?.id) return;
     try {
       const token = await getToken();
       setAuthToken(token);
-      const res = await api.get(`/rental-orders/${id}?business_id=${business.id}`);
-      setOrder(res.data);
+      setLoadingPayments(true);
+      const [orderRes, paymentsRes] = await Promise.all([
+        api.get(`/rental-orders/${id}?business_id=${business.id}`),
+        api.get(`/rental-orders/${id}/payments?business_id=${business.id}`)
+      ]);
+      setOrder(orderRes.data);
+      setPayments(paymentsRes.data.payments || []);
     } catch (err) {
       console.log('Error fetching rental order details:', err);
       Alert.alert('Error', 'Failed to load order details.');
     } finally {
       setLoading(false);
+      setLoadingPayments(false);
     }
   }, [id, business?.id, getToken]);
 
@@ -146,7 +156,17 @@ export default function OrderDetailScreen() {
     try {
       setDownloading(true);
       const token = await getToken();
-      const fileUri = (FileSystem as any).documentDirectory + `invoice_${order.order_number}.pdf`;
+      
+      const safeOrderNumber = order.order_number.replace(/[\/\\]/g, '_');
+      const safeCustomerName = (order.customer_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${safeCustomerName}_${safeOrderNumber}_invoice.pdf`;
+      
+      const udyogDir = (FileSystem as any).documentDirectory + 'Udyog/';
+      const dirInfo = await FileSystem.getInfoAsync(udyogDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
+      }
+      const fileUri = udyogDir + fileName;
       
       const response = await FileSystem.downloadAsync(
         `${api.defaults.baseURL}/rental-orders/${order.id}/pdf?business_id=${business.id}`,
@@ -168,6 +188,46 @@ export default function OrderDetailScreen() {
       Alert.alert('Error', 'Failed to download and share invoice.');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleDownloadStatement = async () => {
+    if (!order || !business?.id) return;
+    try {
+      setDownloadingStatement(true);
+      const token = await getToken();
+      
+      const safeOrderNumber = order.order_number.replace(/[\/\\]/g, '_');
+      const safeCustomerName = (order.customer_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${safeCustomerName}_${safeOrderNumber}_statement.pdf`;
+      
+      const udyogDir = (FileSystem as any).documentDirectory + 'Udyog/';
+      const dirInfo = await FileSystem.getInfoAsync(udyogDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
+      }
+      const fileUri = udyogDir + fileName;
+      
+      const response = await FileSystem.downloadAsync(
+        `${api.defaults.baseURL}/rental-orders/${order.id}/payment-statement-pdf?business_id=${business.id}`,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        await Sharing.shareAsync(fileUri);
+      } else {
+        Alert.alert('Error', 'Failed to generate statement PDF.');
+      }
+    } catch (err) {
+      console.log('Statement download error:', err);
+      Alert.alert('Error', 'Failed to download and share statement.');
+    } finally {
+      setDownloadingStatement(false);
     }
   };
 
@@ -514,6 +574,57 @@ export default function OrderDetailScreen() {
           </View>
         </View>
 
+        {/* Payment Timeline Card */}
+        <View style={styles.card}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={styles.sectionLabel}>Payment Timeline</Text>
+            {payments.length > 0 && (
+              <TouchableOpacity
+                onPress={handleDownloadStatement}
+                disabled={downloadingStatement}
+                style={styles.downloadStatementLink}
+              >
+                {downloadingStatement ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="document-text-outline" size={14} color={Colors.primary} />
+                    <Text style={styles.downloadStatementLinkText}>Download Statement</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {loadingPayments ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 10 }} />
+          ) : payments.length === 0 ? (
+            <Text style={{ fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', marginVertical: 4 }}>
+              No payments recorded yet.
+            </Text>
+          ) : (
+            <View style={styles.timelineContainer}>
+              {payments.map((p, idx) => (
+                <View key={p.id || idx} style={styles.timelineRow}>
+                  <View style={styles.timelineLeft}>
+                    <View style={styles.timelineDot} />
+                    {idx < payments.length - 1 && <View style={styles.timelineLine} />}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <Text style={styles.timelineTitle}>
+                      Payment Received · ₹{Number(p.amount).toLocaleString('en-IN')}
+                    </Text>
+                    <Text style={styles.timelineSub}>
+                      {formatDate(p.payment_date)} · {p.payment_method}
+                    </Text>
+                    {p.notes ? <Text style={styles.timelineNotes}>{p.notes}</Text> : null}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* Action Controls */}
         <View style={{ marginTop: 8 }}>
           {(order.status === 'ACTIVE' || order.status === 'OVERDUE') && (
@@ -843,4 +954,16 @@ const styles = StyleSheet.create({
   outstandingValue: { fontSize: 20, fontWeight: '800', color: '#D97706', marginTop: 2 },
   dateSelector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FAFBFD' },
   dateSelectorText: { fontSize: 13, color: Colors.text, fontWeight: '500' },
+
+  downloadStatementLink: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2 },
+  downloadStatementLinkText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  timelineContainer: { marginTop: 4 },
+  timelineRow: { flexDirection: 'row', minHeight: 45 },
+  timelineLeft: { alignItems: 'center', marginRight: 10, width: 12 },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#22C55E', marginTop: 4 },
+  timelineLine: { width: 2, flex: 1, backgroundColor: '#E2E8F0', marginVertical: 4 },
+  timelineContent: { flex: 1, paddingBottom: 12 },
+  timelineTitle: { fontSize: 13, fontWeight: '600', color: Colors.text },
+  timelineSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  timelineNotes: { fontSize: 11, color: '#F97316', fontWeight: '500', marginTop: 2, fontStyle: 'italic' },
 });

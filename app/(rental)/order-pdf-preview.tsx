@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,8 +12,9 @@ export default function OrderPdfPreviewScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-  if (!shareToken) {
+  if (!shareToken || hasError) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
@@ -24,13 +25,18 @@ export default function OrderPdfPreviewScreen() {
         </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.danger} />
-          <Text style={styles.errorText}>Preview token is missing. Please try again.</Text>
+          <Text style={styles.errorText}>
+            {!shareToken ? 'Preview token is missing.' : 'Failed to generate PDF preview. Please try downloading instead.'}
+          </Text>
         </View>
       </View>
     );
   }
 
   const pdfUrl = `${api.defaults.baseURL}/public/rental/${shareToken}/pdf?mode=inline`;
+  const viewerUrl = Platform.OS === 'android'
+    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`
+    : pdfUrl;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -46,10 +52,12 @@ export default function OrderPdfPreviewScreen() {
       {/* WebView Container */}
       <View style={{ flex: 1, position: 'relative' }}>
         <WebView
-          source={{ uri: pdfUrl }}
+          source={{ uri: viewerUrl }}
           style={{ flex: 1 }}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}
+          onError={() => setHasError(true)}
+          onHttpError={() => setHasError(true)}
         />
         {loading && (
           <View style={styles.loadingOverlay}>
