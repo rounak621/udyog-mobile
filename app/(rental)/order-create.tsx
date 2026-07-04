@@ -63,6 +63,7 @@ export default function OrderCreateScreen() {
 
   // Form Fields
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date(Date.now() + 86400000)); // Default 1 day later
   const [rateType, setRateType] = useState('DAILY');
@@ -99,6 +100,7 @@ export default function OrderCreateScreen() {
   const [showAssetModal, setShowAssetModal] = useState(false);
 
   // Date Pickers Visibility
+  const [showInvoicePicker, setShowInvoicePicker] = useState(false);
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
 
@@ -321,7 +323,7 @@ export default function OrderCreateScreen() {
 
       const payload = {
         customer_id: selectedCustomer.id,
-        invoice_date: null,
+        invoice_date: invoiceDate.toISOString().split('T')[0],
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0],
         rental_rate_type: rateType,
@@ -425,6 +427,29 @@ export default function OrderCreateScreen() {
         {/* Rental Dates Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Rental Timeline</Text>
+
+          {/* Invoice Date Picker */}
+          <View style={[styles.fieldContainer, { marginBottom: 12 }]}>
+            <Text style={styles.fieldLabel}>Invoice Date</Text>
+            <TouchableOpacity style={styles.dateSelector} onPress={() => setShowInvoicePicker(true)}>
+              <Text style={styles.dateSelectorText}>
+                {invoiceDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </Text>
+              <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
+            </TouchableOpacity>
+            {showInvoicePicker && (
+              <DateTimePicker
+                value={invoiceDate}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowInvoicePicker(false);
+                  if (date) setInvoiceDate(date);
+                }}
+              />
+            )}
+          </View>
+
           <View style={styles.flexRow}>
             {/* Start Date Picker */}
             <View style={{ flex: 1 }}>
