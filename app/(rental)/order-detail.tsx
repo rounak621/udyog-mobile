@@ -7,6 +7,7 @@ import {
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Colors, Spacing, Radius } from '../../constants/theme';
@@ -50,6 +51,7 @@ interface RentalOrder {
   notes?: string;
   items: RentalOrderItem[];
   days_overdue?: number;
+  share_token?: string;
 }
 
 const CONDITION_OPTIONS = [
@@ -80,6 +82,13 @@ export default function OrderDetailScreen() {
   const [waiveLateFee, setWaiveLateFee] = useState(false);
   const [markAsPaid, setMarkAsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+
+  // Payment Modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
+  const [paymentNotes, setPaymentNotes] = useState('');
+  const [showPayDatePicker, setShowPayDatePicker] = useState(false);
 
   const loadOrderDetails = useCallback(async () => {
     if (!id || !business?.id) return;
@@ -162,38 +171,24 @@ export default function OrderDetailScreen() {
     }
   };
 
-  const handleMarkPaid = async () => {
+  const handleSavePayment = async () => {
     if (!order || !business?.id) return;
-    Alert.alert(
-      'Mark as Paid',
-      'Choose payment mode to record cash/bank payment:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'CASH',
-          onPress: () => submitPayment('CASH')
-        },
-        {
-          text: 'UPI',
-          onPress: () => submitPayment('UPI')
-        },
-        {
-          text: 'BANK TRANSFER',
-          onPress: () => submitPayment('BANK_TRANSFER')
-        }
-      ]
-    );
-  };
-
-  const submitPayment = async (method: string) => {
     try {
       setSubmitting(true);
       const token = await getToken();
       setAuthToken(token);
-      await api.post(`/rental-orders/${order?.id}/mark-paid?business_id=${business?.id}`, {
-        payment_method: method
+
+      const amount = paymentAmount.trim() ? parseFloat(paymentAmount) : undefined;
+
+      await api.post(`/rental-orders/${order.id}/mark-paid?business_id=${business.id}`, {
+        payment_method: paymentMethod,
+        paid_amount: amount,
+        payment_date: paymentDate.toISOString().split('T')[0],
+        notes: paymentNotes.trim() || null
       });
+
       Alert.alert('Success', 'Payment recorded successfully.');
+      setShowPaymentModal(false);
       loadOrderDetails();
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to record payment.');
@@ -348,6 +343,19 @@ export default function OrderDetailScreen() {
         </View>
 
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => {
+              if (order.share_token) {
+                router.push(`/(rental)/order-pdf-preview?shareToken=${order.share_token}`);
+              } else {
+                Alert.alert('Error', 'Invoice preview is not available.');
+              }
+            }}
+            style={[styles.headerIconBtn, { marginRight: 8 }]}
+          >
+            <Ionicons name="eye-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={handleDownloadPDF} disabled={downloading} style={styles.headerIconBtn}>
             {downloading ? (
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -516,7 +524,16 @@ export default function OrderDetailScreen() {
           )}
 
           {order.payment_status !== 'PAID' && order.status !== 'CANCELLED' && (
-            <TouchableOpacity style={[styles.actionButtonSecondary, { marginTop: 10 }]} onPress={handleMarkPaid}>
+            <TouchableOpacity
+              style={[styles.actionButtonSecondary, { marginTop: 10 }]}
+              onPress={() => {
+                setPaymentAmount('');
+                setPaymentDate(new Date());
+                setPaymentMethod('CASH');
+                setPaymentNotes('');
+                setShowPaymentModal(true);
+              }}
+            >
               <Ionicons name="cash-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.actionButtonSecondaryText}>Mark Paid</Text>
             </TouchableOpacity>
@@ -660,6 +677,107 @@ export default function OrderDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Payment Modal (Bottom Sheet style) */}
+      <Modal visible={showPaymentModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Receive Payment</Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+              {/* Outstanding Amount amber box */}
+              <View style={styles.outstandingBox}>
+                <Text style={styles.outstandingLabel}>Outstanding Amount</Text>
+                <Text style={styles.outstandingValue}>
+                  ₹{(Math.max(0, parseFloat(order.total_amount) - parseFloat(order.paid_amount))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+
+              {/* Amount to receive */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.modalLabel}>Payment Amount (₹)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Leave empty for full outstanding"
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                  keyboardType="numeric"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Date */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.modalLabel}>Payment Date</Text>
+                <TouchableOpacity style={styles.dateSelector} onPress={() => setShowPayDatePicker(true)}>
+                  <Text style={styles.dateSelectorText}>
+                    {paymentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
+                </TouchableOpacity>
+                {showPayDatePicker && (
+                  <DateTimePicker
+                    value={paymentDate}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                      setShowPayDatePicker(false);
+                      if (date) setPaymentDate(date);
+                    }}
+                  />
+                )}
+              </View>
+
+              {/* Payment Method */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.modalLabel}>Payment Method</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'].map((method) => {
+                    const isSelected = paymentMethod === method;
+                    return (
+                      <TouchableOpacity
+                        key={method}
+                        style={[styles.gstChip, isSelected ? styles.gstChipActive : null]}
+                        onPress={() => setPaymentMethod(method)}
+                      >
+                        <Text style={[styles.gstChipText, isSelected ? styles.gstChipTextActive : null]}>
+                          {method.replace('_', ' ')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Notes */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.modalLabel}>Payment Notes</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 50, textAlignVertical: 'top' }]}
+                  placeholder="e.g. Received by Rounak · UPI ref: 123456"
+                  value={paymentNotes}
+                  onChangeText={setPaymentNotes}
+                  multiline
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.submitReturnBtn} onPress={handleSavePayment} disabled={submitting}>
+                {submitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.submitReturnBtnText}>Record Payment</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -719,4 +837,10 @@ const styles = StyleSheet.create({
 
   submitReturnBtn: { backgroundColor: Colors.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
   submitReturnBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  outstandingBox: { backgroundColor: '#FFFBEB', borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: '#FDE68A', alignItems: 'center' },
+  outstandingLabel: { fontSize: 11, fontWeight: '700', color: '#B45309', textTransform: 'uppercase', letterSpacing: 0.5 },
+  outstandingValue: { fontSize: 20, fontWeight: '800', color: '#D97706', marginTop: 2 },
+  dateSelector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#FAFBFD' },
+  dateSelectorText: { fontSize: 13, color: Colors.text, fontWeight: '500' },
 });
