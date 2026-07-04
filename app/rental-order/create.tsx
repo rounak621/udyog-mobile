@@ -1,15 +1,15 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, Modal, FlatList, ScrollView
+  ActivityIndicator, Alert, Modal, FlatList, ScrollView,
+  Animated, Easing
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Colors, Spacing, Radius } from '../../constants/theme';
@@ -61,6 +61,39 @@ export default function OrderCreateScreen() {
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
+
+  const circleScale = useRef(new Animated.Value(0)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    if (showSuccess) {
+      circleScale.setValue(0);
+      checkOpacity.setValue(0);
+      checkScale.setValue(0.4);
+      Animated.sequence([
+        Animated.spring(circleScale, {
+          toValue: 1,
+          tension: 150,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.parallel([
+          Animated.timing(checkOpacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(checkScale, {
+            toValue: 1,
+            duration: 200,
+            easing: Easing.out(Easing.back(1.6)),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]).start();
+    }
+  }, [showSuccess]);
 
   // Master Data
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -896,31 +929,20 @@ export default function OrderCreateScreen() {
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 + insets.bottom }}>
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 100, height: 100, marginBottom: 4 }}>
-                <WebView
-                  source={{
-                    html: `
-                      <html>
-                        <head>
-                          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-                          <style>
-                            * { margin: 0; padding: 0; overflow: hidden; background: transparent; }
-                            body { display: flex; align-items: center; justify-content: center; height: 100vh; }
-                            dotlottie-wc { width: 100%; height: 100%; }
-                          </style>
-                        </head>
-                        <body>
-                          <script type="module" src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.2.5/dist/dotlottie-wc.js"></script>
-                          <dotlottie-wc src="https://lottie.host/b0919acf-a91e-438d-8853-c5be8f14b6fd/YnUOOp86zM.lottie" autoplay speed="1"></dotlottie-wc>
-                        </body>
-                      </html>
-                    `
-                  }}
-                  style={{ backgroundColor: 'transparent' }}
-                  scrollEnabled={false}
-                  javaScriptEnabled={true}
-                />
-              </View>
+              <Animated.View
+                style={{
+                  width: 64, height: 64, borderRadius: 32,
+                  backgroundColor: '#16A34A',
+                  alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 14,
+                  transform: [{ scale: circleScale }],
+                  shadowColor: '#16A34A', shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+                }}
+              >
+                <Animated.View style={{ opacity: checkOpacity, transform: [{ scale: checkScale }] }}>
+                  <Ionicons name="checkmark-sharp" size={36} color="#fff" />
+                </Animated.View>
+              </Animated.View>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Order Created!</Text>
               <Text style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>{createdOrder?.order_number}</Text>
             </View>
