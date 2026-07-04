@@ -894,13 +894,31 @@ export default function OrderCreateScreen() {
       {/* Success Modal */}
       <Modal visible={showSuccess} transparent animationType="slide">
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 + insets.bottom }}>
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
-              <View style={{ width: 140, height: 140, marginBottom: 8 }}>
+              <View style={{ width: 100, height: 100, marginBottom: 4 }}>
                 <WebView
-                  source={{ uri: 'https://lottie.host/embed/b0919acf-a91e-438d-8853-c5be8f14b6fd/YnUOOp86zM.lottie' }}
+                  source={{
+                    html: `
+                      <html>
+                        <head>
+                          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+                          <style>
+                            * { margin: 0; padding: 0; overflow: hidden; background: transparent; }
+                            body { display: flex; align-items: center; justify-content: center; height: 100vh; }
+                            dotlottie-wc { width: 100%; height: 100%; }
+                          </style>
+                        </head>
+                        <body>
+                          <script type="module" src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.2.5/dist/dotlottie-wc.js"></script>
+                          <dotlottie-wc src="https://lottie.host/b0919acf-a91e-438d-8853-c5be8f14b6fd/YnUOOp86zM.lottie" autoplay speed="1"></dotlottie-wc>
+                        </body>
+                      </html>
+                    `
+                  }}
                   style={{ backgroundColor: 'transparent' }}
                   scrollEnabled={false}
+                  javaScriptEnabled={true}
                 />
               </View>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Order Created!</Text>
