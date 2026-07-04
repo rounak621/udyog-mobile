@@ -64,6 +64,10 @@ export default function RentalTabsLayout() {
       {/* Hidden screens — navigated to from More, not shown in tab bar */}
       <Tabs.Screen name="overdue" options={{ href: null }} />
       <Tabs.Screen name="history" options={{ href: null }} />
+      <Tabs.Screen name="product-create" options={{ href: null }} />
+      <Tabs.Screen name="product-bulk-add" options={{ href: null }} />
+      <Tabs.Screen name="asset-list" options={{ href: null }} />
+      <Tabs.Screen name="asset-bulk-add" options={{ href: null }} />
     </Tabs>
   );
 }
