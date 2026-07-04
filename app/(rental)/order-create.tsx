@@ -48,7 +48,7 @@ interface OrderItem {
   availableQtyMsg: string;
 }
 
-const GST_RATES = ['0', '5', '12', '18', '28'];
+const GST_RATES = ['0', '5', '18', '40'];
 
 export default function OrderCreateScreen() {
   const { getToken } = useAuth();
