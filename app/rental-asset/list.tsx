@@ -164,7 +164,7 @@ export default function RentalAssetListScreen() {
         <TouchableOpacity
           onPress={() =>
             router.push({
-              pathname: '/(rental)/asset-bulk-add',
+              pathname: '/rental-asset/bulk-add',
               params: { productId, productName }
             })
           }

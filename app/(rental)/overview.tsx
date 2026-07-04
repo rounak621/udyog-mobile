@@ -184,7 +184,7 @@ export default function RentalOverviewScreen() {
         <View style={styles.quickActionsRow}>
           <TouchableOpacity
             style={styles.quickAction}
-            onPress={() => router.push('/(rental)/order-create')}
+            onPress={() => router.push('/rental-order/create')}
           >
             <View style={styles.quickActionIcon}>
               <Ionicons name="add" size={20} color={Colors.primary} />
@@ -305,7 +305,7 @@ export default function RentalOverviewScreen() {
                 <TouchableOpacity
                   key={ord.id}
                   style={[styles.orderCard, { borderLeftWidth: 4, borderLeftColor: isOverdue ? Colors.danger : Colors.success }]}
-                  onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
+                  onPress={() => router.push(`/rental-order/${ord.id}`)}
                 >
                   <View style={styles.orderIcon}>
                     <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />

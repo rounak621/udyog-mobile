@@ -168,7 +168,7 @@ export default function RentalOverdueScreen() {
                 key={ord.id}
                 style={[styles.card, { borderLeftWidth: 4, borderLeftColor: Colors.danger }]}
                 activeOpacity={0.8}
-                onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
+                onPress={() => router.push(`/rental-order/${ord.id}`)}
               >
                 {/* Top Section */}
                 <View style={styles.cardHeader}>

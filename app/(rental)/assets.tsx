@@ -131,7 +131,7 @@ export default function RentalAssetsScreen() {
         <Text style={styles.title}>Asset Management</Text>
         {products.length > 0 && (
           <TouchableOpacity
-            onPress={() => router.push('/(rental)/asset-bulk-add')}
+            onPress={() => router.push('/rental-asset/bulk-add')}
             style={styles.headerIconBtn}
           >
             <Ionicons name="add" size={24} color={Colors.primary} />
@@ -184,7 +184,7 @@ export default function RentalAssetsScreen() {
                   activeOpacity={0.8}
                   onPress={() =>
                     router.push({
-                      pathname: '/(rental)/asset-list',
+                      pathname: '/rental-asset/list',
                       params: { productId: stat.productId, productName: stat.productName }
                     })
                   }

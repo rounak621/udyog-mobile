@@ -120,7 +120,7 @@ export default function RentalOrdersScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>Active Rental Orders</Text>
         <TouchableOpacity
-          onPress={() => router.push('/(rental)/order-create')}
+          onPress={() => router.push('/rental-order/create')}
           style={styles.headerIconBtn}
         >
           <Ionicons name="add" size={24} color={Colors.primary} />
@@ -168,7 +168,7 @@ export default function RentalOrdersScreen() {
                 key={ord.id}
                 style={[styles.card, { borderLeftWidth: 4, borderLeftColor: isOverdue ? Colors.danger : Colors.success }]}
                 activeOpacity={0.8}
-                onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
+                onPress={() => router.push(`/rental-order/${ord.id}`)}
               >
                 {/* Top Section */}
                 <View style={styles.cardHeader}>

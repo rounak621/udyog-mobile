@@ -420,7 +420,7 @@ export default function OrderDetailScreen() {
           <TouchableOpacity
             onPress={() => {
               if (order.share_token) {
-                router.push(`/(rental)/order-pdf-preview?shareToken=${order.share_token}`);
+                router.push(`/rental-order/pdf-preview?shareToken=${order.share_token}`);
               } else {
                 Alert.alert('Error', 'Invoice preview is not available.');
               }

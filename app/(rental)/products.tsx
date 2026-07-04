@@ -96,13 +96,13 @@ export default function RentalProductsScreen() {
         <Text style={styles.title}>Rental Products</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity
-            onPress={() => router.push('/(rental)/product-bulk-add')}
+            onPress={() => router.push('/rental-product/bulk-add')}
             style={styles.headerIconBtn}
           >
             <Ionicons name="list-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => router.push('/(rental)/product-create')}
+            onPress={() => router.push('/rental-product/create')}
             style={styles.headerIconBtn}
           >
             <Ionicons name="add" size={24} color={Colors.primary} />
@@ -143,7 +143,7 @@ export default function RentalProductsScreen() {
             {!searchQuery && (
               <TouchableOpacity
                 style={styles.emptyBtn}
-                onPress={() => router.push('/(rental)/product-create')}
+                onPress={() => router.push('/rental-product/create')}
               >
                 <Text style={styles.emptyBtnText}>Add First Product</Text>
               </TouchableOpacity>
@@ -155,7 +155,7 @@ export default function RentalProductsScreen() {
               key={p.id}
               style={styles.card}
               activeOpacity={0.8}
-              onPress={() => router.push(`/(rental)/product-create?id=${p.id}`)}
+              onPress={() => router.push(`/rental-product/create?id=${p.id}`)}
             >
               <View style={styles.productInfo}>
                 <Text style={styles.productName} numberOfLines={1}>{p.name}</Text>
