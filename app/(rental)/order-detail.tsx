@@ -409,8 +409,8 @@ export default function OrderDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.headerTitle}>Order #{order.order_number}</Text>
+        <View style={{ flex: 1, marginLeft: 6 }}>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>Order #{order.order_number}</Text>
           <View style={[styles.badge, { backgroundColor: statusStyle.bg, alignSelf: 'flex-start', marginTop: 2 }]}>
             <Text style={[styles.badgeText, { color: statusStyle.text }]}>{order.status}</Text>
           </View>
@@ -425,7 +425,7 @@ export default function OrderDetailScreen() {
                 Alert.alert('Error', 'Invoice preview is not available.');
               }
             }}
-            style={[styles.headerIconBtn, { marginRight: 8 }]}
+            style={[styles.headerIconBtn, { marginRight: 4 }]}
           >
             <Ionicons name="eye-outline" size={20} color={Colors.primary} />
           </TouchableOpacity>
@@ -439,7 +439,7 @@ export default function OrderDetailScreen() {
           </TouchableOpacity>
 
           {(order.status === 'ACTIVE' || order.status === 'OVERDUE') && (
-            <TouchableOpacity onPress={handleCancelOrder} disabled={submitting} style={[styles.headerIconBtn, { marginLeft: 8 }]}>
+            <TouchableOpacity onPress={handleCancelOrder} disabled={submitting} style={[styles.headerIconBtn, { marginLeft: 4 }]}>
               <Ionicons name="trash-outline" size={20} color={Colors.danger} />
             </TouchableOpacity>
           )}
@@ -911,9 +911,9 @@ const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
   header: { backgroundColor: Colors.card, paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   backBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
+  headerTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
-  headerIconBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', borderWidth: 0.5, borderColor: '#FED7AA' },
+  headerIconBtn: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED', borderWidth: 0.5, borderColor: '#FED7AA' },
 
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeText: { fontSize: 9, fontWeight: '600' },

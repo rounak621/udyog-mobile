@@ -132,7 +132,7 @@ export default function RentalOrdersScreen() {
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color={Colors.textMuted} style={styles.searchIcon} />
           <TextInput
-            placeholder="Search by order # or customer..."
+            placeholder="Search customer or order ID..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={styles.searchInput}
@@ -166,7 +166,7 @@ export default function RentalOrdersScreen() {
             return (
               <TouchableOpacity
                 key={ord.id}
-                style={styles.card}
+                style={[styles.card, { borderLeftWidth: 4, borderLeftColor: isOverdue ? Colors.danger : Colors.success }]}
                 activeOpacity={0.8}
                 onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
               >

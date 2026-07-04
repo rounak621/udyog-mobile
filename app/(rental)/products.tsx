@@ -163,12 +163,12 @@ export default function RentalProductsScreen() {
                   <Text style={styles.productDesc} numberOfLines={2}>{p.description}</Text>
                 ) : null}
                 <View style={styles.tagsContainer}>
-                  <View style={styles.tag}>
-                    <Text style={styles.tagText}>{p.gst_rate}% GST</Text>
+                  <View style={styles.tagGst}>
+                    <Text style={styles.tagGstText}>{p.gst_rate}% GST</Text>
                   </View>
                   {p.hsn_code ? (
-                    <View style={styles.tag}>
-                      <Text style={styles.tagText}>HSN: {p.hsn_code}</Text>
+                    <View style={styles.tagHsn}>
+                      <Text style={styles.tagHsnText}>HSN: {p.hsn_code}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -209,8 +209,12 @@ const styles = StyleSheet.create({
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   tag: { backgroundColor: '#F1F5F9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   tagText: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500' },
+  tagGst: { backgroundColor: '#EFF6FF', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  tagGstText: { fontSize: 10, fontWeight: '600', color: Colors.info },
+  tagHsn: { backgroundColor: '#F1F5F9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  tagHsnText: { fontSize: 10, fontWeight: '600', color: Colors.textSecondary },
 
   productRight: { alignItems: 'flex-end', justifyContent: 'center' },
   rateAmount: { fontSize: 16, fontWeight: '700', color: Colors.primary },
-  rateType: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
+  rateType: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
 });

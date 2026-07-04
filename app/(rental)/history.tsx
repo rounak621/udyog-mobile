@@ -35,6 +35,7 @@ export default function RentalHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<'ALL' | 'COMPLETED' | 'CANCELLED'>('ALL');
 
   const loadHistory = useCallback(async () => {
     if (!business?.id) {
@@ -129,14 +130,17 @@ export default function RentalHistoryScreen() {
   };
 
   const filteredOrders = useMemo(() => {
+    let result = orders;
+    if (filter === 'COMPLETED') result = result.filter(o => o.status === 'COMPLETED');
+    if (filter === 'CANCELLED') result = result.filter(o => o.status === 'CANCELLED');
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return orders;
-    return orders.filter(
+    if (!q) return result;
+    return result.filter(
       (ord) =>
         ord.order_number.toLowerCase().includes(q) ||
         (ord.customer_name || '').toLowerCase().includes(q)
     );
-  }, [orders, searchQuery]);
+  }, [orders, searchQuery, filter]);
 
   if (loading) {
     return (
@@ -175,6 +179,25 @@ export default function RentalHistoryScreen() {
         </View>
       </View>
 
+      <View style={styles.filterRow}>
+        {(['ALL', 'COMPLETED', 'CANCELLED'] as const).map((f) => {
+          const isActive = filter === f;
+          const label = f === 'ALL' ? 'All' : f === 'COMPLETED' ? 'Returned' : 'Cancelled';
+          const icon = f === 'COMPLETED' ? 'checkmark-circle' : f === 'CANCELLED' ? 'close-circle' : null;
+          const activeBg = f === 'ALL' ? Colors.primary : f === 'COMPLETED' ? Colors.success : Colors.textSecondary;
+          return (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterPill, isActive && { backgroundColor: activeBg }]}
+              onPress={() => setFilter(f)}
+            >
+              {icon && isActive && <Ionicons name={icon} size={14} color="#fff" />}
+              <Text style={[styles.filterPillText, isActive && { color: '#fff' }]}>{label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
@@ -196,7 +219,7 @@ export default function RentalHistoryScreen() {
             return (
               <TouchableOpacity
                 key={ord.id}
-                style={styles.card}
+                style={[styles.card, { borderLeftWidth: 4, borderLeftColor: isCompleted ? Colors.success : Colors.textSecondary }]}
                 activeOpacity={0.8}
                 onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
               >
@@ -236,7 +259,7 @@ export default function RentalHistoryScreen() {
                     </Text>
                   </View>
                   <View style={styles.infoCol}>
-                    <Text style={styles.infoLabel}>TIMELINE</Text>
+                    <Text style={styles.infoLabel}>{isCompleted ? 'RETURNED' : 'TIMELINE'}</Text>
                     <Text style={[styles.infoValue, isCancelled ? { color: Colors.textSecondary } : { color: Colors.success, fontWeight: '600' }]}>
                       {getTimelineText(ord)}
                     </Text>
@@ -338,4 +361,8 @@ const styles = StyleSheet.create({
   cardActions: { flexDirection: 'row', backgroundColor: '#FDFDFD', height: 40, borderTopWidth: 0.5, borderTopColor: Colors.border },
   actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   actionButtonText: { fontSize: 12, fontWeight: '600', color: '#16A34A' },
+
+  filterRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  filterPill: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, backgroundColor: '#F1F5F9', flexDirection: 'row', alignItems: 'center', gap: 4 },
+  filterPillText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
 });

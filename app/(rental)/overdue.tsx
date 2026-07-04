@@ -117,11 +117,14 @@ export default function RentalOverdueScreen() {
         <Text style={styles.title}>Overdue Orders</Text>
       </View>
 
-      {/* Warning Banner */}
-      <View style={styles.warningBanner}>
-        <Ionicons name="warning" size={18} color="#991B1B" style={{ marginRight: 8 }} />
-        <Text style={styles.warningText}>
-          These orders are overdue — contact customers to arrange return or collect late fees.
+      {/* Alert Card */}
+      <View style={styles.alertCard}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="warning" size={20} color="#991B1B" style={{ marginRight: 8 }} />
+          <Text style={styles.alertTitle}>Orders require immediate attention</Text>
+        </View>
+        <Text style={styles.alertSubtitle}>
+          ₹{orders.reduce((sum, o) => sum + Number(o.late_fee_total || 0), 0).toLocaleString('en-IN')} total late fees accrued across {orders.length} orders
         </Text>
       </View>
 
@@ -163,7 +166,7 @@ export default function RentalOverdueScreen() {
             return (
               <TouchableOpacity
                 key={ord.id}
-                style={styles.card}
+                style={[styles.card, { borderLeftWidth: 4, borderLeftColor: Colors.danger }]}
                 activeOpacity={0.8}
                 onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
               >
@@ -242,8 +245,9 @@ const styles = StyleSheet.create({
   backBtn: { width: 32, height: 32, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   title: { fontSize: 20, fontWeight: '700', color: '#0f172a' },
 
-  warningBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#FCA5A5' },
-  warningText: { flex: 1, fontSize: 12, color: '#991B1B', fontWeight: '500', lineHeight: 16 },
+  alertCard: { backgroundColor: '#FEF2F2', borderRadius: 12, margin: 16, padding: 16, borderWidth: 1, borderColor: '#FCA5A5' },
+  alertTitle: { fontSize: 14, fontWeight: '700', color: '#991B1B', flex: 1 },
+  alertSubtitle: { fontSize: 12, color: '#991B1B', fontWeight: '400', marginTop: 6, marginLeft: 28 },
 
   searchContainer: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.card, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 10, height: 38 },

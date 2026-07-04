@@ -214,51 +214,56 @@ export default function RentalOverviewScreen() {
         </View>
 
         {/* Financial Stat Cards */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Financials</Text>
-          <View style={styles.statsRow}>
+        <View style={{ marginBottom: 20 }}>
+          <Text style={[styles.sectionTitle, { marginHorizontal: 16 }]}>FINANCIALS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
             <View style={styles.statCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.primary }]} />
               <Text style={styles.statLabel}>Total Revenue</Text>
               <Text style={[styles.statValue, { color: Colors.primary }]} numberOfLines={1}>
                 {formatIndianStyle(analytics?.total_revenue || 0)}
               </Text>
             </View>
             <View style={styles.statCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.danger }]} />
               <Text style={styles.statLabel}>Pending Payments</Text>
               <Text style={[styles.statValue, { color: Colors.danger }]} numberOfLines={1}>
                 {formatIndianStyle(analytics?.pending_payments || 0)}
               </Text>
             </View>
-          </View>
-          <View style={[styles.statsRow, { marginTop: 10 }]}>
             <View style={styles.statCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.success }]} />
               <Text style={styles.statLabel}>Security Held</Text>
               <Text style={[styles.statValue, { color: Colors.success }]} numberOfLines={1}>
                 {formatIndianStyle(analytics?.security_held || 0)}
               </Text>
             </View>
             <View style={styles.statCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.warning }]} />
               <Text style={styles.statLabel}>Late Fees Earned</Text>
               <Text style={[styles.statValue, { color: Colors.warning }]} numberOfLines={1}>
                 {formatIndianStyle(analytics?.late_fees_earned || 0)}
               </Text>
             </View>
-          </View>
+          </ScrollView>
         </View>
 
         {/* Operational Stat Cards */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Operations</Text>
-          <View style={styles.operationsGrid}>
+        <View style={{ marginBottom: 20 }}>
+          <Text style={[styles.sectionTitle, { marginHorizontal: 16 }]}>OPERATIONS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
             <View style={styles.opCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.info }]} />
               <Text style={styles.opLabel}>Active Orders</Text>
               <Text style={styles.opValue}>{analytics?.active_orders || 0}</Text>
             </View>
             <View style={styles.opCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.danger }]} />
               <Text style={styles.opLabel}>Overdue Orders</Text>
               <Text style={styles.opValue}>{analytics?.overdue_orders || 0}</Text>
             </View>
             <View style={styles.opCard}>
+              <View style={[styles.statDot, { backgroundColor: Colors.primary }]} />
               <Text style={styles.opLabel}>Items Out</Text>
               <Text style={styles.opValue}>{analytics?.items_out || 0}</Text>
             </View>
@@ -266,13 +271,14 @@ export default function RentalOverviewScreen() {
               style={styles.opCard}
               onPress={() => router.push('/(rental)/assets')}
             >
+              <View style={[styles.statDot, { backgroundColor: Colors.warning }]} />
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <Text style={styles.opLabel}>In Maintenance</Text>
                 <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
               </View>
               <Text style={styles.opValue}>{assetSummary?.maintenance || 0}</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
 
         {/* Top 5 Active Orders */}
@@ -298,7 +304,7 @@ export default function RentalOverviewScreen() {
               return (
                 <TouchableOpacity
                   key={ord.id}
-                  style={styles.orderCard}
+                  style={[styles.orderCard, { borderLeftWidth: 4, borderLeftColor: isOverdue ? Colors.danger : Colors.success }]}
                   onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
                 >
                   <View style={styles.orderIcon}>
@@ -361,13 +367,12 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
   viewAll: { fontSize: 13, color: Colors.primary },
 
-  statsRow: { flexDirection: 'row', gap: 10 },
-  statCard: { flex: 1, backgroundColor: Colors.card, borderRadius: 12, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  statCard: { width: 130, backgroundColor: Colors.card, borderRadius: 12, padding: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  statDot: { width: 8, height: 8, borderRadius: 4, position: 'absolute' as const, top: 8, right: 8 },
   statLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
   statValue: { fontSize: 17, fontWeight: '700' },
 
-  operationsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  opCard: { width: '47%', flexGrow: 1, minWidth: 150, backgroundColor: Colors.card, borderRadius: 12, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  opCard: { width: 130, backgroundColor: Colors.card, borderRadius: 12, padding: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
   opLabel: { fontSize: 11, color: Colors.textSecondary, marginBottom: 6 },
   opValue: { fontSize: 20, fontWeight: '700', color: Colors.text },
 

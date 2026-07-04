@@ -158,7 +158,7 @@ export default function RentalAssetsScreen() {
         ) : (
           <>
             {/* Overall totals row */}
-            <View style={styles.overallRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10, paddingVertical: 12 }}>
               {[
                 { label: 'Total Assets', value: summary?.total || 0, color: Colors.primary },
                 { label: 'Available', value: summary?.available || 0, color: Colors.success },
@@ -166,11 +166,12 @@ export default function RentalAssetsScreen() {
                 { label: 'Maintenance', value: summary?.maintenance || 0, color: Colors.warning }
               ].map((card) => (
                 <View key={card.label} style={styles.summaryCard}>
+                  <View style={[styles.summaryDot, { backgroundColor: card.color }]} />
                   <Text style={styles.summaryLabel}>{card.label}</Text>
                   <Text style={[styles.summaryValue, { color: card.color }]}>{card.value}</Text>
                 </View>
               ))}
-            </View>
+            </ScrollView>
 
             <Text style={styles.sectionTitle}>Product Inventory</Text>
 
@@ -191,9 +192,8 @@ export default function RentalAssetsScreen() {
                   <Text style={styles.cardProdName} numberOfLines={1}>
                     {stat.productName}
                   </Text>
-                  <Text style={styles.cardTotalCount}>
-                    {stat.total} total asset{stat.total !== 1 ? 's' : ''}
-                  </Text>
+                  <Text style={styles.cardTotalNumber}>{stat.total}</Text>
+                  <Text style={styles.cardTotalLabel}>total asset{stat.total !== 1 ? 's' : ''}</Text>
 
                   {/* Stat Breakdowns */}
                   <View style={styles.breakdownRow}>
@@ -242,8 +242,8 @@ const styles = StyleSheet.create({
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
   emptyBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
-  overallRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 16, borderBottomWidth: 0.5, borderBottomColor: Colors.border, backgroundColor: Colors.card },
-  summaryCard: { flex: 1, minWidth: '45%', backgroundColor: '#F8FAFC', borderRadius: 8, padding: 10, borderWidth: 0.5, borderColor: Colors.border },
+  summaryCard: { width: 120, padding: 10, backgroundColor: Colors.card, borderRadius: 10, borderWidth: 0.5, borderColor: Colors.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  summaryDot: { width: 8, height: 8, borderRadius: 4, position: 'absolute' as const, top: 8, right: 8 },
   summaryLabel: { fontSize: 10, color: Colors.textSecondary, marginBottom: 4 },
   summaryValue: { fontSize: 16, fontWeight: '700' },
 
@@ -252,7 +252,8 @@ const styles = StyleSheet.create({
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 },
   gridCard: { width: '47%', flexGrow: 1, backgroundColor: Colors.card, borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: Colors.border, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
   cardProdName: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  cardTotalCount: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  cardTotalNumber: { fontSize: 20, fontWeight: '800', color: Colors.text, marginTop: 2 },
+  cardTotalLabel: { fontSize: 11, color: Colors.textSecondary },
 
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.5, borderTopColor: Colors.border, paddingTop: 10, marginTop: 10 },
   breakdownItem: { alignItems: 'center' },
@@ -263,6 +264,6 @@ const styles = StyleSheet.create({
   utilTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   utilLabel: { fontSize: 9, color: Colors.textMuted, fontWeight: '500' },
   utilPercent: { fontSize: 10, fontWeight: '700', color: Colors.primary },
-  progressBarBg: { height: 5, backgroundColor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' },
+  progressBarBg: { height: 4, backgroundColor: '#F1F5F9', borderRadius: 2, overflow: 'hidden' },
   progressBarFill: { height: '100%', backgroundColor: Colors.primary },
 });
