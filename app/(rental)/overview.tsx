@@ -184,7 +184,7 @@ export default function RentalOverviewScreen() {
         <View style={styles.quickActionsRow}>
           <TouchableOpacity
             style={styles.quickAction}
-            onPress={() => Alert.alert('Coming Soon', 'New Rental Order feature is coming in Phase 6.')}
+            onPress={() => router.push('/(rental)/order-create')}
           >
             <View style={styles.quickActionIcon}>
               <Ionicons name="add" size={20} color={Colors.primary} />

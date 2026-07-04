@@ -119,6 +119,12 @@ export default function RentalOrdersScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>Active Rental Orders</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(rental)/order-create')}
+          style={styles.headerIconBtn}
+        >
+          <Ionicons name="add" size={24} color={Colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {/* Search Bar */}
@@ -255,8 +261,9 @@ export default function RentalOrdersScreen() {
 
 const styles = StyleSheet.create({
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background },
-  header: { backgroundColor: Colors.card, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.card, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 20, fontWeight: '700', color: '#0f172a' },
+  headerIconBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF7ED' },
 
   searchContainer: { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: Colors.card, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 10, height: 38 },

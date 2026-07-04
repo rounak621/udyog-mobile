@@ -68,6 +68,7 @@ export default function RentalTabsLayout() {
       <Tabs.Screen name="product-bulk-add" options={{ href: null }} />
       <Tabs.Screen name="asset-list" options={{ href: null }} />
       <Tabs.Screen name="asset-bulk-add" options={{ href: null }} />
+      <Tabs.Screen name="order-create" options={{ href: null }} />
     </Tabs>
   );
 }
