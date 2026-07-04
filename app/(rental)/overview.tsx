@@ -299,7 +299,7 @@ export default function RentalOverviewScreen() {
                 <TouchableOpacity
                   key={ord.id}
                   style={styles.orderCard}
-                  onPress={() => Alert.alert('Coming Soon', 'Order Details will be available in Phase 6.')}
+                  onPress={() => router.push(`/(rental)/order-detail?id=${ord.id}`)}
                 >
                   <View style={styles.orderIcon}>
                     <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
