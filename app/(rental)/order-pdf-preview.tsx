@@ -50,10 +50,11 @@ export default function OrderPdfPreviewScreen() {
       </View>
 
       {/* WebView Container */}
-      <View style={{ flex: 1, position: 'relative' }}>
+      <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
         <WebView
           source={{ uri: viewerUrl }}
-          style={{ flex: 1 }}
+          style={{ flex: 1, backgroundColor: '#fff' }}
+          scalesPageToFit={true}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}
           onError={() => setHasError(true)}
