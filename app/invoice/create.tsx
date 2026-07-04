@@ -69,6 +69,9 @@ export default function CreateInvoiceScreen() {
   const checkOpacity = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0.4)).current;
 
+  const scrollViewRef = useRef<any>(null);
+  const itemRefs = useRef<{ [key: string]: View | null }>({});
+
   // Helper aliases to match mockup JSX names perfectly (moved below definitions)
 
   const loadData = async () => {
@@ -208,7 +211,22 @@ export default function CreateInvoiceScreen() {
 
   const filteredParties = parties.filter(p => p.name?.toLowerCase().includes(partySearch.toLowerCase()));
 
-  const addLineItem = () => setLineItems(prev => [...prev, { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', isCustom: false }]);
+  const addLineItem = () => {
+    const newId = Math.random().toString();
+    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', isCustom: false }]);
+    setTimeout(() => {
+      const node = itemRefs.current[newId];
+      if (node && scrollViewRef.current) {
+        node.measureLayout(
+          scrollViewRef.current.getScrollResponder ? scrollViewRef.current.getScrollResponder() : scrollViewRef.current,
+          (x: number, y: number) => {
+            scrollViewRef.current.scrollToPosition(0, Math.max(0, y - 150), true);
+          },
+          () => {}
+        );
+      }
+    }, 150);
+  };
   const removeLineItem = (id: string) => setLineItems(prev => prev.filter(l => l.id !== id));
   const updateLineItem = useCallback((id: string, field: keyof LineItem, value: any) => {
     setLineItems(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
@@ -341,6 +359,7 @@ export default function CreateInvoiceScreen() {
       </View>
 
       <KeyboardAwareScrollView
+        ref={scrollViewRef}
         style={{ flex: 1, backgroundColor: '#F8FAFC' }}
         contentContainerStyle={{ paddingBottom: 40 }}
         enableOnAndroid={true}
@@ -417,16 +436,10 @@ export default function CreateInvoiceScreen() {
 
         {/* Items Section */}
         <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={styles.sectionLabel}>ITEMS · {lineItems.length}</Text>
-            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} onPress={addItem}>
-              <Ionicons name="add" size={16} color="#F97316" />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add Item</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>ITEMS · {lineItems.length}</Text>
           <View style={styles.card}>
             {lineItems.map((item, index) => (
-              <View key={item.id}>
+              <View key={item.id} ref={(el) => { itemRefs.current[item.id] = el; }}>
                 {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   {/* Item name: Select button or Custom TextInput */}
@@ -587,6 +600,10 @@ export default function CreateInvoiceScreen() {
                 )}
               </View>
             ))}
+            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 }} onPress={addItem}>
+              <Ionicons name="add" size={16} color="#F97316" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add Item</Text>
+            </TouchableOpacity>
           </View>
         </View>
 

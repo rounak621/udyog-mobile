@@ -66,6 +66,9 @@ export default function OrderCreateScreen() {
   const checkOpacity = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0.4)).current;
 
+  const scrollViewRef = useRef<any>(null);
+  const itemRefs = useRef<{ [key: string]: View | null }>({});
+
   useEffect(() => {
     if (showSuccess) {
       circleScale.setValue(0);
@@ -249,10 +252,11 @@ export default function OrderCreateScreen() {
   }, [startDate, endDate]);
 
   const handleAddField = () => {
+    const newId = Math.random().toString();
     setItems((prev) => [
       ...prev,
       {
-        id: Math.random().toString(),
+        id: newId,
         product: null,
         quantity: '1',
         rate: '',
@@ -265,6 +269,18 @@ export default function OrderCreateScreen() {
         availableQtyMsg: ''
       }
     ]);
+    setTimeout(() => {
+      const node = itemRefs.current[newId];
+      if (node && scrollViewRef.current) {
+        node.measureLayout(
+          scrollViewRef.current.getScrollResponder ? scrollViewRef.current.getScrollResponder() : scrollViewRef.current,
+          (x: number, y: number) => {
+            scrollViewRef.current.scrollToPosition(0, Math.max(0, y - 150), true);
+          },
+          () => {}
+        );
+      }
+    }, 150);
   };
 
   const handleRemoveField = (index: number) => {
@@ -465,10 +481,11 @@ export default function OrderCreateScreen() {
       </View>
 
       <KeyboardAwareScrollView
+        ref={scrollViewRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 14, paddingBottom: 60 }}
         enableOnAndroid={true}
-        extraScrollHeight={40}
+        extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
       >
         {/* Customer Section */}
@@ -629,16 +646,10 @@ export default function OrderCreateScreen() {
 
         {/* Line Items Section */}
         <View style={styles.section}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={styles.sectionLabel}>Line Items</Text>
-            <TouchableOpacity style={styles.addRowLink} onPress={handleAddField}>
-              <Ionicons name="add" size={16} color={Colors.primary} />
-              <Text style={styles.addRowLinkText}>Add Item</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>Line Items</Text>
 
           {items.map((row, index) => (
-            <View key={row.id} style={styles.itemCard}>
+            <View key={row.id} ref={(el) => { itemRefs.current[row.id] = el; }} style={styles.itemCard}>
               <View style={styles.itemHeader}>
                 <Text style={styles.itemNumber}>Item #{index + 1}</Text>
                 <TouchableOpacity onPress={() => handleRemoveField(index)}>
@@ -743,6 +754,10 @@ export default function OrderCreateScreen() {
               ) : null}
             </View>
           ))}
+          <TouchableOpacity style={[styles.addRowLink, { justifyContent: 'center', marginTop: 4 }]} onPress={handleAddField}>
+            <Ionicons name="add" size={16} color={Colors.primary} />
+            <Text style={styles.addRowLinkText}>Add Item</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Notes */}
