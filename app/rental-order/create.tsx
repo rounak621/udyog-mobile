@@ -9,6 +9,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { WebView } from 'react-native-webview';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
@@ -55,6 +58,9 @@ export default function OrderCreateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { business } = useBusiness();
+
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
 
   // Master Data
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -333,14 +339,46 @@ export default function OrderCreateScreen() {
         items: validItems
       };
 
-      await api.post(`/rental-orders/?business_id=${business.id}`, payload);
-      Alert.alert('Success', 'Rental order created successfully.');
-      router.back();
+      const res = await api.post(`/rental-orders/?business_id=${business.id}`, payload);
+      setCreatedOrder(res.data);
+      setShowSuccess(true);
     } catch (err: any) {
       console.log('Error creating rental order:', err);
       Alert.alert('Error', err.response?.data?.detail || 'Failed to create rental order.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const shareOrderPDF = async (mode: 'whatsapp' | 'download') => {
+    if (!createdOrder?.share_token) return;
+    try {
+      const pdfUrl = `https://api.udyogbook.in/api/v1/public/rental/${createdOrder.share_token}/pdf`;
+      if (mode === 'download') {
+        const customerName = (selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+        const orderNum = (createdOrder?.order_number || 'order').replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${customerName}_${orderNum}.pdf`;
+        const udyogDir = (FileSystem as any).cacheDirectory + 'Udyog/';
+        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
+        const fileUri = udyogDir + fileName;
+        const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+        if (downloadResult.status === 200) {
+          Alert.alert('✅ Downloaded', `${fileName} saved successfully.`, [{ text: 'OK' }]);
+        } else {
+          throw new Error('Download failed');
+        }
+      } else {
+        const fileUri = (FileSystem as any).cacheDirectory + `order_${createdOrder.order_number?.replace('/', '_')}.pdf`;
+        const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Rental Order ${createdOrder.order_number}`,
+          UTI: 'com.adobe.pdf',
+        });
+      }
+    } catch (err) {
+      console.log('Share error:', err);
+      Alert.alert('Error', 'Could not share PDF. Please try again.');
     }
   };
 
@@ -849,6 +887,58 @@ export default function OrderCreateScreen() {
                 }}
               />
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal visible={showSuccess} transparent animationType="slide">
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 140, height: 140, marginBottom: 8 }}>
+                <WebView
+                  source={{ uri: 'https://lottie.host/embed/b0919acf-a91e-438d-8853-c5be8f14b6fd/YnUOOp86zM.lottie' }}
+                  style={{ backgroundColor: 'transparent' }}
+                  scrollEnabled={false}
+                />
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A' }}>Order Created!</Text>
+              <Text style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>{createdOrder?.order_number}</Text>
+            </View>
+            <TouchableOpacity
+              style={{ backgroundColor: '#25D366', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
+              onPress={() => shareOrderPDF('whatsapp')}
+            >
+              <Ionicons name="logo-whatsapp" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Share on WhatsApp</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ backgroundColor: '#F97316', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
+              onPress={() => shareOrderPDF('download')}
+            >
+              <Ionicons name="download-outline" size={20} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Download PDF</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ backgroundColor: '#F1F5F9', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
+              onPress={() => {
+                setShowSuccess(false);
+                if (createdOrder?.id) router.replace(`/rental-order/${createdOrder.id}`);
+              }}
+            >
+              <Ionicons name="eye-outline" size={20} color="#374151" />
+              <Text style={{ color: '#374151', fontSize: 14, fontWeight: '600' }}>View Order</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ padding: 14, alignItems: 'center' }}
+              onPress={() => {
+                setShowSuccess(false);
+                router.replace('/(rental)/orders');
+              }}
+            >
+              <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '600' }}>Done</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
