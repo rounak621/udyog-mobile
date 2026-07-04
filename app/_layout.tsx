@@ -11,6 +11,7 @@ import { setAuthToken, api } from '../services/api';
 import Constants from 'expo-constants';
 import { registerForPushNotificationsAsync, registerDeviceToken } from '../services/notifications';
 import { BusinessProvider, useBusiness } from '../context/BusinessContext';
+import { AppModeProvider, useAppMode } from '../context/AppModeContext';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -30,6 +31,7 @@ function AuthGuard() {
   const segments = useSegments();
   const router = useRouter();
   const [tokenReady, setTokenReady] = useState(false);
+  const { mode, modeLoaded } = useAppMode();
   const [pushRegistered, setPushRegistered] = useState(false);
 
   const [roleSetupDone, setRoleSetupDone] = useState(false);
@@ -129,7 +131,7 @@ function AuthGuard() {
   }, [isSignedIn]);
 
   useEffect(() => {
-    if (!isLoaded || !tokenReady) return;
+    if (!isLoaded || !tokenReady || !modeLoaded) return;
     if (isSignedIn && !businessCheckDone) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -150,7 +152,11 @@ function AuthGuard() {
         }
       } else if (hasBusiness) {
         if (inAuthGroup || inWelcome || inOnboarding || inBusinessSetup || inSubscriptionLocked) {
-          router.replace('/(tabs)');
+          if (mode === 'rental') {
+            router.replace('/(rental)/overview');
+          } else {
+            router.replace('/(tabs)');
+          }
         }
       } else {
         if (!inBusinessSetup && !inLegal) {
@@ -158,9 +164,9 @@ function AuthGuard() {
         }
       }
     }
-  }, [isLoaded, isSignedIn, segments, tokenReady, businessCheckDone, hasBusiness, business]);
+  }, [isLoaded, isSignedIn, segments, tokenReady, businessCheckDone, hasBusiness, business, mode, modeLoaded]);
 
-  if (!isLoaded || (isSignedIn && !businessCheckDone)) {
+  if (!isLoaded || !modeLoaded || (isSignedIn && !businessCheckDone)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.primary }}>
         <View style={{ width: 64, height: 64, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
@@ -176,10 +182,12 @@ function AuthGuard() {
 export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <BusinessProvider>
-        <AuthGuard />
-      </BusinessProvider>
-    </ClerkProvider>
+    <AppModeProvider>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <BusinessProvider>
+          <AuthGuard />
+        </BusinessProvider>
+      </ClerkProvider>
+    </AppModeProvider>
   );
 }

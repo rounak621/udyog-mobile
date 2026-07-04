@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAppMode } from '../../context/AppModeContext';
 import BusinessSwitcherModal from '../../components/BusinessSwitcherModal';
 
 interface DashboardStats {
@@ -37,6 +38,7 @@ export default function DashboardScreen() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
   const { business } = useBusiness();
+  const { setMode } = useAppMode();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -229,7 +231,10 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.quickActionLabel}>New Party</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/rental' as any)}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => {
+            setMode('rental');
+            router.replace('/(rental)/overview');
+          }}>
             <View style={styles.quickActionIcon}>
               <Ionicons name="calendar-outline" size={18} color="#F97316" />
             </View>

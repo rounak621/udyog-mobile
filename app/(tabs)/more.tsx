@@ -9,6 +9,7 @@ import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { useBusiness } from '../../context/BusinessContext';
+import { useAppMode } from '../../context/AppModeContext';
 import BusinessSwitcherModal from '../../components/BusinessSwitcherModal';
 
 const MenuItem = ({ icon, label, value, onPress, danger, rightElement }: any) => (
@@ -29,8 +30,14 @@ export default function MoreScreen() {
   const insets = useSafeAreaInsets();
   
   const { business } = useBusiness();
+  const { setMode } = useAppMode();
 
   const [showSwitcher, setShowSwitcher] = useState(false);
+
+  const switchToRental = () => {
+    setMode('rental');
+    router.replace('/(rental)/overview');
+  };
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -95,6 +102,7 @@ export default function MoreScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Business</Text>
           <View style={styles.card}>
+            <MenuItem icon="calendar-outline" label="Switch to Rental Business" onPress={switchToRental} />
             <MenuItem icon="business-outline" label="Business Settings" onPress={() => router.push('/settings/business')} />
             <MenuItem icon="people-outline" label="Manage CA" onPress={() => router.push('/settings/ca-management')} />
             <MenuItem icon="document-text-outline" label="Invoice Settings" onPress={() => router.push('/settings/invoice')} />
