@@ -4,6 +4,7 @@ import { Slot, Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import IntroOverlay from '../components/IntroOverlay';
 
 WebBrowser.maybeCompleteAuthSession();
 import { Colors } from '../constants/theme';
@@ -180,6 +181,7 @@ function AuthGuard() {
 }
 
 export default function RootLayout() {
+  const [showIntro, setShowIntro] = useState(true);
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
   return (
     <AppModeProvider>
@@ -188,6 +190,7 @@ export default function RootLayout() {
           <AuthGuard />
         </BusinessProvider>
       </ClerkProvider>
+      {showIntro && <IntroOverlay onFinish={() => setShowIntro(false)} />}
     </AppModeProvider>
   );
 }
