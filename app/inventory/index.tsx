@@ -299,7 +299,7 @@ export default function InventoryScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom }]}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <View style={{ flex: 1, marginRight: 8 }}>
