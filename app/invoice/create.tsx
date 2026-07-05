@@ -228,13 +228,34 @@ export default function CreateInvoiceScreen() {
   }, []);
 
   // Calculations
-  const subtotal = lineItems.reduce((sum, l) => sum + (Number(l.rate) * Number(l.qty || 1)), 0);
-  const tax = lineItems.reduce((sum, l) => {
-    const amount = Number(l.rate) * Number(l.qty || 1);
-    const gstRateVal = invoiceType === 'NONGST' ? 0 : Number(l.gst_rate || 0);
-    return sum + (amount * gstRateVal / 100);
-  }, 0);
-  const total = subtotal + tax;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  let subtotal = 0;
+  let totalCGST = 0;
+  let totalSGST = 0;
+  let totalIGST = 0;
+
+  lineItems.forEach(l => {
+    const qty = Number(l.qty) || 0;
+    const rate = Number(l.rate) || 0;
+    const gstRate = invoiceType === 'NONGST' ? 0 : (Number(l.gst_rate) || 0);
+    const taxable = round2(qty * rate);
+    subtotal += taxable;
+    if (isInterState) {
+      totalIGST += round2(taxable * (gstRate / 100));
+    } else {
+      const halfRate = gstRate / 2;
+      const halfTaxAmt = round2(taxable * (halfRate / 100));
+      totalCGST += halfTaxAmt;
+      totalSGST += halfTaxAmt;
+    }
+  });
+
+  const exactTotal = subtotal + totalCGST + totalSGST + totalIGST;
+  const roundedTotal = Math.round(exactTotal);
+  const roundOff = parseFloat((roundedTotal - exactTotal).toFixed(2));
+  const tax = totalCGST + totalSGST + totalIGST; // keep existing `tax` variable for anywhere else in the file that references it
+  const total = roundedTotal; // this becomes the new authoritative preview total
 
   const playSuccessSound = async () => {
     try {
@@ -608,12 +629,16 @@ export default function CreateInvoiceScreen() {
             <Text style={{ fontSize: 13, color: '#92400E', flexShrink: 1 }} textBreakStrategy="simple">Subtotal (Taxable)</Text>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', flexShrink: 1 }} textBreakStrategy="simple">₹{subtotal.toLocaleString('en-IN')}</Text>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, color: '#92400E' }}>GST</Text>
               <Text style={{ fontSize: 11, color: '#B45309' }}>{isInterState ? 'IGST' : 'CGST + SGST'}</Text>
             </View>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', alignSelf: 'flex-end', flexShrink: 1 }} textBreakStrategy="simple">₹{tax.toLocaleString('en-IN')}</Text>
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#9ca3af' }}>Round Off</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#9ca3af' }}>₹{roundOff.toFixed(2)}</Text>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
