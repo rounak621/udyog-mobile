@@ -123,7 +123,10 @@ export default function InventoryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, flexDirection: 'row', alignItems: 'center' }]}>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+          <Ionicons name="arrow-back" size={22} color={Colors.text} />
+        </TouchableOpacity>
         <View>
           <Text style={styles.title}>Inventory</Text>
           <Text style={styles.subtitle}>{totalItemsCount} items tracked</Text>
