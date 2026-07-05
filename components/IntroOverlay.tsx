@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, StyleSheet, Easing } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFonts, Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium } from '@expo-google-fonts/poppins';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   const [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium });
@@ -47,12 +48,23 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
 
   return (
     <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
-      <View style={styles.topSection}>
-        <Animated.Image
-          source={require('../assets/icon.png')}
-          style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
-          resizeMode="contain"
-        />
+      <View style={styles.centeredSection}>
+        <View style={styles.glowWrap}>
+          <Svg width={280} height={280} style={StyleSheet.absoluteFill}>
+            <Defs>
+              <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
+                <Stop offset="0%" stopColor="#F97316" stopOpacity="0.35" />
+                <Stop offset="100%" stopColor="#F97316" stopOpacity="0" />
+              </RadialGradient>
+            </Defs>
+            <Circle cx="140" cy="140" r="140" fill="url(#glow)" />
+          </Svg>
+          <Animated.Image
+            source={require('../assets/icon.png')}
+            style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
+            resizeMode="contain"
+          />
+        </View>
         <Animated.Text style={[styles.wordmark, { opacity: wordmarkOpacity, transform: [{ translateY: wordmarkY }] }]}>
           Udyog
         </Animated.Text>
@@ -77,16 +89,25 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: '32%',
-    paddingBottom: '14%',
     zIndex: 999,
   },
-  topSection: { alignItems: 'center' },
-  logo: { width: 130, height: 130, marginBottom: 32 },
+  centeredSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  glowWrap: {
+    width: 130,
+    height: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  logo: { width: 130, height: 130 },
   wordmark: { fontFamily: 'Poppins_700Bold', fontSize: 40, color: '#0F172A', letterSpacing: 0.3, marginBottom: 10 },
   tagline: { fontFamily: 'Poppins_500Medium', fontSize: 15, color: '#64748B', letterSpacing: 0.2 },
-  deviceRow: { alignItems: 'center' },
+  deviceRow: { alignItems: 'center', paddingBottom: '14%' },
   deviceIconRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   deviceLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: '#94A3B8', letterSpacing: 2 },
 });
