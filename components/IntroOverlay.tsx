@@ -50,7 +50,7 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
     <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
       <View style={styles.centeredSection}>
         <View style={styles.glowWrap}>
-          <Svg width={280} height={280} style={StyleSheet.absoluteFill}>
+          <Svg width={280} height={280} viewBox="0 0 280 280" style={styles.glow}>
             <Defs>
               <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
                 <Stop offset="0%" stopColor="#F97316" stopOpacity="0.35" />
@@ -103,6 +103,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+  },
+  glow: {
+    position: 'absolute',
+    left: -75,  // (130 - 280) / 2
+    top: -75,   // (130 - 280) / 2
   },
   logo: { width: 130, height: 130 },
   wordmark: { fontFamily: 'Poppins_700Bold', fontSize: 40, color: '#0F172A', letterSpacing: 0.3, marginBottom: 10 },
