@@ -448,3 +448,22 @@ eas build --platform android
 - Fixed GST rate chip not highlighting on edit load — root cause was string/number mismatch (`"18.00" !== "18"`); normalized via `String(Math.round(Number(item.gst_percent || 0)))`
 - Fixed summary card order: Subtotal → Tax → Round Off (input) → Total Amount, with increased `KeyboardAwareScrollView` padding/scroll height so both Round Off and Total stay visible above the keyboard
 - Status: all changes committed (`5b7d225`, `5ff186e`, `e6ace08`) and confirmed working on-device
+
+### v3.0.0 — Inventory, Reports, CA Management, Full Rental Management, Navigation Fix
+- **Inventory**: Item Master CRUD + stock view with manual +/- adjustments (`app/items/`, `app/inventory/`), stat strip/filter pills/status badges, missing back button fixed, Android modal bottom-gap fixed (`statusBarTranslucent`)
+- **Reports**: Sales Register, Purchase Register, P&L, Day Book, Party Ledger (list+detail with tap-through to source invoice/bill), GSTR-1 w/ JSON export via `expo-sharing`; GSTR-3B removed; sub-tab nav with dedicated back-to-More handling on both header and hardware back
+- **CA Management**: add/list/remove CA (`app/settings/ca-management.tsx`), plan-based limits enforced both frontend and backend (Saral: 0, Vistaar: 2) — backend `PLAN_CA_LIMITS` added to `assign-ca` endpoint, previously unenforced
+- **Backend fix**: removed dead `business.mode` ('simple'/'pro') gating on inventory tracking, stock locking, COGS, and MAC cost calculation — this legacy field was blocking stock tracking for all 40 production businesses; deployed to production
+- **Rental Management** (full 6-phase system, branch `fix/maya-text-endpoint`):
+  - Phase 1: Sales/Rental mode toggle via `expo-secure-store`, persists across restarts, swaps entire tab bar
+  - Phase 2: Overview (financial/operational stat strips, top active orders) + Active Orders list
+  - Phase 3: Overdue + History (with Mark Paid quick action)
+  - Phase 4: Products (CRUD + bulk-add grid with paste-list/auto-generate modes)
+  - Phase 5: Assets (grid view w/ utilization %, per-asset status transitions, bulk-add)
+  - Phase 6: Order creation (customer/product/asset picker, live availability check, invoice date, success modal with native animated checkmark + Share WhatsApp/Download PDF/View Order) + Order Detail (return/cancel/mark-paid w/ partial payment/waive-fee/PDF download+inline preview via WebView/Payment Timeline/Download Statement)
+  - Order/Product/Asset detail screens relocated from `app/(rental)/` to top-level `app/rental-order/`, `app/rental-product/`, `app/rental-asset/` folders with their own `<Stack>` — required to fix back-navigation (see below)
+- **App-wide back navigation fix**: root `app/_layout.tsx` now renders `<Stack screenOptions={{ headerShown: false }}>` instead of a bare `<Slot />` — previously hardware/header back always returned to dashboard regardless of navigation depth, across every screen in the app. Added missing `_layout.tsx` (`<Stack>`) to `app/items/` and `app/purchase-bills/`, which previously had zero stack management.
+- **Invoice creation**: added round-off calculation (subtotal/CGST/SGST/IGST/round-off) to the live preview, matching web's exact rounding logic — backend was already correct, this was a preview-accuracy-only fix
+- **UI consistency**: Home screen FAB relabeled "+ New Invoice", third quick-action changed "Rental" → "Inventory"; Recent Activity, Bills list, and Top Customers now use identical light-peach/orange-initials avatar styling; Add Item button on invoice/rental-order creation moved below the item list with auto-scroll-to-new-item (via `onLayout` position tracking, not `measureLayout`, which crashed)
+- **Known limitation**: testing is happening in Expo Go, so file downloads (Udyog folder) are invisible in the OS Files app, and PDF preview via Google-Docs-viewer-in-WebView shows letterboxing — both are Expo-Go-only limitations expected to resolve once a production APK/build exists
+- Status: all changes committed on `fix/maya-text-endpoint`, none deployed to `dev`/`main`/production yet (except the backend `business.mode` fix, which is live)
