@@ -231,14 +231,11 @@ export default function DashboardScreen() {
             </View>
             <Text style={styles.quickActionLabel}>New Party</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickAction} onPress={() => {
-            setMode('rental');
-            router.replace('/(rental)/overview');
-          }}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/inventory')}>
             <View style={styles.quickActionIcon}>
-              <Ionicons name="calendar-outline" size={18} color="#F97316" />
+              <Ionicons name="cube-outline" size={18} color="#F97316" />
             </View>
-            <Text style={styles.quickActionLabel}>Rental</Text>
+            <Text style={styles.quickActionLabel}>Inventory</Text>
           </TouchableOpacity>
         </View>
 
@@ -305,8 +302,9 @@ export default function DashboardScreen() {
         )}
       </ScrollView>
 
-      <TouchableOpacity style={styles.createFab} onPress={() => router.push('/invoice/create')}>
-        <Ionicons name="add" size={28} color="#fff" />
+      <TouchableOpacity style={[styles.createFab, { flexDirection: 'row', paddingHorizontal: 20, width: 'auto', borderRadius: 28 }]} onPress={() => router.push('/invoice/create')}>
+        <Ionicons name="add" size={22} color="#fff" />
+        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 6 }}>New Invoice</Text>
       </TouchableOpacity>
 
       <BusinessSwitcherModal
@@ -381,5 +379,5 @@ const styles = StyleSheet.create({
   badgeTextPaid: { color: '#16A34A' },
   badgeTextUnpaid: { color: '#C2410C' },
   badgeTextPartial: { color: '#2563EB' },
-  createFab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: '#F97316', borderRadius: 32, width: 56, height: 56, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+  createFab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: '#F97316', borderRadius: 28, height: 50, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
 });
