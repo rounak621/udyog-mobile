@@ -294,6 +294,7 @@ export default function InventoryScreen() {
         visible={selectedItem !== null}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent={true}
         onRequestClose={() => setSelectedItem(null)}
       >
         <WrapperComponent
