@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.4.2",
+    "@expo-google-fonts/poppins": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "@react-native-community/datetimepicker": "8.4.4",
     "axios": "^1.17.0",
@@ -20,6 +21,7 @@
     "expo-crypto": "~15.0.9",
     "expo-device": "~8.0.10",
     "expo-file-system": "~19.0.23",
+    "expo-font": "~14.0.12",
     "expo-image-picker": "~17.0.11",
     "expo-linking": "~8.0.12",
     "expo-notifications": "~0.32.17",
