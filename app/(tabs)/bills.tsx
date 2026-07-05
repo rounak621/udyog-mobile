@@ -27,6 +27,7 @@ export default function BillsScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const getInitials = (name: string) => name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
   const { initialFilter } = useLocalSearchParams<{ initialFilter?: string }>();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,8 +155,8 @@ export default function BillsScreen() {
             const isDraft = ps === 'DRAFT' || inv.status === 'DRAFT';
             return (
               <TouchableOpacity key={inv.id} style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
-                <View style={styles.cardIcon}>
-                  <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
+                <View style={styles.avatarCircleSmall}>
+                  <Text style={styles.avatarSmallText}>{getInitials(inv.customer_name)}</Text>
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
@@ -201,6 +202,8 @@ const styles = StyleSheet.create({
   list: { paddingTop: 4, paddingHorizontal: 12, paddingBottom: 80, gap: 8 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
   cardIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  avatarCircleSmall: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
+  avatarSmallText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   cardInfo: { flex: 1, minWidth: 0 },
   cardName: { fontSize: 13, fontWeight: '500', color: Colors.text },
   cardSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2, flexShrink: 1 },

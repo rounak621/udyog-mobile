@@ -101,6 +101,8 @@ export default function DashboardScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
+  const getInitials = (name: string) => name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+
   const topCustomers = useMemo(() => {
     const map: Record<string, { name: string; total: number; count: number }> = {};
     recentInvoices.forEach((inv: any) => {
@@ -258,8 +260,8 @@ export default function DashboardScreen() {
           ) : (
             recentInvoices.slice(0, 3).map((inv: any) => (
               <TouchableOpacity key={inv.id} style={styles.txnCard} onPress={() => router.push(`/invoice/${inv.id}`)}>
-                <View style={styles.txnIcon}>
-                  <Ionicons name="business-outline" size={18} color={Colors.textSecondary} />
+                <View style={styles.avatarCircleSmall}>
+                  <Text style={styles.avatarSmallText}>{getInitials(inv.customer_name)}</Text>
                 </View>
                 <View style={styles.txnInfo}>
                   <Text style={styles.txnName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
@@ -380,4 +382,6 @@ const styles = StyleSheet.create({
   badgeTextUnpaid: { color: '#C2410C' },
   badgeTextPartial: { color: '#2563EB' },
   createFab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: '#F97316', borderRadius: 28, height: 50, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+  avatarCircleSmall: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
+  avatarSmallText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });
