@@ -382,6 +382,6 @@ const styles = StyleSheet.create({
   badgeTextUnpaid: { color: '#C2410C' },
   badgeTextPartial: { color: '#2563EB' },
   createFab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: '#F97316', borderRadius: 28, height: 50, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
-  avatarCircleSmall: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center' },
-  avatarSmallText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  avatarCircleSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
+  avatarSmallText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
 });
