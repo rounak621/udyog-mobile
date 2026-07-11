@@ -24,6 +24,7 @@ interface LineItem {
   rate: string;
   gst_rate: string;
   unit: string;
+  discount_percent: string;
   isCustom?: boolean;
 }
 
@@ -35,6 +36,8 @@ export default function CreateInvoiceScreen() {
   const preselectCustomerId = params.customer_id || params.party_id;
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessState, setBusinessState] = useState('');
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [dualAddressEnabled, setDualAddressEnabled] = useState(false);
   const [isInterState, setIsInterState] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
   const [parties, setParties] = useState<any[]>([]);
@@ -43,9 +46,10 @@ export default function CreateInvoiceScreen() {
   const [partySearch, setPartySearch] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', isCustom: false }
+    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '0', isCustom: false }
   ]);
   const [notes, setNotes] = useState('');
+  const [consignmentAddress, setConsignmentAddress] = useState('');
   const [saving, setSaving] = useState(false);
   
   // Invoice type state
@@ -84,6 +88,8 @@ export default function CreateInvoiceScreen() {
       const bId = bizRes.data.id;
       setBusinessId(bId);
       setBusinessState(bizRes.data.state || '');
+      setShowDiscount(!!bizRes.data.show_discount);
+      setDualAddressEnabled(!!bizRes.data.dual_address_enabled);
       
       const [custRes, itemRes, numRes] = await Promise.allSettled([
         api.get(`/customers/?business_id=${bId}&limit=100`),
@@ -165,6 +171,7 @@ export default function CreateInvoiceScreen() {
             rate: String(di.rate || di.unit_price || catalogMatch?.price || ''),
             gst_rate: String(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || '18'),
             unit: di.unit || catalogMatch?.unit || 'PCS',
+            discount_percent: '0',
             isCustom: !catalogMatch,
           };
         });
@@ -214,7 +221,7 @@ export default function CreateInvoiceScreen() {
 
   const addLineItem = () => {
     const newId = Math.random().toString();
-    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', isCustom: false }]);
+    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '0', isCustom: false }]);
     setTimeout(() => {
       const y = itemPositions.current[newId];
       if (typeof y === 'number' && scrollViewRef.current) {
@@ -238,8 +245,11 @@ export default function CreateInvoiceScreen() {
   lineItems.forEach(l => {
     const qty = Number(l.qty) || 0;
     const rate = Number(l.rate) || 0;
+    const discountPercent = showDiscount ? (Number(l.discount_percent) || 0) : 0;
     const gstRate = invoiceType === 'NONGST' ? 0 : (Number(l.gst_rate) || 0);
-    const taxable = round2(qty * rate);
+    const baseAmount = qty * rate;
+    const discountFactor = 1 - (discountPercent / 100);
+    const taxable = round2(baseAmount * discountFactor);
     subtotal += taxable;
     if (isInterState) {
       totalIGST += round2(taxable * (gstRate / 100));
@@ -314,12 +324,15 @@ export default function CreateInvoiceScreen() {
         invoice_type: invoiceType,
         status: 'ISSUED',
         notes: notes || undefined,
+        show_discount: showDiscount || false,
+        consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || undefined) : undefined,
         line_items: lineItems.map(l => ({
           item_id: l.item_id || null,
           item_name: l.name,
           quantity: Number(l.qty) || 1,
           rate: Number(l.rate) || 0,
           gst_rate: invoiceType === 'NONGST' ? 0 : Number(l.gst_rate) || 0,
+          discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
         })),
       };
       
@@ -450,6 +463,21 @@ export default function CreateInvoiceScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Shipping / Consignee Address (conditional on dual_address_enabled) */}
+        {dualAddressEnabled && (
+          <View style={[styles.card, { marginHorizontal: 16, marginBottom: 16 }]}>
+            <Text style={styles.cardLabel}>SHIPPING ADDRESS (OPTIONAL)</Text>
+            <TextInput
+              style={[styles.itemInput, { height: 60, textAlignVertical: 'top', minWidth: '100%', textAlign: 'left', paddingHorizontal: 10, paddingVertical: 6 }]}
+              multiline
+              placeholder="Enter consignee / shipping address..."
+              placeholderTextColor="#94A3B8"
+              value={consignmentAddress}
+              onChangeText={setConsignmentAddress}
+            />
+          </View>
+        )}
+
         {/* Items Section */}
         <View style={{ marginHorizontal: 16, marginBottom: 16 }} onLayout={(e) => { lineItemsSectionY.current = e.nativeEvent.layout.y; }}>
           <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>ITEMS · {lineItems.length}</Text>
@@ -566,7 +594,11 @@ export default function CreateInvoiceScreen() {
                   )}
                 </View>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 4, marginLeft: 2 }}>
-                  Amount: ₹{((Number(item.rate) || 0) * (Number(item.qty) || 1)).toLocaleString('en-IN')}
+                  Amount: ₹{(() => {
+                    const base = (Number(item.rate) || 0) * (Number(item.qty) || 1);
+                    const disc = showDiscount ? (Number(item.discount_percent) || 0) : 0;
+                    return round2(base * (1 - disc / 100)).toLocaleString('en-IN');
+                  })()}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
                   <TextInput
@@ -588,6 +620,20 @@ export default function CreateInvoiceScreen() {
                     keyboardType="numeric"
                     placeholder="Rate (₹)"
                   />
+                  {showDiscount && (
+                    <>
+                      <Text style={{ color: '#94A3B8' }}>−</Text>
+                      <TextInput
+                        key={`item_disc_${item.id}`}
+                        blurOnSubmit={false}
+                        style={styles.qtyInput}
+                        value={String(item.discount_percent)}
+                        onChangeText={t => updateItem(item.id, 'discount_percent', t)}
+                        keyboardType="numeric"
+                        placeholder="Disc %"
+                      />
+                    </>
+                  )}
                 </View>
                 {invoiceType !== 'NONGST' && (
                   <View style={{ marginTop: 8 }}>
