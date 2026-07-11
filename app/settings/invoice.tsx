@@ -42,7 +42,9 @@ export default function InvoiceSettingsScreen() {
   const [prefForm, setPrefForm] = useState({
     invoice_theme: 'corporate_tax_invoice',
     declaration_label: 'Terms & Conditions',
-    terms_and_conditions: ''
+    terms_and_conditions: '',
+    show_discount: false,
+    dual_address_enabled: false,
   });
 
   const [themeModalVisible, setThemeModalVisible] = useState(false);
@@ -59,7 +61,9 @@ export default function InvoiceSettingsScreen() {
         setPrefForm({
           invoice_theme: b.invoice_theme || 'corporate_tax_invoice',
           declaration_label: b.declaration_label === 'Declaration' ? 'Declaration' : 'Terms & Conditions',
-          terms_and_conditions: b.terms_and_conditions || ''
+          terms_and_conditions: b.terms_and_conditions || '',
+          show_discount: !!b.show_discount,
+          dual_address_enabled: !!b.dual_address_enabled,
         });
 
         const nRes = await api.get(`/invoices/numbering-config?business_id=${b.id}`);
@@ -108,7 +112,9 @@ export default function InvoiceSettingsScreen() {
       await api.put('/businesses/settings', {
         invoice_theme: prefForm.invoice_theme,
         declaration_label: prefForm.declaration_label,
-        terms_and_conditions: prefForm.terms_and_conditions
+        terms_and_conditions: prefForm.terms_and_conditions,
+        show_discount: prefForm.show_discount,
+        dual_address_enabled: prefForm.dual_address_enabled,
       });
       Alert.alert('Success', 'App preferences saved');
     } catch (err: any) {
@@ -241,6 +247,40 @@ export default function InvoiceSettingsScreen() {
                   key={opt} 
                   style={[styles.toggleBtn, isActive && styles.toggleBtnActive]} 
                   onPress={() => setPrefForm(f => ({ ...f, declaration_label: opt }))}
+                >
+                  <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.label, { marginTop: 16 }]}>Show Discount Column</Text>
+          <Text style={styles.subtitle}>Show or hide the Discount column on line items in bills.</Text>
+          <View style={styles.toggleRow}>
+            {['On', 'Off'].map(opt => {
+              const isActive = (prefForm.show_discount ? 'On' : 'Off') === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
+                  onPress={() => setPrefForm(f => ({ ...f, show_discount: opt === 'On' }))}
+                >
+                  <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.label, { marginTop: 16 }]}>Enable Dual Address</Text>
+          <Text style={styles.subtitle}>Allow separate Billing and Shipping/Consignment addresses.</Text>
+          <View style={styles.toggleRow}>
+            {['On', 'Off'].map(opt => {
+              const isActive = (prefForm.dual_address_enabled ? 'On' : 'Off') === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
+                  onPress={() => setPrefForm(f => ({ ...f, dual_address_enabled: opt === 'On' }))}
                 >
                   <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
                 </TouchableOpacity>
