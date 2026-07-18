@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -67,6 +68,13 @@ export default function CreateInvoiceScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [webViewLoading, setWebViewLoading] = useState(true);
+
+  useEffect(() => {
+    if (showPdfPreview) {
+      setWebViewLoading(true);
+    }
+  }, [showPdfPreview]);
 
   // Animation refs for success modal checkmark
   const circleScale = useRef(new Animated.Value(0)).current;
@@ -363,6 +371,13 @@ export default function CreateInvoiceScreen() {
   const removeItem = removeLineItem;
   const updateItem = updateLineItem;
   const handleSubmit = handleSave;
+
+  const pdfUrl = createdInvoice?.share_token
+    ? `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`
+    : '';
+  const viewerUrl = Platform.OS === 'android'
+    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`
+    : pdfUrl;
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -863,7 +878,7 @@ export default function CreateInvoiceScreen() {
 
       {/* PDF Preview Modal */}
       <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
           <View style={[styles.pdfHeader, { paddingTop: insets.top + 8 }]}>
             <TouchableOpacity onPress={() => setShowPdfPreview(false)} style={{ padding: 6 }}>
               <Ionicons name="close" size={24} color="#fff" />
@@ -873,18 +888,22 @@ export default function CreateInvoiceScreen() {
             </Text>
             <View style={{ width: 36 }} />
           </View>
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
-            <Ionicons name="document-outline" size={64} color="#CBD5E1" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#64748B', marginTop: 16 }}>PDF Preview</Text>
-            <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }}>
-              PDF preview available in the full app build
-            </Text>
-            <TouchableOpacity
-              style={{ marginTop: 20, backgroundColor: '#F97316', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
-              onPress={() => Linking.openURL(`https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice?.share_token}/pdf`)}
-            >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Open in Browser</Text>
-            </TouchableOpacity>
+          <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
+            {!!createdInvoice?.share_token && (
+              <WebView
+                source={{ uri: viewerUrl }}
+                style={{ flex: 1, backgroundColor: '#fff' }}
+                scalesPageToFit={true}
+                onLoadStart={() => setWebViewLoading(true)}
+                onLoadEnd={() => setWebViewLoading(false)}
+              />
+            )}
+            {webViewLoading && (
+              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 255, 255, 0.95)', alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator size="large" color="#F97316" />
+                <Text style={{ fontSize: 13, color: '#64748B', marginTop: 10, fontWeight: '500' }}>Loading Preview...</Text>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
