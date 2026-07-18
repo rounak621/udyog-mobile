@@ -283,7 +283,17 @@ export default function InvoiceDetailScreen() {
           <Ionicons name="share-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => Linking.openURL(`https://app.udyogbook.in/sales/${id}/edit`)}
+          onPress={() => {
+            if (invoice.payment_status !== 'UNPAID') {
+              Alert.alert(
+                'Cannot Edit Invoice',
+                "This invoice has a payment recorded, so it's locked. Revert the payment first if you need to edit it.",
+                [{ text: 'OK' }]
+              );
+            } else {
+              router.push(`/invoice/create?id=${id}`);
+            }
+          }}
           style={{ padding: 4, marginRight: 8 }}
         >
           <Ionicons name="pencil-outline" size={20} color="#F97316" />

@@ -33,7 +33,8 @@ export default function CreateInvoiceScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ customer_id?: string; party_id?: string; maya_data?: string }>();
+  const params = useLocalSearchParams<{ customer_id?: string; party_id?: string; maya_data?: string; id?: string }>();
+  const isEditMode = !!params.id;
   const preselectCustomerId = params.customer_id || params.party_id;
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessState, setBusinessState] = useState('');
@@ -104,12 +105,14 @@ export default function CreateInvoiceScreen() {
       const [custRes, itemRes, numRes] = await Promise.allSettled([
         api.get(`/customers/?business_id=${bId}&limit=100`),
         api.get(`/items/?business_id=${bId}&limit=100`),
-        api.get(`/invoices/next-number?business_id=${bId}&invoice_type=${invoiceType}`),
+        isEditMode ? Promise.reject('skip') : api.get(`/invoices/next-number?business_id=${bId}&invoice_type=${invoiceType}`),
       ]);
       
+      let partiesList: any[] = [];
       if (custRes.status === 'fulfilled') {
         const data = custRes.value.data;
-        setParties(Array.isArray(data) ? data : data.customers || []);
+        partiesList = Array.isArray(data) ? data : data.customers || [];
+        setParties(partiesList);
       }
       if (itemRes.status === 'fulfilled') {
         const data = itemRes.value.data;
@@ -117,6 +120,41 @@ export default function CreateInvoiceScreen() {
       }
       if (numRes.status === 'fulfilled') {
         setInvoiceNumber(numRes.value.data.next_number || numRes.value.data.invoice_number || '');
+      }
+
+      if (isEditMode) {
+        const invRes = await api.get(`/invoices/${params.id}`);
+        const invData = invRes.data;
+        setInvoiceNumber(invData.invoice_number);
+        setInvoiceDate(invData.invoice_date);
+        setInvoiceType(invData.invoice_type || 'INVOICE');
+        setNotes(invData.notes || '');
+        setConsignmentAddress(invData.consignment_address || '');
+        setShowDiscount(!!invData.show_discount);
+
+        const custId = invData.customer_id;
+        const match = partiesList.find(p => String(p.id) === String(custId));
+        if (match) {
+          setSelectedParty(match);
+          const customerState = match.state || '';
+          const interState = bizRes.data.state && customerState && bizRes.data.state.toLowerCase().trim() !== customerState.toLowerCase().trim();
+          setIsInterState(!!interState);
+        }
+
+        if (invData.line_items) {
+          const mapped = invData.line_items.map((li: any) => ({
+            id: String(li.id || Math.random()),
+            item_id: li.item_id,
+            name: li.item_name || li.item?.name || '',
+            qty: String(li.quantity),
+            rate: String(li.rate),
+            gst_rate: String(li.gst_rate),
+            unit: li.unit || 'PCS',
+            discount_percent: String(li.discount_percent || 0),
+            isCustom: !li.item_id
+          }));
+          setLineItems(mapped);
+        }
       }
     } catch (err) {
       console.log('Load error:', err);
@@ -129,7 +167,7 @@ export default function CreateInvoiceScreen() {
 
   // Fetch next invoice number when invoiceType or businessId changes
   useEffect(() => {
-    if (businessId) {
+    if (businessId && !isEditMode) {
       api.get(`/invoices/next-number?business_id=${businessId}&invoice_type=${invoiceType}`)
         .then(res => setInvoiceNumber(res.data.invoice_number || res.data.next_number || ''))
         .catch(() => {});
@@ -328,14 +366,9 @@ export default function CreateInvoiceScreen() {
       const token = await getToken();
       setAuthToken(token);
       
-      const payload = {
+      const payload: any = {
         customer_id: selectedParty?.id || null,
         invoice_date: invoiceDate,
-        invoice_type: invoiceType,
-        status: 'ISSUED',
-        notes: notes || undefined,
-        show_discount: showDiscount || false,
-        consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || undefined) : undefined,
         line_items: lineItems.map(l => ({
           item_id: l.item_id || null,
           item_name: l.name,
@@ -344,19 +377,35 @@ export default function CreateInvoiceScreen() {
           gst_rate: invoiceType === 'NONGST' ? 0 : Number(l.gst_rate) || 0,
           discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
         })),
+        consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || undefined) : undefined,
+        is_gst_applicable: invoiceType === 'SERVICE' ? (invoiceType === 'SERVICE') : true,
       };
-      
-      const res = await api.post(`/invoices/?business_id=${businessId}`, payload);
-      const invoiceData = res.data?.invoice || res.data;
-      const warnings = res.data?.warnings || [];
-      if (warnings.length > 0) {
-        Alert.alert('Stock Warning', warnings.join('\n'));
+
+      if (!isEditMode) {
+        payload.invoice_type = invoiceType;
+        payload.status = 'ISSUED';
+        payload.notes = notes || undefined;
+        payload.show_discount = showDiscount || false;
       }
-      setCreatedInvoice(invoiceData);
-      setShowSuccess(true);
-      playSuccessSound();
+      
+      if (isEditMode) {
+        await api.put(`/invoices/${params.id}?business_id=${businessId}`, payload);
+        Alert.alert('Success', 'Invoice updated successfully', [
+          { text: 'OK', onPress: () => router.replace(`/invoice/${params.id}`) }
+        ]);
+      } else {
+        const res = await api.post(`/invoices/?business_id=${businessId}`, payload);
+        const invoiceData = res.data?.invoice || res.data;
+        const warnings = res.data?.warnings || [];
+        if (warnings.length > 0) {
+          Alert.alert('Stock Warning', warnings.join('\n'));
+        }
+        setCreatedInvoice(invoiceData);
+        setShowSuccess(true);
+        playSuccessSound();
+      }
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create invoice');
+      Alert.alert('Error', err.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'create'} invoice`);
     } finally {
       setSaving(false);
     }
@@ -389,31 +438,28 @@ export default function CreateInvoiceScreen() {
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.headerTitle}>New Invoice</Text>
-          <Text style={styles.headerSub}>Draft · auto-saved</Text>
+          <Text style={styles.headerTitle}>{isEditMode ? 'Edit Invoice' : 'New Invoice'}</Text>
+          <Text style={styles.headerSub}>{isEditMode ? `Editing Invoice #${invoiceNumber}` : 'Draft · auto-saved'}</Text>
         </View>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
           {saving ? (
-            <ActivityIndicator color="#F97316" size="small" />
+            <ActivityIndicator color="#F97316" />
           ) : (
-            <>
-              <Ionicons name="save-outline" size={16} color="#F97316" style={{ marginRight: 6 }} />
-              <Text style={styles.saveBtnText}>Save</Text>
-            </>
+            <Text style={styles.saveBtnText}>Save</Text>
           )}
         </TouchableOpacity>
       </View>
 
       <KeyboardAwareScrollView
         ref={scrollViewRef}
-        style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
       >
         {/* Invoice type toggle */}
-        <View style={styles.typeToggle}>
+        <View style={[styles.typeToggle, isEditMode && { opacity: 0.6 }]}>
           {[
             { label: 'GST Invoice', value: 'INVOICE' },
             { label: 'Non-GST', value: 'NONGST' },
@@ -422,7 +468,8 @@ export default function CreateInvoiceScreen() {
             <TouchableOpacity
               key={t.value}
               style={[styles.typeBtn, invoiceType === t.value && styles.typeBtnActive]}
-              onPress={() => setInvoiceType(t.value as any)}
+              onPress={() => !isEditMode && setInvoiceType(t.value as any)}
+              disabled={isEditMode}
             >
               <Text style={[styles.typeBtnText, invoiceType === t.value && styles.typeBtnTextActive]}>{t.label}</Text>
             </TouchableOpacity>
@@ -732,7 +779,9 @@ export default function CreateInvoiceScreen() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.createBtnText}>Create Invoice · ₹{total.toLocaleString('en-IN')}</Text>
+            <Text style={styles.createBtnText}>
+              {isEditMode ? `Save Changes · ₹${total.toLocaleString('en-IN')}` : `Create Invoice · ₹${total.toLocaleString('en-IN')}`}
+            </Text>
           )}
         </TouchableOpacity>
       </KeyboardAwareScrollView>
