@@ -1,9 +1,9 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert
+  TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -31,6 +31,7 @@ interface PurchaseBill {
     state?: string | null;
   };
   total_amount: number;
+  paid_amount: number;
   subtotal: number;
   tax_amount: number;
   cgst_amount?: number | null;
@@ -50,6 +51,39 @@ export default function PurchaseBillDetailScreen() {
   const [bill, setBill] = useState<PurchaseBill | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Business state
+  const [businessId, setBusinessId] = useState<string>('');
+
+  // Payments states
+  const [payments, setPayments] = useState<any[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Payment Modal state
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE'>('CASH');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [referenceNumber, setReferenceNumber] = useState('');
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+
+  // Revert Modal state
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [revertPaymentId, setRevertPaymentId] = useState<string | null>(null);
+  const [revertReason, setRevertReason] = useState('');
+  const [reverting, setReverting] = useState(false);
+
+  const loadPayments = async (bId: string) => {
+    setPaymentsLoading(true);
+    try {
+      const res = await api.get(`/supplier-payments/${id}?business_id=${bId}`);
+      setPayments(res.data || []);
+    } catch (err) {
+      console.log('Failed to fetch payments:', err);
+      setPayments([]);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const loadBill = async () => {
       try {
@@ -57,8 +91,10 @@ export default function PurchaseBillDetailScreen() {
         setAuthToken(token);
         const bizRes = await api.get('/businesses/me');
         const bId = bizRes.data.id;
+        setBusinessId(bId);
         const res = await api.get(`/purchase-bills/${id}?business_id=${bId}`);
         setBill(res.data);
+        await loadPayments(bId);
       } catch (err: any) {
         Alert.alert('Error', 'Failed to load purchase bill details');
         router.back();
@@ -110,6 +146,83 @@ export default function PurchaseBillDetailScreen() {
     );
   };
 
+  const openPaymentModal = () => {
+    setPaymentMode('CASH');
+    setPaymentAmount(String(balanceDue));
+    setReferenceNumber('');
+    setShowPaymentModal(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    const amt = parseFloat(paymentAmount);
+    if (isNaN(amt) || amt <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+    if (amt > balanceDue) {
+      Alert.alert('Error', `Amount cannot exceed remaining balance of ${fmt(balanceDue)}`);
+      return;
+    }
+
+    setConfirmingPayment(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/supplier-payments/?business_id=${businessId}`, {
+        amount: amt,
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_mode: paymentMode,
+        reference_number: referenceNumber.trim() || undefined,
+        purchase_bill_id: bill?.id,
+        supplier_id: bill?.supplier.id,
+      });
+
+      setShowPaymentModal(false);
+      setPaymentAmount('');
+      setReferenceNumber('');
+
+      // Refresh data
+      const res = await api.get(`/purchase-bills/${id}?business_id=${businessId}`);
+      setBill(res.data);
+      await loadPayments(businessId);
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.detail || 'Failed to record payment');
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
+  const handleRevertPayment = (paymentId: string) => {
+    setRevertPaymentId(paymentId);
+    setRevertReason('');
+    setShowRevertModal(true);
+  };
+
+  const handleConfirmRevert = async () => {
+    if (!revertPaymentId) return;
+    setReverting(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/supplier-payments/${revertPaymentId}/revert?business_id=${businessId}`, {
+        reason: revertReason.trim() || undefined
+      });
+
+      setShowRevertModal(false);
+      setRevertPaymentId(null);
+      setRevertReason('');
+
+      // Refresh data
+      const res = await api.get(`/purchase-bills/${id}?business_id=${businessId}`);
+      setBill(res.data);
+      await loadPayments(businessId);
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.detail || 'Failed to revert payment');
+    } finally {
+      setReverting(false);
+    }
+  };
+
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   if (loading) {
@@ -125,6 +238,7 @@ export default function PurchaseBillDetailScreen() {
   const ps = (bill.payment_status || 'UNPAID').toUpperCase();
   const isPaid = ps === 'PAID';
   const isPartial = ps === 'PARTIAL';
+  const balanceDue = Math.max(0, Number(bill.total_amount) - Number(bill.paid_amount || 0));
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -242,8 +356,215 @@ export default function PurchaseBillDetailScreen() {
             <Text style={[styles.summaryLabel, { fontWeight: '700', color: Colors.text }]}>Total Amount</Text>
             <Text style={[styles.summaryValue, { fontWeight: '800', color: Colors.primary, fontSize: 16 }]}>{fmt(bill.total_amount)}</Text>
           </View>
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Paid Amount</Text>
+            <Text style={[styles.summaryValue, { color: Colors.success, fontWeight: '600' }]}>{fmt(bill.paid_amount || 0)}</Text>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Balance Due</Text>
+            <Text style={[styles.summaryValue, { color: balanceDue > 0 ? Colors.danger : Colors.success, fontWeight: '700' }]}>
+              {fmt(balanceDue)}
+            </Text>
+          </View>
         </View>
+
+        {/* Payment History Section */}
+        <Text style={styles.sectionTitle}>Payment History</Text>
+        <View style={styles.card}>
+          {paymentsLoading ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : payments.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <Text style={{ fontSize: 13, color: Colors.textMuted }}>No payments recorded yet</Text>
+            </View>
+          ) : (
+            payments.map((p, index) => {
+              const isReverted = !!p.is_reverted;
+              const formattedDate = new Date(p.payment_date).toLocaleDateString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric'
+              });
+              return (
+                <View key={p.id || index} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: index === payments.length - 1 ? 0 : 0.5, borderBottomColor: Colors.border }}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={[{ fontSize: 14, fontWeight: '700' }, isReverted ? { color: Colors.textMuted, textDecorationLine: 'line-through' } : { color: Colors.success }]}>
+                        {fmt(Number(p.amount))}
+                      </Text>
+                      <View style={{ backgroundColor: '#F1F5F9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.textSecondary }}>{p.payment_mode}</Text>
+                      </View>
+                      {isReverted && (
+                        <View style={{ backgroundColor: '#FEF2F2', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.danger }}>Reverted</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
+                      {formattedDate} {p.reference_number ? `· Ref: ${p.reference_number}` : ''}
+                    </Text>
+                    {isReverted && p.revert_reason && (
+                      <Text style={{ fontSize: 11, color: Colors.danger, fontStyle: 'italic', marginTop: 2 }}>
+                        Reason: {p.revert_reason}
+                      </Text>
+                    )}
+                  </View>
+                  {!isReverted && (
+                    <TouchableOpacity
+                      onPress={() => handleRevertPayment(p.id)}
+                      style={{ padding: 6, borderRadius: 6, borderWidth: 0.5, borderColor: '#FED7AA', backgroundColor: '#FFF7ED' }}
+                    >
+                      <Ionicons name="reload-outline" size={16} color={Colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </View>
+
+        {/* Record Payment Button */}
+        {!isPaid && (
+          <TouchableOpacity style={styles.paidBtn} onPress={openPaymentModal}>
+            <Ionicons name="cash-outline" size={18} color="#fff" />
+            <Text style={styles.paidBtnText}>Record Payment</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      {/* Record Payment Modal */}
+      <Modal
+        visible={showPaymentModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.payOverlay}>
+          <View style={styles.paySheet}>
+            <View style={styles.paySheetHandle} />
+            <View style={styles.payHeader}>
+              <Text style={styles.payTitle}>Record Payment</Text>
+              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                <Ionicons name="close" size={24} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.paySubtitle}>Configure payment details</Text>
+
+            <View style={{ gap: 12, marginBottom: 20 }}>
+              <View>
+                <Text style={styles.inputLabel}>Amount (₹) *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="numeric"
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                  placeholder="Enter amount"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <View>
+                <Text style={styles.inputLabel}>Reference Number (Optional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={referenceNumber}
+                  onChangeText={setReferenceNumber}
+                  placeholder="e.g. UPI Ref, Cheque No"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <Text style={styles.inputLabel}>Payment Mode</Text>
+              <View style={{ gap: 8 }}>
+                {([
+                  { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
+                  { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: 'business-outline' },
+                  { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
+                  { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
+                ] as const).map(opt => {
+                  const selected = paymentMode === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => setPaymentMode(opt.value)}
+                      style={[styles.payOption, selected && styles.payOptionSelected]}
+                    >
+                      <View style={[styles.payIconWrap, selected && styles.payIconWrapSelected]}>
+                        <Ionicons name={opt.icon as any} size={20} color={selected ? '#fff' : '#F97316'} />
+                      </View>
+                      <Text style={[styles.payOptionLabel, selected && styles.payOptionLabelSelected]}>
+                        {opt.label}
+                      </Text>
+                      <View style={[styles.payRadio, selected && styles.payRadioSelected]}>
+                        {selected ? <View style={styles.payRadioDot} /> : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.payConfirmBtn, confirmingPayment && { opacity: 0.7 }]}
+              onPress={handleConfirmPayment}
+              disabled={confirmingPayment}
+            >
+              {confirmingPayment ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.payConfirmText}>Confirm Payment</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Revert Modal */}
+      <Modal
+        visible={showRevertModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowRevertModal(false); setRevertReason(''); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Revert Payment</Text>
+            <Text style={styles.modalSub}>
+              Are you sure you want to revert this payment? This will update the bill's paid amount.
+            </Text>
+
+            <Text style={styles.inputLabel}>Reason (Optional)</Text>
+            <TextInput
+              style={[styles.textInput, { marginBottom: 20 }]}
+              value={revertReason}
+              onChangeText={setRevertReason}
+              placeholder="Enter reason for reverting..."
+              placeholderTextColor={Colors.textMuted}
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setShowRevertModal(false); setRevertReason(''); }}
+                style={styles.modalCancelBtn}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmRevert}
+                disabled={reverting}
+                style={styles.modalConfirmBtn}
+              >
+                {reverting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmBtnText}>Revert</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -272,6 +593,7 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   summaryLabel: { fontSize: 13, color: Colors.textSecondary },
   summaryValue: { fontSize: 13, color: Colors.text, fontWeight: '500' },
+  card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   badge: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
   paidBadge: { backgroundColor: '#F0FDF4' },
   unpaidBadge: { backgroundColor: '#FFF7ED' },
@@ -280,4 +602,37 @@ const styles = StyleSheet.create({
   paidText: { color: Colors.success },
   unpaidText: { color: '#EA580C' },
   partialText: { color: '#2563EB' },
+  paidBtn: { backgroundColor: Colors.success, borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
+  paidBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+  
+  // Payment Modal Sheet
+  payOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  paySheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28 },
+  paySheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', marginBottom: 12 },
+  payHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  payTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  paySubtitle: { fontSize: 13, color: '#64748B', marginTop: 4, marginBottom: 16 },
+  inputLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  textInput: { height: 40, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: 12, fontSize: 13, color: Colors.text, backgroundColor: '#f8fafc' },
+  payOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#fff' },
+  payOptionSelected: { borderColor: '#F97316', backgroundColor: '#FFF7ED' },
+  payIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
+  payIconWrapSelected: { backgroundColor: '#F97316' },
+  payOptionLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  payOptionLabelSelected: { color: '#C2410C' },
+  payRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
+  payRadioSelected: { borderColor: '#F97316' },
+  payRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#F97316' },
+  payConfirmBtn: { backgroundColor: '#F97316', borderRadius: 14, padding: 16, alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4, marginTop: 16 },
+  payConfirmText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Revert Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  modalContent: { backgroundColor: '#fff', borderRadius: Radius.md, padding: 20, width: '100%', maxWidth: 340, borderWidth: 0.5, borderColor: Colors.border },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+  modalSub: { fontSize: 13, color: Colors.textSecondary, marginBottom: 16, lineHeight: 18 },
+  modalCancelBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, borderWidth: 0.5, borderColor: Colors.border },
+  modalCancelBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  modalConfirmBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, backgroundColor: Colors.danger },
+  modalConfirmBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' }
 });
