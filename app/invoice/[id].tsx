@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Share, Linking, Modal
+  TouchableOpacity, ActivityIndicator, Alert, Share, Linking, Modal, TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -21,9 +21,19 @@ export default function InvoiceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Payment recording states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE'>('CASH');
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'BANK' | 'UPI' | 'CHEQUE'>('CASH');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [notes, setNotes] = useState('');
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+
+  // Payment revert states
+  const [showRevertModal, setShowRevertModal] = useState(false);
+  const [revertPaymentId, setRevertPaymentId] = useState<string | null>(null);
+  const [revertReason, setRevertReason] = useState('');
+  const [reverting, setReverting] = useState(false);
 
   const loadInvoice = async () => {
     try {
@@ -124,31 +134,86 @@ export default function InvoiceDetailScreen() {
     );
   };
 
+  const ps = (invoice?.payment_status || 'UNPAID').toUpperCase();
+  const isPaid = ps === 'PAID';
+  const isPartial = ps === 'PARTIAL';
+  const balanceDue = invoice ? Math.max(0, Number(invoice.total_amount) - Number(invoice.paid_amount || 0)) : 0;
+
   const openPaymentModal = () => {
     setPaymentMode('CASH');
+    setPaymentAmount(String(balanceDue));
+    setNotes('');
     setShowPaymentModal(true);
   };
 
   const handleConfirmPayment = async () => {
+    const amt = parseFloat(paymentAmount);
+    if (isNaN(amt) || amt <= 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+    if (amt > balanceDue) {
+      Alert.alert('Error', `Amount cannot exceed remaining balance of ${fmt(balanceDue)}`);
+      return;
+    }
+
     try {
       setConfirmingPayment(true);
       const token = await getToken();
       setAuthToken(token);
-      await api.post(`/invoices/${id}/mark-paid`, { payment_mode: paymentMode });
+      await api.post(`/payments/receive?business_id=${invoice.business_id}`, {
+        party_id: invoice.customer_id,
+        amount: amt,
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_mode: paymentMode,
+        notes: notes.trim() || null,
+        allocations: [
+          {
+            invoice_id: Number(invoice.id),
+            amount: amt
+          }
+        ]
+      });
       setShowPaymentModal(false);
+      setPaymentAmount('');
+      setNotes('');
       await loadInvoice();
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.detail || 'Failed to mark as paid');
+      Alert.alert('Error', err?.response?.data?.detail || 'Failed to record payment');
     } finally {
       setConfirmingPayment(false);
     }
   };
 
+  const handleRevertPayment = (paymentId: string) => {
+    setRevertPaymentId(paymentId);
+    setRevertReason('');
+    setShowRevertModal(true);
+  };
+
+  const handleConfirmRevert = async () => {
+    if (!revertPaymentId) return;
+    setReverting(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/payments/${revertPaymentId}/revert?business_id=${invoice.business_id}`, {
+        reason: revertReason.trim() || null
+      });
+
+      setShowRevertModal(false);
+      setRevertPaymentId(null);
+      setRevertReason('');
+      await loadInvoice();
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.detail || 'Failed to revert payment');
+    } finally {
+      setReverting(false);
+    }
+  };
+
   if (loading) return <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>;
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
-
-  const isPaid = invoice.payment_status === 'PAID' || invoice.status === 'PAID';
-  const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -193,15 +258,15 @@ export default function InvoiceDetailScreen() {
               <Text style={styles.invoiceDate}>{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}</Text>
             </View>
             <View style={[styles.badge, 
-              invoice.payment_status === 'PAID' ? styles.paidBadge : 
-              invoice.payment_status === 'PARTIAL' ? styles.partialBadge : 
+              isPaid ? styles.paidBadge : 
+              isPartial ? styles.partialBadge : 
               styles.unpaidBadge
             ]}>
               <Text style={[styles.badgeText,
-                invoice.payment_status === 'PAID' ? styles.paidText :
-                invoice.payment_status === 'PARTIAL' ? styles.partialText :
+                isPaid ? styles.paidText :
+                isPartial ? styles.partialText :
                 styles.unpaidText
-              ]}>{invoice.payment_status || 'UNPAID'}</Text>
+              ]}>{ps}</Text>
             </View>
           </View>
 
@@ -235,6 +300,14 @@ export default function InvoiceDetailScreen() {
             <Text style={[styles.totalLabel, { fontSize: 15, fontWeight: '600', color: Colors.text, width: 100 }]} numberOfLines={1}>Total</Text>
             <Text style={[styles.totalVal, { fontSize: 16, fontWeight: '700', color: Colors.primary }]} textBreakStrategy="simple">{fmt(invoice.total_amount)}</Text>
           </View>
+          <View style={styles.totalRow}>
+            <Text style={[styles.totalLabel, { fontSize: 13, color: Colors.textSecondary, width: 100 }]} numberOfLines={1}>Paid Amount</Text>
+            <Text style={[styles.totalVal, { fontSize: 13, color: Colors.success, fontWeight: '600' }]} textBreakStrategy="simple">{fmt(invoice.paid_amount || 0)}</Text>
+          </View>
+          <View style={styles.totalRow}>
+            <Text style={[styles.totalLabel, { fontSize: 13, color: Colors.textSecondary, width: 100 }]} numberOfLines={1}>Balance Due</Text>
+            <Text style={[styles.totalVal, { fontSize: 13, color: balanceDue > 0 ? Colors.danger : Colors.success, fontWeight: '700' }]} textBreakStrategy="simple">{fmt(balanceDue)}</Text>
+          </View>
         </View>
 
         {invoice.notes && (
@@ -244,10 +317,66 @@ export default function InvoiceDetailScreen() {
           </View>
         )}
 
+        <Text style={styles.sectionLabel}>Payment History</Text>
+        <View style={styles.card}>
+          {!(invoice.payments && invoice.payments.length > 0) ? (
+            <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+              <Text style={{ fontSize: 13, color: Colors.textMuted }}>No payments recorded yet</Text>
+            </View>
+          ) : (
+            invoice.payments.map((p: any, index: number) => {
+              const isReverted = !!p.is_reverted;
+              const formattedDate = new Date(p.payment_date).toLocaleDateString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric'
+              });
+              return (
+                <View key={p.id || index} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: index === invoice.payments.length - 1 ? 0 : 0.5, borderBottomColor: Colors.border }}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <Text style={[{ fontSize: 14, fontWeight: '700' }, isReverted ? { color: Colors.textMuted, textDecorationLine: 'line-through' } : { color: Colors.success }]}>
+                        {fmt(Number(p.amount))}
+                      </Text>
+                      <View style={{ backgroundColor: '#F1F5F9', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.textSecondary }}>{p.mode}</Text>
+                      </View>
+                      {isReverted && (
+                        <View style={{ backgroundColor: '#FEF2F2', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '600', color: Colors.danger }}>Reverted</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 4 }}>
+                      {formattedDate}
+                    </Text>
+                    {p.notes && !isReverted && (
+                      <Text style={{ fontSize: 12, color: Colors.primary, marginTop: 4 }}>
+                        {p.notes}
+                      </Text>
+                    )}
+                    {isReverted && p.revert_reason && (
+                      <Text style={{ fontSize: 11, color: Colors.danger, fontStyle: 'italic', marginTop: 2 }}>
+                        Reason: {p.revert_reason}
+                      </Text>
+                    )}
+                  </View>
+                  {!isReverted && (
+                    <TouchableOpacity
+                      onPress={() => handleRevertPayment(p.id)}
+                      style={{ padding: 6, borderRadius: 6, borderWidth: 0.5, borderColor: '#FED7AA', backgroundColor: '#FFF7ED' }}
+                    >
+                      <Ionicons name="reload-outline" size={16} color={Colors.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </View>
+
         {!isPaid && (
           <TouchableOpacity style={styles.paidBtn} onPress={openPaymentModal}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-            <Text style={styles.paidBtnText}>Mark as Paid</Text>
+            <Ionicons name="cash-outline" size={18} color="#fff" />
+            <Text style={styles.paidBtnText}>Record Payment</Text>
           </TouchableOpacity>
         )}
 
@@ -276,7 +405,6 @@ export default function InvoiceDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Payment Modal (bottom sheet) */}
       <Modal
         visible={showPaymentModal}
         transparent
@@ -287,39 +415,65 @@ export default function InvoiceDetailScreen() {
           <View style={styles.paySheet}>
             <View style={styles.paySheetHandle} />
             <View style={styles.payHeader}>
-              <Text style={styles.payTitle}>Mark as Paid</Text>
+              <Text style={styles.payTitle}>Record Payment</Text>
               <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
                 <Ionicons name="close" size={24} color="#0F172A" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.paySubtitle}>Select payment mode</Text>
+            <Text style={styles.paySubtitle}>Configure payment details</Text>
 
-            <View style={{ gap: 10, marginBottom: 20 }}>
-              {([
-                { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
-                { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: 'business-outline' },
-                { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
-                { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
-              ] as const).map(opt => {
-                const selected = paymentMode === opt.value;
-                return (
-                  <TouchableOpacity
-                    key={opt.value}
-                    onPress={() => setPaymentMode(opt.value)}
-                    style={[styles.payOption, selected && styles.payOptionSelected]}
-                  >
-                    <View style={[styles.payIconWrap, selected && styles.payIconWrapSelected]}>
-                      <Ionicons name={opt.icon as any} size={20} color={selected ? '#fff' : '#F97316'} />
-                    </View>
-                    <Text style={[styles.payOptionLabel, selected && styles.payOptionLabelSelected]}>
-                      {opt.label}
-                    </Text>
-                    <View style={[styles.payRadio, selected && styles.payRadioSelected]}>
-                      {selected ? <View style={styles.payRadioDot} /> : null}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={{ gap: 12, marginBottom: 20 }}>
+              <View>
+                <Text style={styles.inputLabel}>Amount (₹) *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="numeric"
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                  placeholder="Enter amount"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <View>
+                <Text style={styles.inputLabel}>Notes (Optional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Add payment notes..."
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              <Text style={styles.inputLabel}>Payment Mode</Text>
+              <View style={{ gap: 8 }}>
+                {([
+                  { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
+                  { value: 'BANK', label: 'Bank Transfer', icon: 'business-outline' },
+                  { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
+                  { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
+                ] as const).map(opt => {
+                  const selected = paymentMode === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => setPaymentMode(opt.value)}
+                      style={[styles.payOption, selected && styles.payOptionSelected]}
+                    >
+                      <View style={[styles.payIconWrap, selected && styles.payIconWrapSelected]}>
+                        <Ionicons name={opt.icon as any} size={20} color={selected ? '#fff' : '#F97316'} />
+                      </View>
+                      <Text style={[styles.payOptionLabel, selected && styles.payOptionLabelSelected]}>
+                        {opt.label}
+                      </Text>
+                      <View style={[styles.payRadio, selected && styles.payRadioSelected]}>
+                        {selected ? <View style={styles.payRadioDot} /> : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
 
             <TouchableOpacity
@@ -337,7 +491,51 @@ export default function InvoiceDetailScreen() {
         </View>
       </Modal>
 
-      {/* PDF Preview Modal */}
+      <Modal
+        visible={showRevertModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowRevertModal(false); setRevertReason(''); }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Revert Payment</Text>
+            <Text style={styles.modalSub}>
+              Are you sure you want to revert this payment? This will update the invoice's paid amount.
+            </Text>
+
+            <Text style={styles.inputLabel}>Reason (Optional)</Text>
+            <TextInput
+              style={[styles.textInput, { marginBottom: 20 }]}
+              value={revertReason}
+              onChangeText={setRevertReason}
+              placeholder="Enter reason for reverting..."
+              placeholderTextColor={Colors.textMuted}
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setShowRevertModal(false); setRevertReason(''); }}
+                style={styles.modalCancelBtn}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmRevert}
+                disabled={reverting}
+                style={styles.modalConfirmBtn}
+              >
+                {reverting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmBtnText}>Revert</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>
         <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
           <View style={[styles.pdfHeader, { paddingTop: insets.top + 8 }]}>
@@ -410,7 +608,9 @@ const styles = StyleSheet.create({
   payHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   payTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   paySubtitle: { fontSize: 13, color: '#64748B', marginTop: 4, marginBottom: 16 },
-  payOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#fff' },
+  inputLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
+  textInput: { height: 40, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: 12, fontSize: 13, color: Colors.text, backgroundColor: '#f8fafc' },
+  payOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#fff' },
   payOptionSelected: { borderColor: '#F97316', backgroundColor: '#FFF7ED' },
   payIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
   payIconWrapSelected: { backgroundColor: '#F97316' },
@@ -421,4 +621,12 @@ const styles = StyleSheet.create({
   payRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#F97316' },
   payConfirmBtn: { backgroundColor: '#F97316', borderRadius: 14, padding: 16, alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   payConfirmText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
+  modalContent: { backgroundColor: '#fff', borderRadius: Radius.md, padding: 20, width: '100%', maxWidth: 340, borderWidth: 0.5, borderColor: Colors.border },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+  modalSub: { fontSize: 13, color: Colors.textSecondary, marginBottom: 16, lineHeight: 18 },
+  modalCancelBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, borderWidth: 0.5, borderColor: Colors.border },
+  modalCancelBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  modalConfirmBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, backgroundColor: Colors.danger },
+  modalConfirmBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' }
 });
