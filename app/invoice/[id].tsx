@@ -212,8 +212,48 @@ export default function InvoiceDetailScreen() {
     }
   };
 
+  const [downloadingStatement, setDownloadingStatement] = useState(false);
+
+  const handleDownloadStatement = async () => {
+    setDownloadingStatement(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      const customerName = (invoice.customer_name || invoice.party_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `Statement_${customerName}_${invoiceNum}.pdf`;
+      
+      const pdfUrl = `https://api.udyogbook.in/api/v1/invoices/${id}/payment-statement-pdf?business_id=${invoice.business_id}`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+      
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (downloadResult.status === 200) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Statement ${invoice.invoice_number}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (err) {
+      console.log('Download statement error:', err);
+      Alert.alert('Error', 'Could not download statement PDF');
+    } finally {
+      setDownloadingStatement(false);
+    }
+  };
+
   if (loading) return <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>;
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
+
+  const shareUrl = `https://app.udyogbook.in/invoice/${invoice.id}`;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -317,7 +357,25 @@ export default function InvoiceDetailScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionLabel}>Payment History</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
+          <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Payment History</Text>
+          {invoice.payments && invoice.payments.length > 0 && (
+            <TouchableOpacity
+              onPress={handleDownloadStatement}
+              disabled={downloadingStatement}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+            >
+              {downloadingStatement ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <>
+                  <Ionicons name="download-outline" size={14} color={Colors.primary} />
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: Colors.primary }}>Download Statement</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.card}>
           {!(invoice.payments && invoice.payments.length > 0) ? (
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
