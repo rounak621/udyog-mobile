@@ -22,20 +22,22 @@ export default function InvoiceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [webViewLoading, setWebViewLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (showPdfPreview) {
       setWebViewLoading(true);
+      setHasError(false);
     }
   }, [showPdfPreview]);
 
-  const pdfUrl = invoice?.share_token
-    ? `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`
+  const previewPdfUrl = invoice?.share_token
+    ? `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf?mode=inline`
     : '';
   const viewerUrl = Platform.OS === 'android'
-    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`
-    : pdfUrl;
+    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(previewPdfUrl)}`
+    : previewPdfUrl;
 
   // Payment recording states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -621,16 +623,26 @@ export default function InvoiceDetailScreen() {
             <View style={{ width: 36 }} />
           </View>
           <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
-            {!!invoice?.share_token && (
+            {!!invoice?.share_token && !hasError && (
               <WebView
                 source={{ uri: viewerUrl }}
                 style={{ flex: 1, backgroundColor: '#fff' }}
                 scalesPageToFit={true}
                 onLoadStart={() => setWebViewLoading(true)}
                 onLoadEnd={() => setWebViewLoading(false)}
+                onError={() => setHasError(true)}
+                onHttpError={() => setHasError(true)}
               />
             )}
-            {webViewLoading && (
+            {hasError && (
+              <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                <Ionicons name="alert-circle-outline" size={48} color={Colors.danger} />
+                <Text style={{ fontSize: 14, color: Colors.textSecondary, marginTop: 10, textAlign: 'center' }}>
+                  Could not load preview. Please try downloading or sharing the PDF instead.
+                </Text>
+              </View>
+            )}
+            {webViewLoading && !hasError && (
               <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 255, 255, 0.95)', alignItems: 'center', justifyContent: 'center' }}>
                 <ActivityIndicator size="large" color={Colors.primary} />
                 <Text style={{ fontSize: 13, color: Colors.textSecondary, marginTop: 10, fontWeight: '500' }}>Loading Preview...</Text>
