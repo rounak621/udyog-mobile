@@ -266,7 +266,7 @@ export default function InvoiceDetailScreen() {
           <Ionicons name="share-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => Linking.openURL(`https://app.udyogbook.in/invoices/${id}/edit`)}
+          onPress={() => Linking.openURL(`https://app.udyogbook.in/sales/${id}/edit`)}
           style={{ padding: 4, marginRight: 8 }}
         >
           <Ionicons name="pencil-outline" size={20} color="#F97316" />
