@@ -11,6 +11,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -339,11 +340,7 @@ export default function CreateInvoiceScreen() {
         const fileUri = (FileSystem as any).cacheDirectory + fileName;
         const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
         if (downloadResult.status === 200) {
-          await Sharing.shareAsync(downloadResult.uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Save ${fileName}`,
-            UTI: 'com.adobe.pdf',
-          });
+          await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`);
         } else {
           throw new Error('Download failed');
         }

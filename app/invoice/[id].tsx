@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -98,11 +99,7 @@ export default function InvoiceDetailScreen() {
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
 
       if (downloadResult.status === 200) {
-        await Sharing.shareAsync(downloadResult.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Save ${fileName}`,
-          UTI: 'com.adobe.pdf',
-        });
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`);
       } else {
         throw new Error('Download failed');
       }
@@ -239,11 +236,7 @@ export default function InvoiceDetailScreen() {
       });
       
       if (downloadResult.status === 200) {
-        await Sharing.shareAsync(downloadResult.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Statement ${invoice.invoice_number}`,
-          UTI: 'com.adobe.pdf',
-        });
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Statement ${invoice.invoice_number}`);
       } else {
         throw new Error('Download failed');
       }

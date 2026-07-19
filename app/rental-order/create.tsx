@@ -12,6 +12,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
@@ -405,11 +406,7 @@ export default function OrderCreateScreen() {
         const fileUri = (FileSystem as any).cacheDirectory + fileName;
         const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
         if (downloadResult.status === 200) {
-          await Sharing.shareAsync(downloadResult.uri, {
-            mimeType: 'application/pdf',
-            dialogTitle: `Save ${fileName}`,
-            UTI: 'com.adobe.pdf',
-          });
+          await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`);
         } else {
           throw new Error('Download failed');
         }

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
@@ -174,11 +175,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await Sharing.shareAsync(response.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Save ${fileName}`,
-          UTI: 'com.adobe.pdf',
-        });
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
       } else {
         Alert.alert('Error', 'Failed to generate invoice PDF.');
       }
@@ -213,11 +210,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await Sharing.shareAsync(response.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Save ${fileName}`,
-          UTI: 'com.adobe.pdf',
-        });
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
       } else {
         Alert.alert('Error', 'Failed to generate statement PDF.');
       }
