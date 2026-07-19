@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Share, Linking, Modal, TextInput, Platform
+  TouchableOpacity, ActivityIndicator, Alert, Linking, Modal, TextInput, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -70,15 +70,6 @@ export default function InvoiceDetailScreen() {
   }, [id]);
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
-
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Invoice ${invoice?.invoice_number} for ${fmt(invoice?.total_amount)} from Udyog.\nView at: https://app.udyogbook.in/invoices/${id}`,
-        title: `Invoice ${invoice?.invoice_number}`,
-      });
-    } catch {}
-  };
 
   const handleWhatsAppShare = async () => {
     try {
@@ -276,9 +267,6 @@ export default function InvoiceDetailScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Invoice</Text>
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <Ionicons name="share-outline" size={22} color={Colors.primary} />
-        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => {
             if (invoice.payment_status !== 'UNPAID') {
@@ -291,7 +279,7 @@ export default function InvoiceDetailScreen() {
               router.push(`/invoice/create?id=${id}`);
             }
           }}
-          style={{ padding: 4, marginRight: 8 }}
+          style={{ padding: 4, marginRight: 12 }}
         >
           <Ionicons name="pencil-outline" size={20} color="#F97316" />
         </TouchableOpacity>
