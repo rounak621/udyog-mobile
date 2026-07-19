@@ -832,6 +832,7 @@ export default function CreateInvoiceScreen() {
                   style={styles.modalItem}
                   onPress={() => {
                     setSelectedParty(item);
+                    setConsignmentAddress(item.consignment_address || item.address || '');
                     const customerState = item.state || '';
                     const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
                     setIsInterState(!!interState);

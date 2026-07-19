@@ -384,6 +384,30 @@ export default function InvoiceDetailScreen() {
           </View>
         )}
 
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 4 }}>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#2563EB' }]}
+            onPress={() => setShowPdfPreview(true)}
+          >
+            <Ionicons name="eye-outline" size={18} color="#fff" />
+            <Text style={[styles.actionBtnText, { color: '#fff' }]}>Preview</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#16A34A' }]}
+            onPress={handleWhatsAppShare}
+          >
+            <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+            <Text style={[styles.actionBtnText, { color: '#fff' }]}>WhatsApp</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionBtn, { flex: 1, backgroundColor: '#475569' }]}
+            onPress={handleDownloadPDF}
+          >
+            <Ionicons name="download-outline" size={18} color="#fff" />
+            <Text style={[styles.actionBtnText, { color: '#fff' }]}>Save PDF</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
           <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Payment History</Text>
           {invoice.payments && invoice.payments.length > 0 && (
@@ -465,29 +489,7 @@ export default function InvoiceDetailScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { flex: 1, backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
-            onPress={() => setShowPdfPreview(true)}
-          >
-            <Ionicons name="eye-outline" size={18} color="#2563EB" />
-            <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Preview</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, { flex: 1, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1 }]}
-            onPress={handleWhatsAppShare}
-          >
-            <Ionicons name="logo-whatsapp" size={18} color="#16A34A" />
-            <Text style={[styles.actionBtnText, { color: '#16A34A' }]}>WhatsApp</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionBtn, { flex: 1, backgroundColor: '#F1F5F9', borderColor: '#CBD5E1', borderWidth: 1 }]}
-            onPress={handleDownloadPDF}
-          >
-            <Ionicons name="download-outline" size={18} color="#475569" />
-            <Text style={[styles.actionBtnText, { color: '#475569' }]}>Save PDF</Text>
-          </TouchableOpacity>
-        </View>
+
       </ScrollView>
 
       <Modal
@@ -697,8 +699,8 @@ const styles = StyleSheet.create({
   partialText: { color: '#2563EB' },
   paidBtn: { backgroundColor: Colors.success, borderRadius: Radius.sm, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   paidBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  actionBtn: { borderRadius: Radius.sm, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  actionBtnText: { fontSize: 13, fontWeight: '600' },
+  actionBtn: { borderRadius: 10, paddingVertical: 13, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
+  actionBtnText: { fontSize: 13, fontWeight: '700' },
   pdfHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 10, backgroundColor: '#0F172A' },
   pdfHeaderTitle: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 },
   payOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
