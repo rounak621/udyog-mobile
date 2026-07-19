@@ -186,14 +186,20 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Measure file size
+      // Measure file size using the new File class (getInfoAsync is deprecated)
       let fileSizeKB = 'unknown';
+      let fileSizeVal = 0;
       try {
-        const fileInfo = await FileSystem.getInfoAsync(uri);
-        if (fileInfo.exists && 'size' in fileInfo) {
-          fileSizeKB = `${Math.round((fileInfo.size || 0) / 1024)}KB`;
+        const file = new FileSystem.File(uri);
+        if (file.exists) {
+          fileSizeVal = file.size;
+          fileSizeKB = `${Math.round(fileSizeVal / 1024)}KB`;
+        } else {
+          fileSizeKB = 'not_found';
         }
-      } catch (_e) { /* non-critical */ }
+      } catch (err: any) {
+        console.log('[Maya-Latency] Error reading file size:', err.message || err);
+      }
       const t2 = Date.now();
       console.log(`[Maya-Latency] Phase 2: File ready, size=${fileSizeKB} (${t2 - t0}ms total)`);
 
@@ -220,13 +226,39 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      // Estimate form data size for cross-check
+      let estimatedFormSize = 0;
+      if (formData && '_parts' in (formData as any)) {
+        for (const [key, val] of (formData as any)._parts) {
+          estimatedFormSize += (key || '').length;
+          if (val && typeof val === 'object' && 'uri' in val) {
+            if (fileSizeVal > 0) {
+              estimatedFormSize += fileSizeVal;
+            }
+          } else if (typeof val === 'string') {
+            estimatedFormSize += val.length;
+          }
+        }
+      }
+      console.log(`[Maya-Latency] Phase 3.9: Estimated form data size: ${Math.round(estimatedFormSize / 1024)}KB`);
+
+      let tUpload = 0;
       console.log(`[Maya-Latency] Phase 4: Starting upload...`);
       const response = await axios.post('https://api.udyogbook.in/api/v1/ai/maya-command', formData, {
         headers,
         timeout: 60000,
+        onUploadProgress: (progressEvent) => {
+          const loaded = progressEvent.loaded;
+          const total = progressEvent.total || 0;
+          if (total > 0 && loaded >= total && tUpload === 0) {
+            tUpload = Date.now();
+            console.log(`[Maya-Latency] Phase 4.5: Upload complete (${tUpload - t0}ms total, network duration=${tUpload - t3}ms)`);
+          }
+        }
       });
       const t4 = Date.now();
-      console.log(`[Maya-Latency] Phase 5: Response received (upload+backend=${t4 - t3}ms, total=${t4 - t0}ms)`);
+      const backendDuration = tUpload > 0 ? `${t4 - tUpload}ms` : 'unknown';
+      console.log(`[Maya-Latency] Phase 5: Response received (upload+backend=${t4 - t3}ms, upload duration=${tUpload > 0 ? tUpload - t3 : 'unknown'}ms, backend processing=${backendDuration}, total=${t4 - t0}ms)`);
 
       if (response.data) {
         resolvedOnResponse(response.data);
