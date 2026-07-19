@@ -349,9 +349,9 @@ const styles = StyleSheet.create({
   statsRow: { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 16, marginBottom: 16, padding: 16, flexDirection: 'row', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
   statItem: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, backgroundColor: '#E2E8F0' },
-  statLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4, minHeight: 14 },
+  statLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4, minHeight: 14, textAlign: 'center' },
   statValue: { fontSize: 16, fontWeight: '800', color: '#0F172A', minHeight: 20 },
-  statSub: { fontSize: 10, color: '#94A3B8', marginTop: 2, minHeight: 26 },
+  statSub: { fontSize: 10, color: '#94A3B8', marginTop: 2, minHeight: 26, textAlign: 'center' },
 
   quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 20 },
   quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
