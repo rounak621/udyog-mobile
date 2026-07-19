@@ -13,13 +13,53 @@ function TabBarIcon({ name, color, size }: { name: any; color: string; size: num
 function MayaTabBarButton(props: any) {
   const { isRecording, isMayaScreenActive, startRecording, stopRecording } = useMayaRecording();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowOpacity = useRef(new Animated.Value(0)).current;
+  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
 
+  // One-shot scale bump when recording starts/stops
   useEffect(() => {
     Animated.timing(scaleAnim, {
-      toValue: isRecording ? 1.15 : 1,
+      toValue: isRecording ? 1.1 : 1,
       duration: 150,
       useNativeDriver: true,
     }).start();
+  }, [isRecording]);
+
+  // Continuous breathing pulse loop while recording
+  useEffect(() => {
+    if (isRecording) {
+      // Start glow ring fade-in
+      Animated.timing(glowOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+
+      // Start breathing loop
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.25, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        ])
+      );
+      pulseLoop.current = loop;
+      loop.start();
+    } else {
+      // Stop breathing
+      if (pulseLoop.current) {
+        pulseLoop.current.stop();
+        pulseLoop.current = null;
+      }
+      // Reset pulse scale
+      Animated.timing(pulseAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+      // Fade out glow ring
+      Animated.timing(glowOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
   }, [isRecording]);
 
   const handlePress = (e: any) => {
@@ -48,13 +88,23 @@ function MayaTabBarButton(props: any) {
       }}
       style={[props.style, styles.tabButtonContainer]}
     >
+      {/* Outer glow ring — pulsing opacity behind the FAB while recording */}
+      <Animated.View style={[
+        styles.glowRing,
+        {
+          opacity: glowOpacity,
+          transform: [{ scale: pulseAnim }],
+        },
+      ]} />
+
+      {/* Main FAB button */}
       <Animated.View style={[
         styles.fab,
         isMayaScreenActive && styles.fabActive,
         isRecording && styles.fabRecording,
         { transform: [{ scale: scaleAnim }] }
       ]}>
-        <Ionicons name="mic-outline" size={24} color="#fff" />
+        <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={28} color="#fff" />
       </Animated.View>
     </TouchableOpacity>
   );
@@ -127,8 +177,18 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
   },
+  glowRing: {
+    position: 'absolute',
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: 'transparent',
+    borderWidth: 3,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    marginBottom: 16,
+  },
   fab: {
-    width: 52, height: 52, borderRadius: 26,
+    width: 72, height: 72, borderRadius: 36,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,

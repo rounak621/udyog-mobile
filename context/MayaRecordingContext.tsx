@@ -8,6 +8,14 @@ interface ChatMessage {
   content: string;
 }
 
+interface MayaSession {
+  businessId: string;
+  conversationHistory: React.MutableRefObject<ChatMessage[]>;
+  getToken: () => Promise<string | null>;
+  onResponse: (response: any) => void;
+  onError: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void;
+}
+
 interface MayaRecordingContextType {
   isRecording: boolean;
   isMayaScreenActive: boolean;
@@ -21,6 +29,8 @@ interface MayaRecordingContextType {
     onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void
   ) => Promise<void>;
   isProcessing: boolean;
+  registerSession: (session: MayaSession) => void;
+  clearSession: () => void;
 }
 
 const MayaRecordingContext = createContext<MayaRecordingContextType | undefined>(undefined);
@@ -30,6 +40,15 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMayaScreenActive, setMayaScreenActive] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const sessionRef = useRef<MayaSession | null>(null);
+
+  const registerSession = (session: MayaSession) => {
+    sessionRef.current = session;
+  };
+
+  const clearSession = () => {
+    sessionRef.current = null;
+  };
 
   const startRecording = async () => {
     try {
@@ -83,8 +102,24 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
     setIsRecording(false);
 
-    // If stopRecording is called without upload parameters, it is a cancel/release action.
-    if (!businessId || !history || !getToken || !onResponse || !onError) {
+    // Resolve upload parameters: use explicit args if provided, otherwise fall back to registered session
+    let resolvedBusinessId = businessId;
+    let resolvedHistory = history;
+    let resolvedGetToken = getToken;
+    let resolvedOnResponse = onResponse;
+    let resolvedOnError = onError;
+
+    if (!resolvedBusinessId && sessionRef.current) {
+      resolvedBusinessId = sessionRef.current.businessId;
+      // Read the live ref value so we always get current conversation history
+      resolvedHistory = sessionRef.current.conversationHistory.current;
+      resolvedGetToken = sessionRef.current.getToken;
+      resolvedOnResponse = sessionRef.current.onResponse;
+      resolvedOnError = sessionRef.current.onError;
+    }
+
+    // Only treat as a true cancel if there's genuinely no session available AND no explicit parameters
+    if (!resolvedBusinessId || !resolvedHistory || !resolvedGetToken || !resolvedOnResponse || !resolvedOnError) {
       try {
         await recordingRef.current.stopAndUnloadAsync();
         recordingRef.current = null;
@@ -103,16 +138,16 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
       if (!uri) {
         setIsProcessing(false);
-        onError('empty', 'Recording was empty or could not be saved.');
+        resolvedOnError('empty', 'Recording was empty or could not be saved.');
         return;
       }
 
-      const token = await getToken();
+      const token = await resolvedGetToken();
 
       const formData = new FormData();
-      formData.append('business_id', businessId);
+      formData.append('business_id', resolvedBusinessId);
       formData.append('audio_format', 'audio/mp4');
-      formData.append('conversation_history', JSON.stringify(history));
+      formData.append('conversation_history', JSON.stringify(resolvedHistory));
 
       const filename = uri.split('/').pop() || 'recording.m4a';
       formData.append('audio', {
@@ -134,19 +169,19 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.data) {
-        onResponse(response.data);
+        resolvedOnResponse(response.data);
       } else {
-        onError('backend', 'Backend returned empty response.');
+        resolvedOnError('backend', 'Backend returned empty response.');
       }
     } catch (err: any) {
       console.error('Stop recording/upload error', err);
       const backendMessage = err.response?.data?.detail;
       if (backendMessage) {
-        onError('backend', backendMessage);
+        resolvedOnError('backend', backendMessage);
       } else if (err.request) {
-        onError('network', 'Could not connect to Maya. Please check your internet connection.');
+        resolvedOnError('network', 'Could not connect to Maya. Please check your internet connection.');
       } else {
-        onError('general', err.message || 'Something went wrong.');
+        resolvedOnError('general', err.message || 'Something went wrong.');
       }
     } finally {
       setIsProcessing(false);
@@ -162,6 +197,8 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         startRecording,
         stopRecording,
         isProcessing,
+        registerSession,
+        clearSession,
       }}
     >
       {children}

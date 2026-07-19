@@ -17,6 +17,8 @@ interface ChatMessage {
   content: string;
 }
 
+
+
 interface MayaResponse {
   reply_text: string;
   intent: string;
@@ -39,21 +41,54 @@ export default function MayaScreen() {
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
   
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const scrollRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const { isRecording, setMayaScreenActive, startRecording, stopRecording, isProcessing } = useMayaRecording();
+  // Live refs so the registered session always reads fresh values
+  const businessIdRef = useRef<string | null>(null);
+  const conversationHistoryRef = useRef<ChatMessage[]>([]);
 
-  // Handle setting active state when focused
+  const { isRecording, setMayaScreenActive, isProcessing, registerSession, clearSession } = useMayaRecording();
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    businessIdRef.current = businessId;
+  }, [businessId]);
+
+  useEffect(() => {
+    conversationHistoryRef.current = conversationHistory;
+  }, [conversationHistory]);
+
+  // Handle setting active state and session registration when focused
   useFocusEffect(
     useCallback(() => {
       setMayaScreenActive(true);
+      registerSession({
+        businessId: businessIdRef.current || '',
+        conversationHistory: conversationHistoryRef,
+        getToken,
+        onResponse: handleVoiceResponse,
+        onError: handleVoiceError,
+      });
       return () => {
         setMayaScreenActive(false);
+        clearSession();
       };
-    }, [setMayaScreenActive])
+    }, [setMayaScreenActive, registerSession, clearSession, getToken])
   );
+
+  // Re-register session whenever businessId becomes available (it loads async)
+  useEffect(() => {
+    if (businessId) {
+      registerSession({
+        businessId,
+        conversationHistory: conversationHistoryRef,
+        getToken,
+        onResponse: handleVoiceResponse,
+        onError: handleVoiceError,
+      });
+    }
+  }, [businessId]);
 
   // Fetch business ID on mount
   useEffect(() => {
@@ -71,7 +106,7 @@ export default function MayaScreen() {
 
   const handleVoiceResponse = (data: MayaResponse) => {
     const draft = data.current_draft || data.extracted_data || null;
-    const userSpokenText = data.user_transcript || data.user_text || '🎤 (Voice Command)';
+    const userSpokenText = data.user_transcript || data.user_text || 'Voice message';
 
     // Append user message bubble first
     setMessages(prev => [...prev, {
@@ -130,28 +165,7 @@ export default function MayaScreen() {
     };
   }, []);
 
-  const startPulse = () => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
-  };
 
-  const stopPulse = () => {
-    pulseAnim.stopAnimation();
-    Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-  };
-
-  // Sync pulsing with isRecording state from context
-  useEffect(() => {
-    if (isRecording) {
-      startPulse();
-    } else {
-      stopPulse();
-    }
-  }, [isRecording]);
 
   const playAudio = async (base64Audio: string) => {
     try {
@@ -443,29 +457,8 @@ export default function MayaScreen() {
           </View>
         )}
 
-        {/* Input bar */}
+        {/* Input bar — text only, mic is on the tab bar */}
         <View style={styles.inputBar}>
-          {/* Mic Button on the left */}
-          <TouchableOpacity
-            style={[styles.bottomMicBtn, isRecording && styles.bottomMicBtnActive]}
-            activeOpacity={0.8}
-            onPressIn={startRecording}
-            onPressOut={() => {
-              if (businessId) {
-                stopRecording(
-                  businessId,
-                  conversationHistory,
-                  getToken,
-                  handleVoiceResponse,
-                  handleVoiceError
-                );
-              }
-            }}
-          >
-            <Ionicons name="mic" size={22} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Text Input Wrapper */}
           <View style={styles.textInputWrapper}>
             <TextInput
               style={styles.textInput}
@@ -795,11 +788,10 @@ const styles = StyleSheet.create({
   // Bottom Input Bar
   inputBar: {
     flexDirection: 'row',
-    gap: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    backgroundColor: '#f3f4f6', // Light gray background composer bar
+    backgroundColor: '#f3f4f6',
     borderTopWidth: 0.5,
     borderTopColor: Colors.border,
     alignItems: 'center',
@@ -821,18 +813,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text,
     height: 40,
-  },
-  bottomMicBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f97316',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  bottomMicBtnActive: {
-    backgroundColor: Colors.danger,
   },
   sendBtn: {
     width: 32,
