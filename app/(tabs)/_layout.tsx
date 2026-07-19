@@ -16,6 +16,7 @@ function MayaTabBarButton(props: any) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0)).current;
   const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
+  const tailBufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // One-shot scale bump when recording starts/stops
   useEffect(() => {
@@ -78,12 +79,23 @@ function MayaTabBarButton(props: any) {
       onPress={handlePress}
       onPressIn={() => {
         if (isMayaScreenActive) {
+          // Cancel any pending tail-buffer stop from a previous press
+          if (tailBufferTimerRef.current) {
+            clearTimeout(tailBufferTimerRef.current);
+            tailBufferTimerRef.current = null;
+          }
           startRecording();
         }
       }}
       onPressOut={() => {
         if (isMayaScreenActive) {
-          stopRecording();
+          // Delay the actual stopRecording by 400ms to capture the audio
+          // tail buffer (last syllable). Visual state change (animation reset)
+          // happens instantly via isRecording going false inside the context.
+          tailBufferTimerRef.current = setTimeout(() => {
+            stopRecording();
+            tailBufferTimerRef.current = null;
+          }, 400);
         }
       }}
       style={[props.style, styles.tabButtonContainer]}
@@ -104,7 +116,7 @@ function MayaTabBarButton(props: any) {
         isRecording && styles.fabRecording,
         { transform: [{ scale: scaleAnim }] }
       ]}>
-        <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={28} color="#fff" />
+        <Ionicons name={isRecording ? 'mic' : (isMayaScreenActive ? 'mic-outline' : 'sparkles-outline')} size={28} color="#fff" />
       </Animated.View>
     </TouchableOpacity>
   );

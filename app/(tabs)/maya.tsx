@@ -40,6 +40,7 @@ export default function MayaScreen() {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string; draft?: any; actionType?: string }[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
   
   const scrollRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -108,31 +109,38 @@ export default function MayaScreen() {
     const draft = data.current_draft || data.extracted_data || null;
     const userSpokenText = data.user_transcript || data.user_text || 'Voice message';
 
-    // Append user message bubble first
+    // Step 1: Immediately show user's transcript bubble
     setMessages(prev => [...prev, {
       role: 'user',
       text: userSpokenText,
     }]);
 
-    // Append assistant message bubble second
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      text: data.reply_text || '',
-      draft: data.action_type === 'draft_invoice' ? draft : undefined,
-      actionType: data.action_type || undefined,
-    }]);
+    // Step 2: Show thinking indicator for 400ms (matches web's setTimeout pattern)
+    setIsThinking(true);
 
-    // Update conversation history context
-    setConversationHistory(prev => [
-      ...prev,
-      { role: 'user', content: userSpokenText },
-      { role: 'assistant', content: data.reply_text || '' },
-    ]);
+    // Step 3: After 400ms delay, reveal assistant reply (mirrors web's MayaAgent.tsx)
+    setTimeout(() => {
+      setIsThinking(false);
 
-    // Play TTS audio if present
-    if (data.audio_b64) {
-      playAudio(data.audio_b64);
-    }
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: data.reply_text || '',
+        draft: data.action_type === 'draft_invoice' ? draft : undefined,
+        actionType: data.action_type || undefined,
+      }]);
+
+      // Update conversation history context
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'user', content: userSpokenText },
+        { role: 'assistant', content: data.reply_text || '' },
+      ]);
+
+      // Play TTS audio if present
+      if (data.audio_b64) {
+        playAudio(data.audio_b64);
+      }
+    }, 400);
   };
 
   const handleVoiceError = (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => {
@@ -149,12 +157,12 @@ export default function MayaScreen() {
 
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
-    if (messages.length > 0 || isRecording) {
+    if (messages.length > 0 || isRecording || isThinking) {
       setTimeout(() => {
         scrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages, isRecording]);
+  }, [messages, isRecording, isThinking]);
 
   // Cleanup sound on unmount
   useEffect(() => {
@@ -422,8 +430,21 @@ export default function MayaScreen() {
                   </View>
                 )}
 
-                {/* Processing indicator */}
+                {/* Processing indicator (backend round-trip) */}
                 {(loading || isProcessing) && (
+                  <View style={[styles.msgRow, styles.msgRowAssistant]}>
+                    <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
+                      <View style={styles.dotsRow}>
+                        <PulsingDot delay={0} />
+                        <PulsingDot delay={200} />
+                        <PulsingDot delay={400} />
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Thinking indicator (400ms gap between transcript and reply) */}
+                {isThinking && !isProcessing && !loading && (
                   <View style={[styles.msgRow, styles.msgRowAssistant]}>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                       <View style={styles.dotsRow}>

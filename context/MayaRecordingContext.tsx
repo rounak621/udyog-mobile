@@ -1,7 +1,44 @@
 import React, { createContext, useContext, useState, useRef, ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { Audio } from 'expo-av';
+import {
+  AndroidOutputFormat,
+  AndroidAudioEncoder,
+  IOSOutputFormat,
+  IOSAudioQuality,
+} from 'expo-av/build/Audio/RecordingConstants';
 import axios from 'axios';
+import * as FileSystem from 'expo-file-system';
+
+// Voice-optimized recording preset: 16kHz mono 64kbps AAC
+// Produces ~4x smaller files than HIGH_QUALITY (44.1kHz stereo 128kbps)
+// while maintaining excellent speech transcription accuracy.
+const VOICE_OPTIMIZED_PRESET: Audio.RecordingOptions = {
+  isMeteringEnabled: false,
+  android: {
+    extension: '.m4a',
+    outputFormat: AndroidOutputFormat.MPEG_4,
+    audioEncoder: AndroidAudioEncoder.AAC,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 64000,
+  },
+  ios: {
+    extension: '.m4a',
+    outputFormat: IOSOutputFormat.MPEG4AAC,
+    audioQuality: IOSAudioQuality.MEDIUM,
+    sampleRate: 16000,
+    numberOfChannels: 1,
+    bitRate: 64000,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  web: {
+    mimeType: 'audio/webm',
+    bitsPerSecond: 64000,
+  },
+};
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -78,7 +115,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       });
 
       const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        VOICE_OPTIMIZED_PRESET
       );
       recordingRef.current = newRecording;
       setIsRecording(true);
@@ -131,8 +168,15 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
     setIsProcessing(true);
 
+    // ── Timing markers for latency diagnosis ──
+    const t0 = Date.now();
+    console.log('[Maya-Latency] Phase 0: Starting recording teardown');
+
     try {
       await recordingRef.current.stopAndUnloadAsync();
+      const t1 = Date.now();
+      console.log(`[Maya-Latency] Phase 1: Recording stopped (${t1 - t0}ms)`);
+
       const uri = recordingRef.current.getURI();
       recordingRef.current = null;
 
@@ -142,7 +186,20 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Measure file size
+      let fileSizeKB = 'unknown';
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        if (fileInfo.exists && 'size' in fileInfo) {
+          fileSizeKB = `${Math.round((fileInfo.size || 0) / 1024)}KB`;
+        }
+      } catch (_e) { /* non-critical */ }
+      const t2 = Date.now();
+      console.log(`[Maya-Latency] Phase 2: File ready, size=${fileSizeKB} (${t2 - t0}ms total)`);
+
       const token = await resolvedGetToken();
+      const t3 = Date.now();
+      console.log(`[Maya-Latency] Phase 3: Token acquired (${t3 - t2}ms, ${t3 - t0}ms total)`);
 
       const formData = new FormData();
       formData.append('business_id', resolvedBusinessId);
@@ -163,10 +220,13 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      console.log(`[Maya-Latency] Phase 4: Starting upload...`);
       const response = await axios.post('https://api.udyogbook.in/api/v1/ai/maya-command', formData, {
         headers,
         timeout: 60000,
       });
+      const t4 = Date.now();
+      console.log(`[Maya-Latency] Phase 5: Response received (upload+backend=${t4 - t3}ms, total=${t4 - t0}ms)`);
 
       if (response.data) {
         resolvedOnResponse(response.data);
@@ -174,7 +234,8 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         resolvedOnError('backend', 'Backend returned empty response.');
       }
     } catch (err: any) {
-      console.error('Stop recording/upload error', err);
+      const tErr = Date.now();
+      console.error(`[Maya-Latency] ERROR at ${tErr - t0}ms:`, err.message || err);
       const backendMessage = err.response?.data?.detail;
       if (backendMessage) {
         resolvedOnError('backend', backendMessage);
