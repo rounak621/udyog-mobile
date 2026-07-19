@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert
@@ -9,13 +9,44 @@ import { useAuth } from '@clerk/clerk-expo';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function PartyDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { getToken } = useAuth();
+  
   const [party, setParty] = useState<any>(null);
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'khata' | 'bills'>('khata');
+  const [ledgerLines, setLedgerLines] = useState<any[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerLoaded, setLedgerLoaded] = useState(false);
+
+  const loadLedger = useCallback(async () => {
+    if (ledgerLoading) return;
+    setLedgerLoading(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      
+      const ledgerRes = await api.get(`/ledger/party/${id}?business_id=${bId}`);
+      setLedgerLines(ledgerRes.data.statement || []);
+      setLedgerLoaded(true);
+    } catch (err) {
+      console.log('Failed to load ledger', err);
+    } finally {
+      setLedgerLoading(false);
+    }
+  }, [id, getToken, ledgerLoading]);
 
   const load = useCallback(async () => {
     try {
@@ -31,9 +62,10 @@ export default function PartyDetailScreen() {
       const pt = String(partyData?.party_type || 'customer').toLowerCase();
       const isSupplier = pt === 'supplier' || pt === 'both';
 
-      const [invRes, pbRes] = await Promise.allSettled([
+      const [invRes, pbRes, rentalRes] = await Promise.allSettled([
         api.get(`/invoices/?business_id=${bId}&customer_id=${id}&limit=1000&skip=0`),
         isSupplier ? api.get(`/purchase-bills/?business_id=${bId}&supplier_id=${id}`) : Promise.resolve({ data: [] }),
+        api.get(`/rental-orders/?business_id=${bId}&customer_id=${id}`),
       ]);
 
       let invoiceList: any[] = [];
@@ -46,6 +78,12 @@ export default function PartyDetailScreen() {
       if (pbRes.status === 'fulfilled') {
         const pbData = (pbRes.value as any)?.data;
         pbList = Array.isArray(pbData) ? pbData : Array.isArray(pbData?.items) ? pbData.items : Array.isArray(pbData?.purchase_bills) ? pbData.purchase_bills : [];
+      }
+
+      let rentalList: any[] = [];
+      if (rentalRes.status === 'fulfilled') {
+        const rentalData = rentalRes.value.data;
+        rentalList = Array.isArray(rentalData) ? rentalData : Array.isArray(rentalData?.items) ? rentalData.items : Array.isArray(rentalData?.orders) ? rentalData.orders : [];
       }
 
       const combined = [
@@ -66,22 +104,44 @@ export default function PartyDetailScreen() {
           paidAmount: Number(pb.paid_amount || pb.amount_paid || 0),
           type: 'PURCHASE',
           status: pb.payment_status || 'UNPAID',
+        })),
+        ...rentalList.map((order: any) => ({
+          id: order.id,
+          date: order.invoice_date || order.start_date || order.created_at,
+          billNumber: order.order_number || '—',
+          amount: Number(order.total_amount || 0),
+          paidAmount: Number(order.paid_amount || 0),
+          type: 'RENTAL',
+          status: order.payment_status || 'UNPAID',
         }))
       ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setBills(combined);
+
+      if (activeTab === 'khata') {
+        const ledgerRes = await api.get(`/ledger/party/${id}?business_id=${bId}`);
+        setLedgerLines(ledgerRes.data.statement || []);
+        setLedgerLoaded(true);
+      }
     } catch (err) {
       console.log('Party detail error:', err);
     } finally {
       setLoading(false);
     }
-  }, [id, getToken]);
+  }, [id, getToken, activeTab]);
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load])
   );
+
+  // Lazy load ledger when switching to khata tab
+  useEffect(() => {
+    if (activeTab === 'khata' && !ledgerLoaded && party) {
+      loadLedger();
+    }
+  }, [activeTab, ledgerLoaded, party, loadLedger]);
 
   const handleEdit = () => {
     router.push(`/party/create?id=${id}`);
@@ -184,15 +244,23 @@ export default function PartyDetailScreen() {
           })()}
         </View>
 
-        {/* Details */}
+        {/* Details Card */}
         <View style={styles.card}>
           {[
             { icon: 'call-outline', label: 'Phone', value: party.phone || '—' },
             { icon: 'mail-outline', label: 'Email', value: party.email || '—' },
             { icon: 'card-outline', label: 'GSTIN', value: party.gstin || '—' },
             { icon: 'location-outline', label: 'State', value: party.state || '—' },
-          ].map(item => (
-            <View key={item.label} style={styles.detailRow}>
+            ...(party.address ? [{ icon: 'home-outline', label: 'Billing Address', value: party.address }] : []),
+            ...(party.consignment_address ? [{ icon: 'airplane-outline', label: 'Shipping Address', value: party.consignment_address }] : []),
+          ].map((item, idx, arr) => (
+            <View 
+              key={item.label} 
+              style={[
+                styles.detailRow, 
+                idx === arr.length - 1 && { borderBottomWidth: 0 }
+              ]}
+            >
               <Ionicons name={item.icon as any} size={16} color={Colors.textMuted} />
               <Text style={styles.detailLabel} textBreakStrategy="simple">{item.label}</Text>
               <Text style={styles.detailValue} textBreakStrategy="simple">{item.value}</Text>
@@ -200,10 +268,10 @@ export default function PartyDetailScreen() {
           ))}
         </View>
 
-        {/* Outstanding — Invoiced vs Paid */}
+        {/* Outstanding Balance Summary Card */}
         {(() => {
-          const totalSalesInvoiced = bills.filter(b => b.type === 'INVOICE').reduce((s, b) => s + b.amount, 0);
-          const totalSalesPaid = bills.filter(b => b.type === 'INVOICE').reduce((s, b) => s + b.paidAmount, 0);
+          const totalSalesInvoiced = bills.filter(b => b.type === 'INVOICE' || b.type === 'RENTAL').reduce((s, b) => s + b.amount, 0);
+          const totalSalesPaid = bills.filter(b => b.type === 'INVOICE' || b.type === 'RENTAL').reduce((s, b) => s + b.paidAmount, 0);
           
           const totalPurchaseInvoiced = bills.filter(b => b.type === 'PURCHASE').reduce((s, b) => s + b.amount, 0);
           const totalPurchasePaid = bills.filter(b => b.type === 'PURCHASE').reduce((s, b) => s + b.paidAmount, 0);
@@ -274,55 +342,128 @@ export default function PartyDetailScreen() {
           );
         })()}
 
-        {/* Recent Invoices */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Bills</Text>
-          {bills.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No bills yet</Text>
-            </View>
-          ) : bills.map(bill => {
-            const ps = (bill.status || 'UNPAID').toUpperCase();
-            const isPaid = ps === 'PAID';
-            const isPartial = ps === 'PARTIAL';
-            const isInvoice = bill.type === 'INVOICE';
-            
-            return (
-              <TouchableOpacity 
-                key={`${bill.type}_${bill.id}`} 
-                style={styles.invCard} 
-                onPress={() => router.push(isInvoice ? `/invoice/${bill.id}` : `/purchase-bills/${bill.id}`)}
-              >
-                <View style={{ flex: 1, gap: 4 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.invNum}>{bill.billNumber}</Text>
-                    <View style={{
-                      paddingHorizontal: 6,
-                      paddingVertical: 1.5,
-                      borderRadius: 10,
-                      backgroundColor: isInvoice ? '#EFF6FF' : '#FAF5FF',
-                    }}>
-                      <Text style={{
-                        fontSize: 9,
-                        fontWeight: '700',
-                        color: isInvoice ? '#1D4ED8' : '#6B21A8',
-                      }}>
-                        {isInvoice ? 'Sale' : 'Purchase'}
+        {/* Tab Segmented Control */}
+        <View style={styles.tabRow}>
+          {[
+            { key: 'khata', label: 'Khata (Ledger)', icon: 'book-outline' },
+            { key: 'bills', label: 'Bills', icon: 'receipt-outline' }
+          ].map(t => (
+            <TouchableOpacity
+              key={t.key}
+              style={[styles.tabBtn, activeTab === t.key && styles.tabBtnActive]}
+              onPress={() => setActiveTab(t.key as any)}
+            >
+              <Ionicons name={t.icon as any} size={15} color={activeTab === t.key ? '#fff' : '#64748B'} style={{ marginRight: 6 }} />
+              <Text style={[styles.tabBtnText, activeTab === t.key && styles.tabBtnTextActive]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Tab Contents */}
+        {activeTab === 'khata' ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            {ledgerLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
+            ) : ledgerLines.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No transactions found.</Text>
+              </View>
+            ) : (
+              ledgerLines.map((line, idx) => {
+                const isDebit = Number(line.debit) > 0;
+                const amount = isDebit ? line.debit : line.credit;
+                return (
+                  <View key={idx} style={styles.ledgerCard}>
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={styles.ledgerParticulars}>{line.narration || 'Transaction'}</Text>
+                      <Text style={styles.ledgerDate}>
+                        {line.transaction_date ? new Date(line.transaction_date).toLocaleDateString('en-IN') : ''}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text style={[styles.ledgerAmount, isDebit ? styles.debitText : styles.creditText]}>
+                        {isDebit ? '-' : '+'}{fmt(Number(amount))}
+                      </Text>
+                      <Text style={styles.ledgerBalance}>
+                        Bal: {fmt(Number(line.running_balance))} {line.balance_type}
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.invDate}>{bill.date ? new Date(bill.date).toLocaleDateString('en-IN') : ''}</Text>
-                </View>
-                <View style={styles.invRight}>
-                  <Text style={styles.invAmount}>{fmt(bill.amount)}</Text>
-                  <View style={[styles.badge, isPaid ? styles.paidBadge : isPartial ? styles.partialBadge : styles.unpaidBadge]}>
-                    <Text style={[styles.badgeText, isPaid ? styles.paidText : isPartial ? styles.partialText : styles.unpaidText]}>{ps}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                );
+              })
+            )}
+          </View>
+        ) : (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>All Bills</Text>
+            {bills.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No bills found</Text>
+              </View>
+            ) : (
+              bills.map(bill => {
+                const ps = (bill.status || 'UNPAID').toUpperCase();
+                const isPaid = ps === 'PAID';
+                const isPartial = ps === 'PARTIAL';
+                
+                let typeLabel = 'Sale';
+                let typeBg = '#EFF6FF';
+                let typeColor = '#1D4ED8';
+                let navigatePath = `/invoice/${bill.id}`;
+                
+                if (bill.type === 'RENTAL') {
+                  typeLabel = 'Rental';
+                  typeBg = '#F0FDF4';
+                  typeColor = '#166534';
+                  navigatePath = `/rental-order/${bill.id}`;
+                } else if (bill.type === 'PURCHASE') {
+                  typeLabel = 'Purchase';
+                  typeBg = '#FAF5FF';
+                  typeColor = '#6B21A8';
+                  navigatePath = `/purchase-bills/${bill.id}`;
+                }
+                
+                return (
+                  <TouchableOpacity 
+                    key={`${bill.type}_${bill.id}`} 
+                    style={styles.invCard} 
+                    onPress={() => router.push(navigatePath as any)}
+                  >
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.invNum}>{bill.billNumber}</Text>
+                        <View style={{
+                          paddingHorizontal: 6,
+                          paddingVertical: 1.5,
+                          borderRadius: 10,
+                          backgroundColor: typeBg,
+                        }}>
+                          <Text style={{
+                            fontSize: 9,
+                            fontWeight: '700',
+                            color: typeColor,
+                          }}>
+                            {typeLabel}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.invDate}>{bill.date ? new Date(bill.date).toLocaleDateString('en-IN') : ''}</Text>
+                    </View>
+                    <View style={styles.invRight}>
+                      <Text style={styles.invAmount}>{fmt(bill.amount)}</Text>
+                      <View style={[styles.badge, isPaid ? styles.paidBadge : isPartial ? styles.partialBadge : styles.unpaidBadge]}>
+                        <Text style={[styles.badgeText, isPaid ? styles.paidText : isPartial ? styles.partialText : styles.unpaidText]}>{ps}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -347,12 +488,8 @@ const styles = StyleSheet.create({
   typeTextBoth: { color: '#7c3aed' },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  detailLabel: { fontSize: 13, color: Colors.textSecondary, width: 60, flexShrink: 1 },
+  detailLabel: { fontSize: 13, color: Colors.textSecondary, width: 110, flexShrink: 0 },
   detailValue: { flex: 1, fontSize: 13, color: Colors.text, fontWeight: '500' },
-  outstandingCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, alignItems: 'center' },
-  outstandingLabel: { fontSize: 12, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  outstandingValue: { fontSize: 28, fontWeight: '800', letterSpacing: -1 },
-  outstandingType: { fontSize: 12, color: Colors.textSecondary, marginTop: 4 },
   balanceCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border, alignItems: 'center' },
   balanceLabel: { fontSize: 11, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   balanceValue: { fontSize: 28, fontWeight: '800', letterSpacing: -1, marginBottom: 14 },
@@ -362,8 +499,6 @@ const styles = StyleSheet.create({
   balanceSubLabel: { fontSize: 10, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
   balanceSubVal: { fontSize: 14, fontWeight: '700', color: Colors.text },
   receivableZero: { color: Colors.success },
-  partialBadge: { backgroundColor: '#EFF6FF' },
-  partialText: { color: '#2563EB' },
   receivable: { color: Colors.success },
   payable: { color: Colors.danger },
   section: {},
@@ -378,7 +513,23 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   paidBadge: { backgroundColor: '#f0fdf4' },
   unpaidBadge: { backgroundColor: '#fff7ed' },
+  partialBadge: { backgroundColor: '#EFF6FF' },
   badgeText: { fontSize: 9, fontWeight: '600' },
   paidText: { color: Colors.success },
   unpaidText: { color: '#ea580c' },
+  partialText: { color: '#2563EB' },
+  // Tab control styles
+  tabRow: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 10, padding: 4, marginVertical: 8 },
+  tabBtn: { flex: 1, flexDirection: 'row', paddingVertical: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  tabBtnActive: { backgroundColor: '#F97316', shadowColor: '#F97316', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  tabBtnText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  tabBtnTextActive: { color: '#fff' },
+  // Ledger styles
+  ledgerCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  ledgerParticulars: { fontSize: 13, fontWeight: '600', color: Colors.text, flex: 1, flexWrap: 'wrap' },
+  ledgerDate: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  ledgerAmount: { fontSize: 13, fontWeight: '700' },
+  debitText: { color: '#DC2626' },
+  creditText: { color: '#16A34A' },
+  ledgerBalance: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
 });
