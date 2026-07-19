@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, ScrollView, TextInput, ActivityIndicator,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, Alert
 } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -43,7 +43,7 @@ export default function MayaScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const { isRecording, setMayaScreenActive, startRecording, stopRecording } = useMayaRecording();
+  const { isRecording, setMayaScreenActive, startRecording, stopRecording, isProcessing } = useMayaRecording();
 
   // Handle setting active state when focused
   useFocusEffect(
@@ -68,6 +68,49 @@ export default function MayaScreen() {
       }
     })();
   }, []);
+
+  const handleVoiceResponse = (data: MayaResponse) => {
+    const draft = data.current_draft || data.extracted_data || null;
+    const userSpokenText = data.user_transcript || data.user_text || '🎤 (Voice Command)';
+
+    // Append user message bubble first
+    setMessages(prev => [...prev, {
+      role: 'user',
+      text: userSpokenText,
+    }]);
+
+    // Append assistant message bubble second
+    setMessages(prev => [...prev, {
+      role: 'assistant',
+      text: data.reply_text || '',
+      draft: data.action_type === 'draft_invoice' ? draft : undefined,
+      actionType: data.action_type || undefined,
+    }]);
+
+    // Update conversation history context
+    setConversationHistory(prev => [
+      ...prev,
+      { role: 'user', content: userSpokenText },
+      { role: 'assistant', content: data.reply_text || '' },
+    ]);
+
+    // Play TTS audio if present
+    if (data.audio_b64) {
+      playAudio(data.audio_b64);
+    }
+  };
+
+  const handleVoiceError = (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => {
+    let alertTitle = 'Error';
+    if (errorType === 'permission') {
+      alertTitle = 'Microphone Permission Denied';
+    } else if (errorType === 'network') {
+      alertTitle = 'Network Error';
+    } else if (errorType === 'backend') {
+      alertTitle = 'Maya Understanding Error';
+    }
+    Alert.alert(alertTitle, message);
+  };
 
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
@@ -366,7 +409,7 @@ export default function MayaScreen() {
                 )}
 
                 {/* Processing indicator */}
-                {loading && (
+                {(loading || isProcessing) && (
                   <View style={[styles.msgRow, styles.msgRowAssistant]}>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                       <View style={styles.dotsRow}>
@@ -407,7 +450,17 @@ export default function MayaScreen() {
             style={[styles.bottomMicBtn, isRecording && styles.bottomMicBtnActive]}
             activeOpacity={0.8}
             onPressIn={startRecording}
-            onPressOut={stopRecording}
+            onPressOut={() => {
+              if (businessId) {
+                stopRecording(
+                  businessId,
+                  conversationHistory,
+                  getToken,
+                  handleVoiceResponse,
+                  handleVoiceError
+                );
+              }
+            }}
           >
             <Ionicons name="mic" size={22} color="#fff" />
           </TouchableOpacity>
