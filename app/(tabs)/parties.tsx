@@ -1,12 +1,12 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
   ActivityIndicator
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -38,7 +38,9 @@ export default function PartiesScreen() {
       const bId = bizRes.data.id;
       const res = await api.get(`/customers/?business_id=${bId}`);
       const partyData = res.data;
-      setParties(Array.isArray(partyData) ? partyData : Array.isArray(partyData?.customers) ? partyData.customers : Array.isArray(partyData?.items) ? partyData.items : []);
+      const rawParties = Array.isArray(partyData) ? partyData : Array.isArray(partyData?.customers) ? partyData.customers : Array.isArray(partyData?.items) ? partyData.items : [];
+      const sortedParties = [...rawParties].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      setParties(sortedParties);
     } catch (err) {
       console.log('Parties error:', err);
     } finally {
@@ -47,7 +49,11 @@ export default function PartiesScreen() {
     }
   };
 
-  useEffect(() => { loadParties(); }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadParties();
+    }, [getToken])
+  );
 
   const filtered = parties.filter(p => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search) || p.gstin?.toLowerCase().includes(search.toLowerCase());

@@ -198,7 +198,7 @@ export default function CreatePartyScreen() {
         style={{ flex: 1, backgroundColor: '#F8FAFC' }}
         contentContainerStyle={styles.content}
         enableOnAndroid={true}
-        extraScrollHeight={20}
+        extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
       >
         {/* Type Selector Tabs */}
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 16,
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   typeRow: {
     flexDirection: 'row',
