@@ -27,11 +27,31 @@ export default function InvoiceSettingsScreen() {
   
   const [loading, setLoading] = useState(true);
   const [savingNum, setSavingNum] = useState(false);
+  const [savingService, setSavingService] = useState(false);
+  const [savingNongst, setSavingNongst] = useState(false);
   const [savingPref, setSavingPref] = useState(false);
   const [businessId, setBusinessId] = useState<number | null>(null);
 
-  // Numbering Form State
+  // GST/General Numbering Form State
   const [numForm, setNumForm] = useState({
+    prefix: '',
+    suffix: '',
+    padding: 3,
+    next_number: '1',
+    monthly_reset_enabled: false
+  });
+
+  // Service Numbering Form State
+  const [serviceForm, setServiceForm] = useState({
+    prefix: 'SRV/',
+    suffix: '',
+    padding: 3,
+    next_number: '1',
+    monthly_reset_enabled: false
+  });
+
+  // Non-GST Numbering Form State
+  const [nongstForm, setNongstForm] = useState({
     prefix: '',
     suffix: '',
     padding: 3,
@@ -66,16 +86,56 @@ export default function InvoiceSettingsScreen() {
           dual_address_enabled: !!b.dual_address_enabled,
         });
 
-        const nRes = await api.get(`/invoices/numbering-config?business_id=${b.id}`);
-        const n = nRes.data;
-        if (n) {
-          setNumForm({
-            prefix: n.prefix || '',
-            suffix: n.suffix || '',
-            padding: n.padding || 3,
-            next_number: String(n.next_number || 1)
-          });
+        // Load General/GST configuration
+        try {
+          const nRes = await api.get(`/invoices/numbering-config?business_id=${b.id}`);
+          const n = nRes.data;
+          if (n) {
+            setNumForm({
+              prefix: n.prefix || '',
+              suffix: n.suffix || '',
+              padding: n.padding || 3,
+              next_number: String(n.next_number || 1),
+              monthly_reset_enabled: !!n.monthly_reset_enabled
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to load GST numbering settings', err);
         }
+
+        // Load Service numbering configuration
+        try {
+          const sRes = await api.get(`/invoices/next-number?business_id=${b.id}&invoice_type=SERVICE`);
+          const s = sRes.data;
+          if (s) {
+            setServiceForm({
+              prefix: s.prefix || '',
+              suffix: s.suffix || '',
+              padding: s.padding || 3,
+              next_number: String(s.next_number || 1),
+              monthly_reset_enabled: !!s.monthly_reset_enabled
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to load Service numbering settings', err);
+        }
+
+        // Load Non-GST numbering configuration
+        try {
+          const ngRes = await api.get(`/invoices/next-number?business_id=${b.id}&invoice_type=NONGST`);
+          const ng = ngRes.data;
+          if (ng) {
+            setNongstForm({
+              prefix: ng.prefix || '',
+              suffix: ng.suffix || '',
+              padding: ng.padding || 3,
+              next_number: String(ng.next_number || 1)
+            });
+          }
+        } catch (err) {
+          console.warn('Failed to load Non-GST numbering settings', err);
+        }
+
       } catch (err) {
         console.warn('Failed to load settings', err);
       }
@@ -94,13 +154,58 @@ export default function InvoiceSettingsScreen() {
         prefix: numForm.prefix,
         suffix: numForm.suffix,
         padding: numForm.padding,
-        next_number: parseInt(numForm.next_number) || 1
+        next_number: parseInt(numForm.next_number) || 1,
+        sequence_type: 'general',
+        monthly_reset_enabled: numForm.monthly_reset_enabled
       });
       Alert.alert('Success', 'Invoice numbering saved');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to save numbering');
     } finally {
       setSavingNum(false);
+    }
+  };
+
+  const handleSaveServiceNumbering = async () => {
+    if (!businessId) return;
+    setSavingService(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/invoices/configure-numbering?business_id=${businessId}`, {
+        prefix: serviceForm.prefix,
+        suffix: serviceForm.suffix,
+        padding: serviceForm.padding,
+        next_number: parseInt(serviceForm.next_number) || 1,
+        sequence_type: 'service',
+        monthly_reset_enabled: serviceForm.monthly_reset_enabled
+      });
+      Alert.alert('Success', 'Service invoice numbering saved');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save Service numbering');
+    } finally {
+      setSavingService(false);
+    }
+  };
+
+  const handleSaveNongstNumbering = async () => {
+    if (!businessId) return;
+    setSavingNongst(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/invoices/configure-numbering?business_id=${businessId}`, {
+        prefix: nongstForm.prefix,
+        suffix: nongstForm.suffix,
+        padding: nongstForm.padding,
+        next_number: parseInt(nongstForm.next_number) || 1,
+        sequence_type: 'nongst'
+      });
+      Alert.alert('Success', 'Non-GST invoice numbering saved');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to save Non-GST numbering');
+    } finally {
+      setSavingNongst(false);
     }
   };
 
@@ -125,7 +230,20 @@ export default function InvoiceSettingsScreen() {
   };
 
   const currentThemeLabel = THEMES.find(t => t.value === prefForm.invoice_theme)?.label || 'Select Theme';
-  const previewText = `${numForm.prefix}${String(parseInt(numForm.next_number) || 1).padStart(numForm.padding, '0')}${numForm.suffix}`;
+
+  const getPreviewText = (prefix: string, next_number: string, padding: number, suffix: string, monthly_reset_enabled: boolean) => {
+    const num = String(parseInt(next_number) || 1).padStart(padding, '0');
+    if (monthly_reset_enabled) {
+      const currentMonth = new Date().getMonth() + 1;
+      const currentMonthStr = String(currentMonth).padStart(2, '0');
+      return `${prefix}${currentMonthStr}/${num}${suffix}`;
+    }
+    return `${prefix}${num}${suffix}`;
+  };
+
+  const previewText = getPreviewText(numForm.prefix, numForm.next_number, numForm.padding, numForm.suffix, numForm.monthly_reset_enabled);
+  const servicePreviewText = getPreviewText(serviceForm.prefix, serviceForm.next_number, serviceForm.padding, serviceForm.suffix, serviceForm.monthly_reset_enabled);
+  const nongstPreviewText = getPreviewText(nongstForm.prefix, nongstForm.next_number, nongstForm.padding, nongstForm.suffix, false);
 
   if (loading) {
     return (
@@ -153,9 +271,9 @@ export default function InvoiceSettingsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         
-        {/* SECTION 1: INVOICE NUMBERING */}
+        {/* SECTION 1: GST INVOICE NUMBERING */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Invoice Numbering</Text>
+          <Text style={styles.sectionLabel}>GST Invoice Numbering</Text>
           <Text style={styles.subtitle}>Customize how your invoice numbers are generated. Changes apply to future invoices only.</Text>
 
           <View style={styles.row}>
@@ -211,6 +329,23 @@ export default function InvoiceSettingsScreen() {
             keyboardType="number-pad" 
           />
 
+          <Text style={styles.label}>Monthly Reset</Text>
+          <Text style={styles.subtitle}>Reset sequence number at the start of each month (e.g. INV/07/001).</Text>
+          <View style={[styles.toggleRow, { marginBottom: 16 }]}>
+            {['On', 'Off'].map(opt => {
+              const isActive = (numForm.monthly_reset_enabled ? 'On' : 'Off') === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
+                  onPress={() => setNumForm(f => ({ ...f, monthly_reset_enabled: opt === 'On' }))}
+                >
+                  <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
           <View style={styles.previewBox}>
             <Ionicons name="eye-outline" size={16} color={Colors.primary} />
             <Text style={styles.previewLabel}>Next invoice will be: </Text>
@@ -226,7 +361,170 @@ export default function InvoiceSettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* SECTION 2: APP PREFERENCES */}
+        {/* SECTION 2: SERVICE INVOICE NUMBERING */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Service Invoice Numbering</Text>
+          <Text style={styles.subtitle}>Customize how your service invoice numbers are generated. This is a separate sequence from GST invoices.</Text>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.label}>Prefix</Text>
+              <TextInput 
+                style={styles.input} 
+                value={serviceForm.prefix} 
+                onChangeText={v => setServiceForm(f => ({ ...f, prefix: v }))} 
+                placeholder="e.g. SRV/" 
+                placeholderTextColor={Colors.textMuted} 
+                autoCapitalize="characters" 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Suffix (optional)</Text>
+              <TextInput 
+                style={styles.input} 
+                value={serviceForm.suffix} 
+                onChangeText={v => setServiceForm(f => ({ ...f, suffix: v }))} 
+                placeholder="Added after the number." 
+                placeholderTextColor={Colors.textMuted} 
+                autoCapitalize="characters" 
+              />
+            </View>
+          </View>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>Number Length</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            {[1, 2, 3, 4, 5, 6].map(len => {
+              const isActive = serviceForm.padding === len;
+              return (
+                <TouchableOpacity 
+                  key={len} 
+                  style={[styles.pill, isActive && styles.pillActive]} 
+                  onPress={() => setServiceForm(f => ({ ...f, padding: len }))}
+                >
+                  <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                    {len} {len === 1 ? 'digit' : 'digits'} (e.g. {String(1).padStart(len, '0')})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={styles.label}>Next Service Invoice Number</Text>
+          <TextInput 
+            style={[styles.input, { marginBottom: 16 }]} 
+            value={serviceForm.next_number} 
+            onChangeText={v => setServiceForm(f => ({ ...f, next_number: v.replace(/[^0-9]/g, '') }))} 
+            placeholder="Starting sequence number" 
+            placeholderTextColor={Colors.textMuted} 
+            keyboardType="number-pad" 
+          />
+
+          <Text style={styles.label}>Monthly Reset</Text>
+          <Text style={styles.subtitle}>Reset sequence number at the start of each month (e.g. SRV/07/001).</Text>
+          <View style={[styles.toggleRow, { marginBottom: 16 }]}>
+            {['On', 'Off'].map(opt => {
+              const isActive = (serviceForm.monthly_reset_enabled ? 'On' : 'Off') === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
+                  onPress={() => setServiceForm(f => ({ ...f, monthly_reset_enabled: opt === 'On' }))}
+                >
+                  <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.previewBox}>
+            <Ionicons name="eye-outline" size={16} color={Colors.primary} />
+            <Text style={styles.previewLabel}>Next service invoice will be: </Text>
+            <Text style={styles.previewValue}>{servicePreviewText}</Text>
+          </View>
+
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>⚠️ Changes apply to future invoices only. Existing invoice numbers will not be affected.</Text>
+          </View>
+
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSaveServiceNumbering} disabled={savingService}>
+            {savingService ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Service Numbering</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {/* SECTION 3: NON-GST INVOICE NUMBERING */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Non-GST Invoice Numbering</Text>
+          <Text style={styles.subtitle}>Customize how your Non-GST invoice numbers are generated. This is a separate sequence from GST invoices.</Text>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.label}>Prefix</Text>
+              <TextInput 
+                style={styles.input} 
+                value={nongstForm.prefix} 
+                onChangeText={v => setNongstForm(f => ({ ...f, prefix: v }))} 
+                placeholder="e.g. NONGST-" 
+                placeholderTextColor={Colors.textMuted} 
+                autoCapitalize="characters" 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Suffix (optional)</Text>
+              <TextInput 
+                style={styles.input} 
+                value={nongstForm.suffix} 
+                onChangeText={v => setNongstForm(f => ({ ...f, suffix: v }))} 
+                placeholder="Added after the number." 
+                placeholderTextColor={Colors.textMuted} 
+                autoCapitalize="characters" 
+              />
+            </View>
+          </View>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>Number Length</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            {[1, 2, 3, 4, 5, 6].map(len => {
+              const isActive = nongstForm.padding === len;
+              return (
+                <TouchableOpacity 
+                  key={len} 
+                  style={[styles.pill, isActive && styles.pillActive]} 
+                  onPress={() => setNongstForm(f => ({ ...f, padding: len }))}
+                >
+                  <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                    {len} {len === 1 ? 'digit' : 'digits'} (e.g. {String(1).padStart(len, '0')})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={styles.label}>Next Non-GST Invoice Number</Text>
+          <TextInput 
+            style={[styles.input, { marginBottom: 16 }]} 
+            value={nongstForm.next_number} 
+            onChangeText={v => setNongstForm(f => ({ ...f, next_number: v.replace(/[^0-9]/g, '') }))} 
+            placeholder="Starting sequence number" 
+            placeholderTextColor={Colors.textMuted} 
+            keyboardType="number-pad" 
+          />
+
+          <View style={styles.previewBox}>
+            <Ionicons name="eye-outline" size={16} color={Colors.primary} />
+            <Text style={styles.previewLabel}>Next Non-GST invoice will be: </Text>
+            <Text style={styles.previewValue}>{nongstPreviewText}</Text>
+          </View>
+
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>⚠️ Changes apply to future invoices only. Existing invoice numbers will not be affected.</Text>
+          </View>
+
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSaveNongstNumbering} disabled={savingNongst}>
+            {savingNongst ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Non-GST Numbering</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {/* SECTION 4: APP PREFERENCES */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>App Preferences</Text>
           
@@ -382,4 +680,3 @@ const styles = StyleSheet.create({
   modalItemText: { fontSize: 15, color: Colors.text },
   modalItemTextActive: { color: Colors.primary, fontWeight: '600' },
 });
-
