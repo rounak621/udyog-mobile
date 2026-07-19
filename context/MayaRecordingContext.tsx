@@ -78,6 +78,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
   const [isMayaScreenActive, setMayaScreenActive] = useState(false);
   const recordingRef = useRef<Audio.Recording | null>(null);
   const sessionRef = useRef<MayaSession | null>(null);
+  const recordingStartTimestampRef = useRef<number | null>(null);
 
   const registerSession = (session: MayaSession) => {
     sessionRef.current = session;
@@ -85,6 +86,33 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
   const clearSession = () => {
     sessionRef.current = null;
+  };
+
+  // Helper to safely unload a recording instance and prevent double unload crashes
+  const safeUnloadRecording = async (recording: Audio.Recording | null): Promise<string | null> => {
+    if (!recording) return null;
+
+    if ((recording as any)._unloaded) {
+      return recording.getURI();
+    }
+    (recording as any)._unloaded = true;
+
+    try {
+      const status = await recording.getStatusAsync();
+      if (status.canRecord || status.isRecording) {
+        await recording.stopAndUnloadAsync();
+      }
+    } catch (err: any) {
+      if (err.message?.includes('already been unloaded') || err.message?.includes('already unloaded')) {
+        console.log('[MayaRecordingContext] Recording was already unloaded (caught gracefully)');
+      } else if (err.message?.includes('no valid audio data')) {
+        console.log('[MayaRecordingContext] Recording too short / no valid audio data (caught gracefully)');
+        throw err;
+      } else {
+        console.warn('[MayaRecordingContext] Error safe unloading recording:', err.message || err);
+      }
+    }
+    return recording.getURI();
   };
 
   const startRecording = async () => {
@@ -100,12 +128,13 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       }
 
       if (recordingRef.current) {
+        const prevRecording = recordingRef.current;
+        recordingRef.current = null;
         try {
-          await recordingRef.current.stopAndUnloadAsync();
+          await safeUnloadRecording(prevRecording);
         } catch (cleanupErr) {
           console.log('Error cleaning up previous recording instance:', cleanupErr);
         }
-        recordingRef.current = null;
       }
 
       await Audio.setAudioModeAsync({
@@ -114,6 +143,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         staysActiveInBackground: false,
       });
 
+      recordingStartTimestampRef.current = Date.now();
       const { recording: newRecording } = await Audio.Recording.createAsync(
         VOICE_OPTIMIZED_PRESET
       );
@@ -132,11 +162,14 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     onResponse?: (response: any) => void,
     onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void
   ) => {
-    if (!recordingRef.current) {
+    const rec = recordingRef.current;
+    if (!rec) {
       setIsRecording(false);
       return;
     }
 
+    // Nullify immediately to prevent concurrent duplicate calls/double unloads
+    recordingRef.current = null;
     setIsRecording(false);
 
     // Resolve upload parameters: use explicit args if provided, otherwise fall back to registered session
@@ -158,11 +191,22 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     // Only treat as a true cancel if there's genuinely no session available AND no explicit parameters
     if (!resolvedBusinessId || !resolvedHistory || !resolvedGetToken || !resolvedOnResponse || !resolvedOnError) {
       try {
-        await recordingRef.current.stopAndUnloadAsync();
-        recordingRef.current = null;
+        await safeUnloadRecording(rec);
       } catch (e) {
         console.error('Failed to stop recording on tab release', e);
       }
+      return;
+    }
+
+    // Prevent accidental brief taps from uploading (minimum hold duration)
+    // 700ms total elapsed from touch start (roughly 300ms hold + 400ms delay)
+    const duration = recordingStartTimestampRef.current ? (Date.now() - recordingStartTimestampRef.current) : 0;
+    if (duration < 700) {
+      try {
+        await safeUnloadRecording(rec);
+      } catch (e) { /* ignore */ }
+      setIsProcessing(false);
+      resolvedOnError('empty', 'Recording too short, please hold and speak.');
       return;
     }
 
@@ -173,12 +217,9 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     console.log('[Maya-Latency] Phase 0: Starting recording teardown');
 
     try {
-      await recordingRef.current.stopAndUnloadAsync();
+      const uri = await safeUnloadRecording(rec);
       const t1 = Date.now();
       console.log(`[Maya-Latency] Phase 1: Recording stopped (${t1 - t0}ms)`);
-
-      const uri = recordingRef.current.getURI();
-      recordingRef.current = null;
 
       if (!uri) {
         setIsProcessing(false);
@@ -268,13 +309,17 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       const tErr = Date.now();
       console.error(`[Maya-Latency] ERROR at ${tErr - t0}ms:`, err.message || err);
-      const backendMessage = err.response?.data?.detail;
-      if (backendMessage) {
-        resolvedOnError('backend', backendMessage);
-      } else if (err.request) {
-        resolvedOnError('network', 'Could not connect to Maya. Please check your internet connection.');
+      if (err.message?.includes('no valid audio data')) {
+        resolvedOnError('empty', 'Recording too short, please hold and speak.');
       } else {
-        resolvedOnError('general', err.message || 'Something went wrong.');
+        const backendMessage = err.response?.data?.detail;
+        if (backendMessage) {
+          resolvedOnError('backend', backendMessage);
+        } else if (err.request) {
+          resolvedOnError('network', 'Could not connect to Maya. Please check your internet connection.');
+        } else {
+          resolvedOnError('general', err.message || 'Something went wrong.');
+        }
       }
     } finally {
       setIsProcessing(false);
