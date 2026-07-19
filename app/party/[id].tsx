@@ -430,7 +430,13 @@ export default function PartyDetailScreen() {
                   <TouchableOpacity 
                     key={`${bill.type}_${bill.id}`} 
                     style={styles.invCard} 
-                    onPress={() => router.push(navigatePath as any)}
+                    onPress={() => {
+                      // Navigate to the specific detail screen depending on the bill type:
+                      // INVOICE -> /invoice/[id]
+                      // RENTAL -> /rental-order/[id]
+                      // PURCHASE -> /purchase-bills/[id]
+                      router.push(navigatePath as any);
+                    }}
                   >
                     <View style={{ flex: 1, gap: 4 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
