@@ -30,7 +30,8 @@
       "package": "com.udyog.udyogmobile",
       "permissions": [
         "RECORD_AUDIO"
-      ]
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -46,6 +47,13 @@
         "expo-av",
         {
           "microphonePermission": "Udyog needs microphone access to let you create bills by speaking."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F97316"
         }
       ]
     ],
