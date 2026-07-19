@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Alert } from 'react-native';
 
 interface MayaRecordingContextType {
   isRecording: boolean;
@@ -21,12 +20,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
   const stopRecording = () => {
     setIsRecording(false);
-    // Voice recording requires a development build alert logic
-    Alert.alert(
-      'Voice Input',
-      'Voice recording requires a development build. Use the text input below to try Maya.',
-      [{ text: 'OK' }]
-    );
+    // TODO: implement actual Audio.Recording capture and send to /ai/maya-chat
   };
 
   return (

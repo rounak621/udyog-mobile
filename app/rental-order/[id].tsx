@@ -161,12 +161,7 @@ export default function OrderDetailScreen() {
       const safeCustomerName = (order.customer_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `${safeCustomerName}_${safeOrderNumber}_invoice.pdf`;
       
-      const udyogDir = (FileSystem as any).documentDirectory + 'Udyog/';
-      const dirInfo = await FileSystem.getInfoAsync(udyogDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
-      }
-      const fileUri = udyogDir + fileName;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
       
       const response = await FileSystem.downloadAsync(
         `${api.defaults.baseURL}/rental-orders/${order.id}/pdf?business_id=${business.id}`,
@@ -179,14 +174,11 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        Alert.alert(
-          'Invoice Downloaded',
-          `Saved to Udyog folder as ${fileName}`,
-          [
-            { text: 'Share', onPress: () => Sharing.shareAsync(fileUri) },
-            { text: 'Done', style: 'cancel' }
-          ]
-        );
+        await Sharing.shareAsync(response.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save ${fileName}`,
+          UTI: 'com.adobe.pdf',
+        });
       } else {
         Alert.alert('Error', 'Failed to generate invoice PDF.');
       }
@@ -208,12 +200,7 @@ export default function OrderDetailScreen() {
       const safeCustomerName = (order.customer_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `${safeCustomerName}_${safeOrderNumber}_statement.pdf`;
       
-      const udyogDir = (FileSystem as any).documentDirectory + 'Udyog/';
-      const dirInfo = await FileSystem.getInfoAsync(udyogDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
-      }
-      const fileUri = udyogDir + fileName;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
       
       const response = await FileSystem.downloadAsync(
         `${api.defaults.baseURL}/rental-orders/${order.id}/payment-statement-pdf?business_id=${business.id}`,
@@ -226,14 +213,11 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        Alert.alert(
-          'Statement Downloaded',
-          `Saved to Udyog folder as ${fileName}`,
-          [
-            { text: 'Share', onPress: () => Sharing.shareAsync(fileUri) },
-            { text: 'Done', style: 'cancel' }
-          ]
-        );
+        await Sharing.shareAsync(response.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save ${fileName}`,
+          UTI: 'com.adobe.pdf',
+        });
       } else {
         Alert.alert('Error', 'Failed to generate statement PDF.');
       }

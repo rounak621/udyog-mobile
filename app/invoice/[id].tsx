@@ -102,19 +102,16 @@ export default function InvoiceDetailScreen() {
       const fileName = `${customerName}_${invoiceNum}.pdf`;
 
       const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
-
-      const udyogDir = (FileSystem as any).documentDirectory + 'Udyog/';
-      await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
-      const fileUri = udyogDir + fileName;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
 
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
 
       if (downloadResult.status === 200) {
-        Alert.alert(
-          '✅ Downloaded',
-          `${fileName} saved to Udyog folder on your device.`,
-          [{ text: 'OK' }]
-        );
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Save ${fileName}`,
+          UTI: 'com.adobe.pdf',
+        });
       } else {
         throw new Error('Download failed');
       }

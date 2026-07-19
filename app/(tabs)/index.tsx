@@ -202,21 +202,21 @@ export default function DashboardScreen() {
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>SALES</Text>
-            <Text style={[styles.statValue, { color: '#16A34A' }]}>{compactFmt(stats?.total_sales || 0)}</Text>
-            <Text style={styles.statSub}>this year</Text>
+            <Text style={styles.statLabel} maxFontSizeMultiplier={1.2} numberOfLines={1}>SALES</Text>
+            <Text style={[styles.statValue, { color: '#16A34A' }]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{compactFmt(stats?.total_sales || 0)}</Text>
+            <Text style={styles.statSub} maxFontSizeMultiplier={1.2} numberOfLines={1}>this year</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>PURCHASES</Text>
-            <Text style={styles.statValue}>{compactFmt(stats?.total_purchases || 0)}</Text>
-            <Text style={styles.statSub}>this year</Text>
+            <Text style={styles.statLabel} maxFontSizeMultiplier={1.2} numberOfLines={1}>PURCHASES</Text>
+            <Text style={styles.statValue} maxFontSizeMultiplier={1.2} numberOfLines={1}>{compactFmt(stats?.total_purchases || 0)}</Text>
+            <Text style={styles.statSub} maxFontSizeMultiplier={1.2} numberOfLines={1}>this year</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>PAYABLES</Text>
-            <Text style={[styles.statValue, { color: '#C2410C' }]}>{compactFmt(stats?.payables || 0)}</Text>
-            <Text style={styles.statSub}>to pay</Text>
+            <Text style={styles.statLabel} maxFontSizeMultiplier={1.2} numberOfLines={1}>PAYABLES</Text>
+            <Text style={[styles.statValue, { color: '#C2410C' }]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{compactFmt(stats?.payables || 0)}</Text>
+            <Text style={styles.statSub} maxFontSizeMultiplier={1.2} numberOfLines={1}>to pay</Text>
           </View>
         </View>
 
@@ -349,9 +349,9 @@ const styles = StyleSheet.create({
   statsRow: { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 16, marginBottom: 16, padding: 16, flexDirection: 'row', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
   statItem: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, backgroundColor: '#E2E8F0' },
-  statLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4 },
-  statValue: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  statSub: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
+  statLabel: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.5, marginBottom: 4, minHeight: 14 },
+  statValue: { fontSize: 16, fontWeight: '800', color: '#0F172A', minHeight: 20 },
+  statSub: { fontSize: 10, color: '#94A3B8', marginTop: 2, minHeight: 14 },
 
   quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 20 },
   quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },

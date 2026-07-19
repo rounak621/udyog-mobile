@@ -334,12 +334,14 @@ export default function CreateInvoiceScreen() {
         const customerName = (selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
         const invoiceNum = (createdInvoice?.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
         const fileName = `${customerName}_${invoiceNum}.pdf`;
-        const udyogDir = (FileSystem as any).cacheDirectory + 'Udyog/';
-        await FileSystem.makeDirectoryAsync(udyogDir, { intermediates: true });
-        const fileUri = udyogDir + fileName;
+        const fileUri = (FileSystem as any).cacheDirectory + fileName;
         const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
         if (downloadResult.status === 200) {
-          Alert.alert('✅ Downloaded', `${fileName} saved successfully.`, [{ text: 'OK' }]);
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Save ${fileName}`,
+            UTI: 'com.adobe.pdf',
+          });
         } else {
           throw new Error('Download failed');
         }
