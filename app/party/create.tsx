@@ -35,11 +35,17 @@ export default function CreatePartyScreen() {
   const [gstin, setGstin] = useState('');
   const [state, setState] = useState('');
   const [address, setAddress] = useState('');
+  const [consignmentAddress, setConsignmentAddress] = useState('');
   const [partyType, setPartyType] = useState<'customer' | 'supplier' | 'both'>('customer');
   const [saving, setSaving] = useState(false);
 
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
+
+  // GST Verification States
+  const [fetchingGst, setFetchingGst] = useState(false);
+  const [gstPreview, setGstPreview] = useState<any>(null);
+  const [gstError, setGstError] = useState<string | null>(null);
 
   // Stable callbacks for input fields to avoid focus loss
   const onChangeName = useCallback((text: string) => setName(text), []);
@@ -47,6 +53,7 @@ export default function CreatePartyScreen() {
   const onChangeEmail = useCallback((text: string) => setEmail(text), []);
   const onChangeGstin = useCallback((text: string) => setGstin(text), []);
   const onChangeAddress = useCallback((text: string) => setAddress(text), []);
+  const onChangeConsignmentAddress = useCallback((text: string) => setConsignmentAddress(text), []);
 
   useEffect(() => {
     const loadBusinessAndParty = async () => {
@@ -66,6 +73,7 @@ export default function CreatePartyScreen() {
           setGstin(p.gstin || '');
           setState(p.state || '');
           setAddress(p.address || '');
+          setConsignmentAddress(p.consignment_address || '');
           setPartyType(p.party_type?.toLowerCase() || 'customer');
         }
       } catch (err) {
@@ -74,6 +82,44 @@ export default function CreatePartyScreen() {
     };
     loadBusinessAndParty();
   }, [id]);
+
+  const fetchGstDetails = async () => {
+    if (gstin.length !== 15) return;
+    setFetchingGst(true);
+    setGstError(null);
+    setGstPreview(null);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const res = await api.get(`/gst/verify?gstin=${gstin}`);
+      setGstPreview(res.data);
+    } catch (err: any) {
+      console.log('GST verify error:', err);
+      const msg = err.response?.data?.detail || 'Invalid GST number or verification failed.';
+      setGstError(msg);
+    } finally {
+      setFetchingGst(false);
+    }
+  };
+
+  const useGstDetails = () => {
+    if (!gstPreview) return;
+    setName(gstPreview.trade_name || gstPreview.legal_name || '');
+    setAddress(gstPreview.address || '');
+    if (gstPreview.state) {
+      const matchedState = INDIAN_STATES.find(s => s.toLowerCase().trim() === gstPreview.state.toLowerCase().trim());
+      if (matchedState) {
+        setState(matchedState);
+      } else {
+        setState(gstPreview.state);
+      }
+    }
+    setGstPreview(null);
+  };
+
+  const discardGstDetails = () => {
+    setGstPreview(null);
+  };
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Party name is required'); return; }
@@ -101,6 +147,7 @@ export default function CreatePartyScreen() {
           gstin: gstin.trim().toUpperCase() || null,
           state: state.trim() || null,
           address: address.trim() || null,
+          consignment_address: consignmentAddress.trim() || null,
         };
         await api.put(`/customers/${id}?business_id=${businessId}`, editPayload);
       } else {
@@ -112,6 +159,7 @@ export default function CreatePartyScreen() {
           gstin: gstin.trim().toUpperCase() || undefined,
           state: state.trim() || undefined,
           address: address.trim() || undefined,
+          consignment_address: consignmentAddress.trim() || undefined,
         };
         await api.post(`/customers/?business_id=${businessId}`, payload);
       }
@@ -226,12 +274,88 @@ export default function CreatePartyScreen() {
               placeholder="22AAAAA0000A1Z5"
               placeholderTextColor="#94A3B8"
               value={gstin}
-              onChangeText={onChangeGstin}
+              onChangeText={(t) => {
+                const clean = t.replace(/\s/g, '');
+                onChangeGstin(clean);
+                if (clean.length !== 15) {
+                  setGstPreview(null);
+                  setGstError(null);
+                }
+              }}
               maxLength={15}
               autoCapitalize="characters"
             />
+            {gstin.length === 15 && !gstPreview && !fetchingGst && (
+              <TouchableOpacity style={styles.fetchGstBtn} onPress={fetchGstDetails}>
+                <Ionicons name="search" size={14} color="#F97316" style={{ marginRight: 4 }} />
+                <Text style={styles.fetchGstBtnText}>Fetch Details</Text>
+              </TouchableOpacity>
+            )}
           </View>
+        </View>
 
+        {/* GST Preview Card */}
+        {fetchingGst && (
+          <View style={styles.gstStatusContainer}>
+            <ActivityIndicator color="#F97316" size="small" />
+            <Text style={styles.gstStatusText}>Fetching GST details...</Text>
+          </View>
+        )}
+
+        {gstError && (
+          <View style={styles.gstErrorContainer}>
+            <Ionicons name="alert-circle" size={16} color="#DC2626" />
+            <Text style={styles.gstErrorText}>{gstError}</Text>
+          </View>
+        )}
+
+        {gstPreview && (
+          <View style={[styles.gstPreviewCard, !gstPreview.is_active && styles.gstPreviewCardInactive]}>
+            <Text style={styles.gstPreviewHeader}>GSTIN Details Preview</Text>
+            
+            {!gstPreview.is_active && (
+              <View style={styles.warningBanner}>
+                <Ionicons name="warning" size={14} color="#B91C1C" style={{ marginRight: 6 }} />
+                <Text style={styles.warningText}>Status is NOT Active ({gstPreview.status})</Text>
+              </View>
+            )}
+
+            <View style={styles.previewRow}>
+              <Text style={styles.previewLabel}>Trade Name:</Text>
+              <Text style={styles.previewValue}>{gstPreview.trade_name || '—'}</Text>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewLabel}>Legal Name:</Text>
+              <Text style={styles.previewValue}>{gstPreview.legal_name || '—'}</Text>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewLabel}>Address:</Text>
+              <Text style={styles.previewValue}>{gstPreview.address || '—'}</Text>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewLabel}>State:</Text>
+              <Text style={styles.previewValue}>{gstPreview.state || '—'}</Text>
+            </View>
+            <View style={styles.previewRow}>
+              <Text style={styles.previewLabel}>Status:</Text>
+              <Text style={[styles.previewValue, gstPreview.is_active ? styles.statusActive : styles.statusInactive]}>
+                {gstPreview.status || 'Unknown'}
+              </Text>
+            </View>
+
+            <View style={styles.previewActions}>
+              <TouchableOpacity style={styles.useThisBtn} onPress={useGstDetails}>
+                <Text style={styles.useThisText}>Use This</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.discardBtn} onPress={discardGstDetails}>
+                <Text style={styles.discardText}>Discard</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Address Card */}
+        <View style={styles.card}>
           {/* State Select Dropdown */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>State *</Text>
@@ -262,6 +386,22 @@ export default function CreatePartyScreen() {
               placeholderTextColor="#94A3B8"
               value={address}
               onChangeText={onChangeAddress}
+            />
+          </View>
+
+          {/* Shipping Address Multiline */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Shipping Address</Text>
+            <TextInput
+              key="consignmentAddress"
+              blurOnSubmit={false}
+              multiline
+              numberOfLines={3}
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              placeholder="Shipping / Consignment address"
+              placeholderTextColor="#94A3B8"
+              value={consignmentAddress}
+              onChangeText={onChangeConsignmentAddress}
             />
           </View>
         </View>
@@ -502,5 +642,155 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#0F172A',
     flexShrink: 1,
+  },
+  // GST Verification Styles
+  fetchGstBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#FFF7ED',
+    borderWidth: 0.5,
+    borderColor: '#FED7AA',
+    borderRadius: 6,
+  },
+  fetchGstBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F97316',
+  },
+  gstStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  gstStatusText: {
+    fontSize: 12,
+    color: '#475569',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  gstErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    borderWidth: 0.5,
+    borderColor: '#FEE2E2',
+    marginTop: -8,
+    marginBottom: 8,
+  },
+  gstErrorText: {
+    fontSize: 12,
+    color: '#B91C1C',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  gstPreviewCard: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: -8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  gstPreviewCardInactive: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FFF5F5',
+  },
+  gstPreviewHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#CBD5E1',
+    paddingBottom: 4,
+    marginBottom: 2,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    padding: 6,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 11,
+    color: '#B91C1C',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  previewLabel: {
+    width: 90,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  previewValue: {
+    flex: 1,
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '500',
+  },
+  statusActive: {
+    color: '#16A34A',
+    fontWeight: '700',
+  },
+  statusInactive: {
+    color: '#DC2626',
+    fontWeight: '700',
+  },
+  previewActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 8,
+  },
+  useThisBtn: {
+    flex: 1,
+    backgroundColor: '#F97316',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  useThisText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  discardBtn: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  discardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
   },
 });
