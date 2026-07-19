@@ -248,6 +248,39 @@ export default function InvoiceDetailScreen() {
     }
   };
 
+  const [downloadingChallan, setDownloadingChallan] = useState(false);
+
+  const handleDownloadChallan = async () => {
+    setDownloadingChallan(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      
+      const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `challan-${invoiceNum}.pdf`;
+      
+      const pdfUrl = `https://api.udyogbook.in/api/v1/invoices/${id}/challan-pdf?business_id=${invoice.business_id}`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+      
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (downloadResult.status === 200) {
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Challan');
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (err) {
+      console.log('Download challan error:', err);
+      Alert.alert('Error', 'Could not download challan PDF. Please try again.');
+    } finally {
+      setDownloadingChallan(false);
+    }
+  };
+
   if (loading) return <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>;
   if (!invoice) return <View style={styles.loader}><Text style={{ color: Colors.textSecondary }}>Invoice not found</Text></View>;
 
@@ -377,6 +410,9 @@ export default function InvoiceDetailScreen() {
             <Ionicons name="logo-whatsapp" size={18} color="#fff" />
             <Text style={[styles.actionBtnText, { color: '#fff' }]}>WhatsApp</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4, marginBottom: 4 }}>
           <TouchableOpacity
             style={[styles.actionBtn, { flex: 1, backgroundColor: '#475569' }]}
             onPress={handleDownloadPDF}
@@ -384,6 +420,22 @@ export default function InvoiceDetailScreen() {
             <Ionicons name="download-outline" size={18} color="#fff" />
             <Text style={[styles.actionBtnText, { color: '#fff' }]}>Save PDF</Text>
           </TouchableOpacity>
+          {invoice?.invoice_type === 'INVOICE' && (
+            <TouchableOpacity
+              style={[styles.actionBtn, { flex: 1, backgroundColor: '#0D9488', opacity: downloadingChallan ? 0.7 : 1 }]}
+              onPress={handleDownloadChallan}
+              disabled={downloadingChallan}
+            >
+              {downloadingChallan ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="document-text-outline" size={18} color="#fff" />
+                  <Text style={[styles.actionBtnText, { color: '#fff' }]}>Challan</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
