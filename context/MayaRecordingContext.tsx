@@ -43,6 +43,15 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (cleanupErr) {
+          console.log('Error cleaning up previous recording instance:', cleanupErr);
+        }
+        recordingRef.current = null;
+      }
+
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
@@ -119,7 +128,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await axios.post('https://api.udyogbook.in/api/v1/ai/voice/maya-command', formData, {
+      const response = await axios.post('https://api.udyogbook.in/api/v1/ai/maya-command', formData, {
         headers,
         timeout: 60000,
       });
