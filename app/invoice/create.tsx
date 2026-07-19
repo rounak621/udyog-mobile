@@ -56,6 +56,7 @@ export default function CreateInvoiceScreen() {
   
   // Invoice type state
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'NONGST' | 'SERVICE'>('INVOICE');
+  const [isGstApplicable, setIsGstApplicable] = useState(true);
 
   // Customer picker modal state
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -131,6 +132,7 @@ export default function CreateInvoiceScreen() {
         setNotes(invData.notes || '');
         setConsignmentAddress(invData.consignment_address || '');
         setShowDiscount(!!invData.show_discount);
+        setIsGstApplicable(invData.is_gst_applicable !== false);
 
         const custId = invData.customer_id;
         const match = partiesList.find(p => String(p.id) === String(custId));
@@ -293,9 +295,9 @@ export default function CreateInvoiceScreen() {
   lineItems.forEach(l => {
     const qty = Number(l.qty) || 0;
     const rate = Number(l.rate) || 0;
-    const discountPercent = showDiscount ? (Number(l.discount_percent) || 0) : 0;
-    const gstRate = invoiceType === 'NONGST' ? 0 : (Number(l.gst_rate) || 0);
+    const gstRate = (invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : (Number(l.gst_rate) || 0);
     const baseAmount = qty * rate;
+    const discountPercent = showDiscount ? (Number(l.discount_percent) || 0) : 0;
     const discountFactor = 1 - (discountPercent / 100);
     const taxable = round2(baseAmount * discountFactor);
     subtotal += taxable;
@@ -376,11 +378,11 @@ export default function CreateInvoiceScreen() {
           item_name: l.name,
           quantity: Number(l.qty) || 1,
           rate: Number(l.rate) || 0,
-          gst_rate: invoiceType === 'NONGST' ? 0 : Number(l.gst_rate) || 0,
+          gst_rate: (invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
           discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
         })),
         consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || undefined) : undefined,
-        is_gst_applicable: invoiceType === 'SERVICE' ? (invoiceType === 'SERVICE') : true,
+        is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
       };
 
       if (!isEditMode) {
@@ -477,6 +479,24 @@ export default function CreateInvoiceScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {invoiceType === 'SERVICE' && (
+          <View style={[styles.typeToggle, { marginTop: 0, marginHorizontal: 28, backgroundColor: '#E2E8F0', opacity: isEditMode ? 0.6 : 1 }]}>
+            {[
+              { label: 'GST Service', value: true },
+              { label: 'Non-GST Service', value: false }
+            ].map(t => (
+              <TouchableOpacity
+                key={String(t.value)}
+                style={[styles.typeBtn, isGstApplicable === t.value && styles.typeBtnActive]}
+                onPress={() => !isEditMode && setIsGstApplicable(t.value)}
+                disabled={isEditMode}
+              >
+                <Text style={[styles.typeBtnText, isGstApplicable === t.value && styles.typeBtnTextActive]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Invoice No + Date row (side by side) */}
         <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 16 }}>
@@ -701,7 +721,7 @@ export default function CreateInvoiceScreen() {
                     </>
                   )}
                 </View>
-                {invoiceType !== 'NONGST' && (
+                {(invoiceType !== 'NONGST' && !(invoiceType === 'SERVICE' && !isGstApplicable)) && (
                   <View style={{ marginTop: 8 }}>
                     <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>GST Rate</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
