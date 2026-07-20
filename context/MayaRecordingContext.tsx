@@ -50,6 +50,7 @@ interface MayaSession {
   conversationHistory: React.MutableRefObject<ChatMessage[]>;
   getToken: () => Promise<string | null>;
   onResponse: (response: any) => void;
+  onTranscript?: (transcript: string) => void;
   onError: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void;
 }
 
@@ -63,6 +64,7 @@ interface MayaRecordingContextType {
     history?: ChatMessage[],
     getToken?: () => Promise<string | null>,
     onResponse?: (response: any) => void,
+    onTranscript?: (transcript: string) => void,
     onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void
   ) => Promise<void>;
   isProcessing: boolean;
@@ -160,6 +162,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     history?: ChatMessage[],
     getToken?: () => Promise<string | null>,
     onResponse?: (response: any) => void,
+    onTranscript?: (transcript: string) => void,
     onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void
   ) => {
     const rec = recordingRef.current;
@@ -177,6 +180,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     let resolvedHistory = history;
     let resolvedGetToken = getToken;
     let resolvedOnResponse = onResponse;
+    let resolvedOnTranscript = onTranscript;
     let resolvedOnError = onError;
 
     if (!resolvedBusinessId && sessionRef.current) {
@@ -185,6 +189,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       resolvedHistory = sessionRef.current.conversationHistory.current;
       resolvedGetToken = sessionRef.current.getToken;
       resolvedOnResponse = sessionRef.current.onResponse;
+      resolvedOnTranscript = sessionRef.current.onTranscript;
       resolvedOnError = sessionRef.current.onError;
     }
 
@@ -248,13 +253,11 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       const t3 = Date.now();
       console.log(`[Maya-Latency] Phase 3: Token acquired (${t3 - t2}ms, ${t3 - t0}ms total)`);
 
-      const formData = new FormData();
-      formData.append('business_id', resolvedBusinessId);
-      formData.append('audio_format', 'audio/mp4');
-      formData.append('conversation_history', JSON.stringify(resolvedHistory));
-
+      // 1. STEP 1: Fast STT Transcription
+      const transcribeFormData = new FormData();
+      transcribeFormData.append('audio_format', 'audio/mp4');
       const filename = uri.split('/').pop() || 'recording.m4a';
-      formData.append('audio', {
+      transcribeFormData.append('audio', {
         uri,
         name: filename,
         type: 'audio/mp4',
@@ -267,50 +270,53 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Estimate form data size for cross-check
-      let estimatedFormSize = 0;
-      if (formData && '_parts' in (formData as any)) {
-        for (const [key, val] of (formData as any)._parts) {
-          estimatedFormSize += (key || '').length;
-          if (val && typeof val === 'object' && 'uri' in val) {
-            if (fileSizeVal > 0) {
-              estimatedFormSize += fileSizeVal;
-            }
-          } else if (typeof val === 'string') {
-            estimatedFormSize += val.length;
-          }
-        }
+      console.log(`[Maya-Latency] Phase 4: Starting fast transcription request...`);
+      const transcribeResponse = await axios.post(
+        'https://api.udyogbook.in/api/v1/ai/voice/transcribe',
+        transcribeFormData,
+        { headers, timeout: 30000 }
+      );
+      const tTranscribe = Date.now();
+      console.log(`[Maya-Latency] Phase 4.5: Transcription received in ${tTranscribe - t3}ms`);
+
+      const transcript = transcribeResponse.data?.user_transcript;
+      if (!transcript) {
+        throw new Error("Empty transcript returned from transcription endpoint.");
       }
-      console.log(`[Maya-Latency] Phase 3.9: Estimated form data size: ${Math.round(estimatedFormSize / 1024)}KB`);
 
-      let tUpload = 0;
-      console.log(`[Maya-Latency] Phase 4: Starting upload...`);
-      const response = await axios.post('https://api.udyogbook.in/api/v1/ai/maya-command', formData, {
-        headers,
-        timeout: 60000,
-        onUploadProgress: (progressEvent) => {
-          const loaded = progressEvent.loaded;
-          const total = progressEvent.total || 0;
-          if (total > 0 && loaded >= total && tUpload === 0) {
-            tUpload = Date.now();
-            console.log(`[Maya-Latency] Phase 4.5: Upload complete (${tUpload - t0}ms total, network duration=${tUpload - t3}ms)`);
-          }
-        }
-      });
-      const t4 = Date.now();
-      const backendDuration = tUpload > 0 ? `${t4 - tUpload}ms` : 'unknown';
-      console.log(`[Maya-Latency] Phase 5: Response received (upload+backend=${t4 - t3}ms, upload duration=${tUpload > 0 ? tUpload - t3 : 'unknown'}ms, backend processing=${backendDuration}, total=${t4 - t0}ms)`);
+      // Update frontend immediately with the real transcript
+      if (resolvedOnTranscript) {
+        resolvedOnTranscript(transcript);
+      }
 
-      if (response.data) {
-        resolvedOnResponse(response.data);
+      // 2. STEP 2: Chat Reasoning call
+      console.log(`[Maya-Latency] Phase 5: Starting chat reasoning request...`);
+      const chatFormData = new FormData();
+      chatFormData.append('business_id', resolvedBusinessId);
+      chatFormData.append('text', transcript);
+      chatFormData.append('conversation_history', JSON.stringify(resolvedHistory));
+
+      const chatResponse = await axios.post(
+        'https://api.udyogbook.in/api/v1/ai/maya-chat',
+        chatFormData,
+        { headers, timeout: 60000 }
+      );
+      const tReasoning = Date.now();
+      console.log(`[Maya-Latency] Phase 5.5: Reasoning received in ${tReasoning - tTranscribe}ms (Total round-trip=${tReasoning - t0}ms)`);
+
+      if (chatResponse.data) {
+        resolvedOnResponse(chatResponse.data);
       } else {
         resolvedOnError('backend', 'Backend returned empty response.');
       }
     } catch (err: any) {
       const tErr = Date.now();
       console.error(`[Maya-Latency] ERROR at ${tErr - t0}ms:`, err.message || err);
-      if (err.message?.includes('no valid audio data')) {
-        resolvedOnError('empty', 'Recording too short, please hold and speak.');
+      
+      const isTranscriptionError = !resolvedHistory || err.config?.url?.includes('/transcribe');
+      
+      if (isTranscriptionError) {
+        resolvedOnError('backend', "Couldn't understand your voice, please try again.");
       } else {
         const backendMessage = err.response?.data?.detail;
         if (backendMessage) {

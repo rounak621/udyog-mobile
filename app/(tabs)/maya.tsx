@@ -69,6 +69,7 @@ export default function MayaScreen() {
         conversationHistory: conversationHistoryRef,
         getToken,
         onResponse: handleVoiceResponse,
+        onTranscript: handleVoiceTranscript,
         onError: handleVoiceError,
       });
       return () => {
@@ -86,6 +87,7 @@ export default function MayaScreen() {
         conversationHistory: conversationHistoryRef,
         getToken,
         onResponse: handleVoiceResponse,
+        onTranscript: handleVoiceTranscript,
         onError: handleVoiceError,
       });
     }
@@ -105,45 +107,47 @@ export default function MayaScreen() {
     })();
   }, []);
 
+  const handleVoiceTranscript = (transcript: string) => {
+    // Step 1: Immediately show user's transcript bubble
+    setMessages(prev => [...prev, {
+      role: 'user',
+      text: transcript,
+    }]);
+
+    // Step 2: Show thinking indicator (waiting on reasoning call)
+    setIsThinking(true);
+  };
+
   const handleVoiceResponse = (data: MayaResponse) => {
     const draft = data.current_draft || data.extracted_data || null;
     const userSpokenText = data.user_transcript || data.user_text || 'Voice message';
 
-    // Step 1: Immediately show user's transcript bubble
+    // Step 2 has completed
+    setIsThinking(false);
+
+    // Reveal assistant reply immediately (natural network delay provided the gap)
     setMessages(prev => [...prev, {
-      role: 'user',
-      text: userSpokenText,
+      role: 'assistant',
+      text: data.reply_text || '',
+      draft: data.action_type === 'draft_invoice' ? draft : undefined,
+      actionType: data.action_type || undefined,
     }]);
 
-    // Step 2: Show thinking indicator for 400ms (matches web's setTimeout pattern)
-    setIsThinking(true);
+    // Update conversation history context
+    setConversationHistory(prev => [
+      ...prev,
+      { role: 'user', content: userSpokenText },
+      { role: 'assistant', content: data.reply_text || '' },
+    ]);
 
-    // Step 3: After 400ms delay, reveal assistant reply (mirrors web's MayaAgent.tsx)
-    setTimeout(() => {
-      setIsThinking(false);
-
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        text: data.reply_text || '',
-        draft: data.action_type === 'draft_invoice' ? draft : undefined,
-        actionType: data.action_type || undefined,
-      }]);
-
-      // Update conversation history context
-      setConversationHistory(prev => [
-        ...prev,
-        { role: 'user', content: userSpokenText },
-        { role: 'assistant', content: data.reply_text || '' },
-      ]);
-
-      // Play TTS audio if present
-      if (data.audio_b64) {
-        playAudio(data.audio_b64);
-      }
-    }, 400);
+    // Play TTS audio if present
+    if (data.audio_b64) {
+      playAudio(data.audio_b64);
+    }
   };
 
   const handleVoiceError = (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => {
+    setIsThinking(false);
     let alertTitle = 'Error';
     if (errorType === 'permission') {
       alertTitle = 'Microphone Permission Denied';
