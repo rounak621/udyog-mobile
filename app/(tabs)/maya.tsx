@@ -183,9 +183,7 @@ export default function MayaScreen() {
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
     if (messages.length > 0 || isRecording || isProcessing || isThinking) {
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      scrollRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages, isRecording, isProcessing, isThinking]);
 
@@ -339,6 +337,7 @@ export default function MayaScreen() {
           ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={styles.content}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -584,7 +583,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f5f9',
   },
   content: {
-    paddingBottom: 24,
+    paddingBottom: 48,
   },
   mainContainer: {
     paddingVertical: 16,
