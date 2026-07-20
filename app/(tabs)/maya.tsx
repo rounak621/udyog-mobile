@@ -107,6 +107,29 @@ export default function MayaScreen() {
     })();
   }, []);
 
+  const fetchAndPlayTTS = async (text: string, actionType?: string) => {
+    let tts_text = text;
+    if (!tts_text) {
+      if (actionType === 'draft_invoice') {
+        tts_text = 'Bill tayyar hai.';
+      } else if (actionType === 'draft_rental') {
+        tts_text = 'Rental bill tayyar hai.';
+      } else {
+        return;
+      }
+    }
+
+    try {
+      const response = await api.post('/ai/tts', { text: tts_text });
+      const audio_b64 = response.data?.audio_b64;
+      if (audio_b64) {
+        await playAudio(audio_b64);
+      }
+    } catch (err) {
+      console.log('Failed to generate background TTS:', err);
+    }
+  };
+
   const handleVoiceTranscript = (transcript: string) => {
     // Step 1: Immediately show user's transcript bubble
     setMessages(prev => [...prev, {
@@ -140,10 +163,8 @@ export default function MayaScreen() {
       { role: 'assistant', content: data.reply_text || '' },
     ]);
 
-    // Play TTS audio if present
-    if (data.audio_b64) {
-      playAudio(data.audio_b64);
-    }
+    // Fetch and play TTS audio in the background (decoupled)
+    fetchAndPlayTTS(data.reply_text || '', data.action_type || undefined);
   };
 
   const handleVoiceError = (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => {
@@ -254,10 +275,8 @@ export default function MayaScreen() {
         { role: 'assistant', content: data.reply_text || '' },
       ]);
 
-      // Play TTS audio if present
-      if (data.audio_b64) {
-        playAudio(data.audio_b64);
-      }
+      // Fetch and play TTS audio in the background (decoupled)
+      fetchAndPlayTTS(data.reply_text || '', data.action_type || undefined);
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Could not process request';
       setMessages(prev => [...prev, { role: 'assistant', text: `Error: ${detail}` }]);
