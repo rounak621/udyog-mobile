@@ -272,7 +272,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
       console.log(`[Maya-Latency] Phase 4: Starting fast transcription request...`);
       const transcribeResponse = await axios.post(
-        'https://api.udyogbook.in/api/v1/ai/voice/transcribe',
+        'https://api.udyogbook.in/api/v1/ai/transcribe',
         transcribeFormData,
         { headers, timeout: 30000 }
       );
