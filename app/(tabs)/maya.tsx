@@ -157,12 +157,12 @@ export default function MayaScreen() {
 
   // Auto-scroll to the bottom when messages change
   useEffect(() => {
-    if (messages.length > 0 || isRecording || isThinking) {
+    if (messages.length > 0 || isRecording || isProcessing || isThinking) {
       setTimeout(() => {
         scrollRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages, isRecording, isThinking]);
+  }, [messages, isRecording, isProcessing, isThinking]);
 
   // Cleanup sound on unmount
   useEffect(() => {
@@ -321,7 +321,7 @@ export default function MayaScreen() {
         >
           <View style={styles.mainContainer}>
             {/* Empty state illustration/placeholder */}
-            {messages.length === 0 && (
+            {messages.length === 0 && !isRecording && !isProcessing && !isThinking && !loading && (
               <View style={styles.emptyStateIllustrationContainer}>
                 <View style={styles.emptyStateIconCircle}>
                   <Ionicons name="sparkles" size={48} color="#f97316" />
@@ -333,8 +333,8 @@ export default function MayaScreen() {
               </View>
             )}
 
-            {/* Chat messages list */}
-            {messages.length > 0 && (
+            {/* Chat messages list & indicators */}
+            {(messages.length > 0 || isRecording || isProcessing || isThinking || loading) && (
               <View style={styles.chatContainer}>
                 {messages.map((msg, i) => (
                   <View key={i} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAssistant]}>
@@ -430,8 +430,20 @@ export default function MayaScreen() {
                   </View>
                 )}
 
-                {/* Processing indicator (backend round-trip) */}
-                {(loading || isProcessing) && (
+                {/* Processing indicator (backend round-trip for voice) */}
+                {isProcessing && (
+                  <View style={[styles.msgRow, styles.msgRowAssistant]}>
+                    <View style={[styles.msgBubble, styles.msgBubbleAssistant, { backgroundColor: '#fff7ed', borderColor: '#f9731640' }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <ActivityIndicator size="small" color={Colors.primary} />
+                        <Text style={[styles.msgText, { color: Colors.primary, fontWeight: '500' }]}>Processing your voice...</Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Typed loading indicator (backend round-trip for text) */}
+                {loading && (
                   <View style={[styles.msgRow, styles.msgRowAssistant]}>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                       <View style={styles.dotsRow}>
@@ -461,7 +473,7 @@ export default function MayaScreen() {
         </ScrollView>
 
         {/* Suggestion Chips placed directly above composer */}
-        {messages.length === 0 && (
+        {messages.length === 0 && !isRecording && !isProcessing && !isThinking && !loading && (
           <View style={styles.suggestionChipsContainer}>
             <Text style={styles.suggestionChipsTitle}>Try saying:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionChipsScroll}>
