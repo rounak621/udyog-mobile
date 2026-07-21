@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator
+  ActivityIndicator, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -34,27 +34,69 @@ export default function PurchaseBillsScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [businessId, setBusinessId] = useState<string>('');
+  const [skip, setSkip] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const LIMIT = 50;
 
-  const loadBills = async () => {
+  const loadBills = async (currentSkip = 0, isRefreshing = false) => {
+    if (currentSkip === 0) {
+      if (!isRefreshing) setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       const token = await getToken();
       setAuthToken(token);
-      const bizRes = await api.get('/businesses/me');
-      const bId = bizRes.data.id;
-      setBusinessId(bId);
-      const res = await api.get(`/purchase-bills/?limit=50&business_id=${bId}`);
-      setBills(res.data || []);
+      let bId = businessId;
+      if (!bId) {
+        const bizRes = await api.get('/businesses/me');
+        bId = bizRes.data.id;
+        setBusinessId(bId);
+      }
+      if (!bId) {
+        console.log('Purchase Bills load: missing business_id');
+        return;
+      }
+      const res = await api.get(`/purchase-bills/?limit=${LIMIT}&skip=${currentSkip}&business_id=${bId}`);
+      const responseData = res.data;
+
+      const newItems = Array.isArray(responseData)
+        ? responseData
+        : Array.isArray(responseData?.items)
+        ? responseData.items
+        : [];
+      
+      const totalCount = typeof responseData?.total === 'number'
+        ? responseData.total
+        : Array.isArray(responseData)
+        ? responseData.length
+        : 0;
+
+      setTotal(totalCount);
+      setSkip(currentSkip);
+
+      if (currentSkip === 0) {
+        setBills(newItems);
+      } else {
+        setBills(prev => {
+          const existingIds = new Set(prev.map((item: PurchaseBill) => item.id));
+          const filteredNewItems = newItems.filter((item: PurchaseBill) => !existingIds.has(item.id));
+          return [...prev, ...filteredNewItems];
+        });
+      }
     } catch (err: any) {
       console.log('Purchase Bills load error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadBills();
+      loadBills(0);
     }, [])
   );
 
@@ -75,6 +117,30 @@ export default function PurchaseBillsScreen() {
   });
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
+
+  const loadMore = () => {
+    if (loading || loadingMore) return;
+    if (skip + LIMIT < total) {
+      loadBills(skip + LIMIT);
+    }
+  };
+
+  const renderEmptyComponent = () => {
+    if (loading) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+        <Ionicons name="receipt-outline" size={48} color="#cbd5e1" />
+        <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No purchase bills</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -122,27 +188,15 @@ export default function PurchaseBillsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadBills(); }} colors={[Colors.primary]} />}
-      >
-        {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
-          </View>
-        ) : filtered.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Ionicons name="receipt-outline" size={48} color="#cbd5e1" />
-            <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No purchase bills</Text>
-          </View>
-        ) : filtered.map(bill => {
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item: bill }) => {
           const ps = (bill.payment_status || 'UNPAID').toUpperCase();
           const isPaid = ps === 'PAID';
           const isPartial = ps === 'PARTIAL';
           return (
-            <TouchableOpacity key={bill.id} style={styles.card} onPress={() => router.push(`/purchase-bills/${bill.id}`)}>
+            <TouchableOpacity style={styles.card} onPress={() => router.push(`/purchase-bills/${bill.id}`)}>
               <View style={styles.cardIcon}>
                 <Ionicons name="receipt-outline" size={18} color={Colors.textSecondary} />
               </View>
@@ -170,8 +224,28 @@ export default function PurchaseBillsScreen() {
               </View>
             </TouchableOpacity>
           );
-        })}
-      </ScrollView>
+        }}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadBills(0, true);
+            }}
+            colors={[Colors.primary]}
+          />
+        }
+        ListEmptyComponent={renderEmptyComponent}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator style={{ paddingVertical: 12 }} color={Colors.primary} />
+          ) : null
+        }
+      />
     </View>
   );
 }

@@ -971,8 +971,13 @@ export default function CreateInvoiceScreen() {
                 onMessage={(event) => {
                   try {
                     const data = JSON.parse(event.nativeEvent.data);
-                    if (data.type === 'error') setHasError(true);
-                  } catch {}
+                    if (data.type === 'error') {
+                      console.log('[PDF-VIEWER-ERROR [create]]', data.message);
+                      setHasError(true);
+                    }
+                  } catch (err) {
+                    console.log('[PDF-VIEWER-ERROR-PARSE [create]]', err);
+                  }
                 }}
               />
             )}

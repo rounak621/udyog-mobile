@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator
+  ActivityIndicator, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -35,6 +35,10 @@ export default function BillsScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [businessId, setBusinessId] = useState<string>('');
+  const [skip, setSkip] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const LIMIT = 50;
 
   useEffect(() => {
     if (initialFilter === 'Outstanding') {
@@ -42,30 +46,66 @@ export default function BillsScreen() {
     }
   }, [initialFilter]);
 
-  const loadInvoices = async () => {
+  const loadInvoices = async (currentSkip = 0, isRefreshing = false) => {
+    if (currentSkip === 0) {
+      if (!isRefreshing) setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       const token = await getToken();
       setAuthToken(token);
-      const bizRes = await api.get('/businesses/me');
-      const bId = bizRes.data.id;
+      let bId = businessId;
       if (!bId) {
-        console.log('Bills load: missing business_id from /businesses/me');
+        const bizRes = await api.get('/businesses/me');
+        bId = bizRes.data.id;
+        setBusinessId(bId);
       }
-      setBusinessId(bId);
-      const res = await api.get(`/invoices/?limit=50&sort=desc&business_id=${bId}`);
-      const invoiceData = res.data;
-      setInvoices(Array.isArray(invoiceData) ? invoiceData : Array.isArray(invoiceData?.invoices) ? invoiceData.invoices : Array.isArray(invoiceData?.items) ? invoiceData.items : []);
+      if (!bId) {
+        console.log('Bills load: missing business_id');
+        return;
+      }
+      const res = await api.get(`/invoices/?limit=${LIMIT}&skip=${currentSkip}&sort=desc&business_id=${bId}`);
+      const responseData = res.data;
+      
+      const newItems = Array.isArray(responseData)
+        ? responseData
+        : Array.isArray(responseData?.items)
+        ? responseData.items
+        : Array.isArray(responseData?.invoices)
+        ? responseData.invoices
+        : [];
+      
+      const totalCount = typeof responseData?.total === 'number'
+        ? responseData.total
+        : Array.isArray(responseData)
+        ? responseData.length
+        : 0;
+        
+      setTotal(totalCount);
+      setSkip(currentSkip);
+
+      if (currentSkip === 0) {
+        setInvoices(newItems);
+      } else {
+        setInvoices(prev => {
+          const existingIds = new Set(prev.map((item: Invoice) => item.id));
+          const filteredNewItems = newItems.filter((item: Invoice) => !existingIds.has(item.id));
+          return [...prev, ...filteredNewItems];
+        });
+      }
     } catch (err: any) {
       console.log('Bills load error:', JSON.stringify(err?.response?.data), err?.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadInvoices();
+      loadInvoices(0);
     }, [])
   );
 
@@ -87,7 +127,29 @@ export default function BillsScreen() {
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
+  const loadMore = () => {
+    if (loading || loadingMore) return;
+    if (skip + LIMIT < total) {
+      loadInvoices(skip + LIMIT);
+    }
+  };
 
+  const renderEmptyComponent = () => {
+    if (loading) {
+      return (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40 }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+        <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
+        <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
+      </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -132,58 +194,65 @@ export default function BillsScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
+      <FlatList
+        data={filtered}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item: inv }) => {
+          const ps = (inv.payment_status || (inv.status === 'DRAFT' ? 'DRAFT' : 'UNPAID')).toUpperCase();
+          const isPaid = ps === 'PAID';
+          const isPartial = ps === 'PARTIAL';
+          const isDraft = ps === 'DRAFT' || inv.status === 'DRAFT';
+          return (
+            <TouchableOpacity style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
+              <View style={styles.avatarCircleSmall}>
+                <Text style={styles.avatarSmallText}>{getInitials(inv.customer_name)}</Text>
+              </View>
+              <View style={styles.cardInfo}>
+                <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
+                <Text style={styles.cardSub} textBreakStrategy="simple">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
+              </View>
+              <View style={styles.cardRight}>
+                <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
+                <View style={[
+                  styles.badge,
+                  isPaid ? styles.paidBadge :
+                  isPartial ? styles.partialBadge :
+                  isDraft ? styles.draftBadge :
+                  styles.unpaidBadge
+                ]}>
+                  <Text style={[
+                    styles.badgeText,
+                    isPaid ? styles.paidText :
+                    isPartial ? styles.partialText :
+                    isDraft ? styles.draftText :
+                    styles.unpaidText
+                  ]}>{isDraft ? 'DRAFT' : ps}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
         contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadInvoices(); }} colors={[Colors.primary]} />}
-      >
-        {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
-          </View>
-        ) : filtered.length === 0 ? (
-          /* v1.0.1 */
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
-            <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No invoices</Text>
-          </View>
-        ) : filtered.map(inv => {
-            const ps = (inv.payment_status || (inv.status === 'DRAFT' ? 'DRAFT' : 'UNPAID')).toUpperCase();
-            const isPaid = ps === 'PAID';
-            const isPartial = ps === 'PARTIAL';
-            const isDraft = ps === 'DRAFT' || inv.status === 'DRAFT';
-            return (
-              <TouchableOpacity key={inv.id} style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
-                <View style={styles.avatarCircleSmall}>
-                  <Text style={styles.avatarSmallText}>{getInitials(inv.customer_name)}</Text>
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
-                  <Text style={styles.cardSub} textBreakStrategy="simple">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
-                </View>
-                <View style={styles.cardRight}>
-                  <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
-                  <View style={[
-                    styles.badge,
-                    isPaid ? styles.paidBadge :
-                    isPartial ? styles.partialBadge :
-                    isDraft ? styles.draftBadge :
-                    styles.unpaidBadge
-                  ]}>
-                    <Text style={[
-                      styles.badgeText,
-                      isPaid ? styles.paidText :
-                      isPartial ? styles.partialText :
-                      isDraft ? styles.draftText :
-                      styles.unpaidText
-                    ]}>{isDraft ? 'DRAFT' : ps}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-      </ScrollView>
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadInvoices(0, true);
+            }}
+            colors={[Colors.primary]}
+          />
+        }
+        ListEmptyComponent={renderEmptyComponent}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator style={{ paddingVertical: 12 }} color={Colors.primary} />
+          ) : null
+        }
+      />
     </View>
   );
 }

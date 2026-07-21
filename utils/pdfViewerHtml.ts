@@ -54,7 +54,25 @@ export function getPdfViewerHtml(pdfUrl: string): string {
   <div id="viewer"></div>
   <div id="error">Could not load PDF preview.</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      var msg = "Global JS Error: " + message + " at " + source + ":" + lineno + ":" + colno;
+      console.error(msg);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: msg }));
+      }
+      return false;
+    };
+    function reportScriptError(src) {
+      var msg = "CDN Script Load Error: " + src;
+      console.error(msg);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: msg }));
+      }
+    }
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onerror="reportScriptError('pdf.min.js')"></script>
   <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
@@ -94,11 +112,12 @@ export function getPdfViewerHtml(pdfUrl: string): string {
         })(i);
       }
     }).catch(function(err) {
+      console.error("PDF.js load error:", err);
       loadingEl.style.display = 'none';
       errorEl.style.display = 'block';
       // Signal error to React Native
       if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err.message }));
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err.message || err.toString() }));
       }
     });
   </script>

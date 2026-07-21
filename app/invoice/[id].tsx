@@ -676,8 +676,13 @@ export default function InvoiceDetailScreen() {
                 onMessage={(event) => {
                   try {
                     const data = JSON.parse(event.nativeEvent.data);
-                    if (data.type === 'error') setHasError(true);
-                  } catch {}
+                    if (data.type === 'error') {
+                      console.log('[PDF-VIEWER-ERROR [id]]', data.message);
+                      setHasError(true);
+                    }
+                  } catch (err) {
+                    console.log('[PDF-VIEWER-ERROR-PARSE [id]]', err);
+                  }
                 }}
               />
             )}
