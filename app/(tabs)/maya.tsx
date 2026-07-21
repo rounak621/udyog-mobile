@@ -2,14 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, ScrollView, TextInput, ActivityIndicator,
-  KeyboardAvoidingView, Platform, Alert
+  KeyboardAvoidingView, Platform, Alert, Keyboard
 } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
-import { Audio } from 'expo-av';
 import { useMayaRecording } from '../../context/MayaRecordingContext';
 
 interface ChatMessage {
@@ -43,13 +42,26 @@ export default function MayaScreen() {
   const [isThinking, setIsThinking] = useState(false);
   
   const scrollRef = useRef<ScrollView>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
 
   // Live refs so the registered session always reads fresh values
   const businessIdRef = useRef<string | null>(null);
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
 
   const { isRecording, setMayaScreenActive, isProcessing, registerSession, clearSession } = useMayaRecording();
+
+  // Handle viewport height adjustments when keyboard toggles
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -107,29 +119,6 @@ export default function MayaScreen() {
     })();
   }, []);
 
-  const fetchAndPlayTTS = async (text: string, actionType?: string) => {
-    let tts_text = text;
-    if (!tts_text) {
-      if (actionType === 'draft_invoice') {
-        tts_text = 'Bill tayyar hai.';
-      } else if (actionType === 'draft_rental') {
-        tts_text = 'Rental bill tayyar hai.';
-      } else {
-        return;
-      }
-    }
-
-    try {
-      const response = await api.post('/ai/tts', { text: tts_text });
-      const audio_b64 = response.data?.audio_b64;
-      if (audio_b64) {
-        await playAudio(audio_b64);
-      }
-    } catch (err) {
-      console.log('Failed to generate background TTS:', err);
-    }
-  };
-
   const handleVoiceTranscript = (transcript: string) => {
     // Step 1: Immediately show user's transcript bubble
     setMessages(prev => [...prev, {
@@ -162,9 +151,6 @@ export default function MayaScreen() {
       { role: 'user', content: userSpokenText },
       { role: 'assistant', content: data.reply_text || '' },
     ]);
-
-    // Fetch and play TTS audio in the background (decoupled)
-    fetchAndPlayTTS(data.reply_text || '', data.action_type || undefined);
   };
 
   const handleVoiceError = (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => {
@@ -178,54 +164,6 @@ export default function MayaScreen() {
       alertTitle = 'Maya Understanding Error';
     }
     Alert.alert(alertTitle, message);
-  };
-
-  // Auto-scroll to the bottom when messages change
-  useEffect(() => {
-    if (messages.length > 0 || isRecording || isProcessing || isThinking) {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }
-  }, [messages, isRecording, isProcessing, isThinking]);
-
-  // Cleanup sound on unmount
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-      }
-    };
-  }, []);
-
-
-
-  const playAudio = async (base64Audio: string) => {
-    try {
-      // Unload previous sound if any
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/wav;base64,${base64Audio}` },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-          soundRef.current = null;
-        }
-      });
-    } catch (err) {
-      console.log('Maya: audio playback error', err);
-    }
   };
 
   const handleSendText = async () => {
@@ -272,9 +210,6 @@ export default function MayaScreen() {
         { role: 'user', content: text },
         { role: 'assistant', content: data.reply_text || '' },
       ]);
-
-      // Fetch and play TTS audio in the background (decoupled)
-      fetchAndPlayTTS(data.reply_text || '', data.action_type || undefined);
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Could not process request';
       setMessages(prev => [...prev, { role: 'assistant', text: `Error: ${detail}` }]);
