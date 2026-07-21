@@ -4,7 +4,7 @@ import {
   Animated, ScrollView, TextInput, ActivityIndicator,
   KeyboardAvoidingView, Platform, Alert, Keyboard
 } from 'react-native';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Radius, Spacing } from '../../constants/theme';
@@ -33,6 +33,8 @@ interface MayaResponse {
 
 export default function MayaScreen() {
   const { getToken } = useAuth();
+  const { user } = useUser();
+  const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.fullName?.[0]?.toUpperCase() || 'U';
   const router = useRouter();
   const [manualInput, setManualInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -370,23 +372,46 @@ export default function MayaScreen() {
                     );
                   };
 
-                  return (
-                    <View key={i} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAssistant]}>
-                      {hasText ? (
-                        <View style={[styles.msgBubble, msg.role === 'user' ? styles.msgBubbleUser : styles.msgBubbleAssistant]}>
-                          <Text style={[styles.msgText, msg.role === 'user' && styles.msgTextUser]}>{msg.text}</Text>
-                          {hasDraft && renderDraftCard(false)}
+                  if (msg.role === 'user') {
+                    return (
+                      <View key={i} style={styles.msgRowUserContainer}>
+                        {hasText && (
+                          <View style={[styles.msgBubble, styles.msgBubbleUser]}>
+                            <Text style={[styles.msgText, styles.msgTextUser]}>{msg.text}</Text>
+                          </View>
+                        )}
+                        <View style={styles.userAvatar}>
+                          <Text style={styles.userAvatarText}>{userInitial}</Text>
                         </View>
-                      ) : (
-                        hasDraft && renderDraftCard(true)
-                      )}
+                      </View>
+                    );
+                  }
+
+                  return (
+                    <View key={i} style={styles.msgRowAssistantContainer}>
+                      <View style={styles.assistantAvatar}>
+                        <Ionicons name="sparkles" size={15} color="#f97316" />
+                      </View>
+                      <View style={{ flexShrink: 1, maxWidth: '82%' }}>
+                        {hasText ? (
+                          <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
+                            <Text style={styles.msgText}>{msg.text}</Text>
+                            {hasDraft && renderDraftCard(false)}
+                          </View>
+                        ) : (
+                          hasDraft && renderDraftCard(true)
+                        )}
+                      </View>
                     </View>
                   );
                 })}
 
                 {/* Passive status indicator at the bottom of message history when recording */}
                 {isRecording && (
-                  <View style={[styles.msgRow, styles.msgRowAssistant]}>
+                  <View style={styles.msgRowAssistantContainer}>
+                    <View style={styles.assistantAvatar}>
+                      <Ionicons name="sparkles" size={15} color="#f97316" />
+                    </View>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant, { backgroundColor: '#fff7ed', borderColor: '#f9731640' }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <ActivityIndicator size="small" color={Colors.primary} />
@@ -398,7 +423,10 @@ export default function MayaScreen() {
 
                 {/* Processing indicator (backend round-trip for voice) */}
                 {isProcessing && (
-                  <View style={[styles.msgRow, styles.msgRowAssistant]}>
+                  <View style={styles.msgRowAssistantContainer}>
+                    <View style={styles.assistantAvatar}>
+                      <Ionicons name="sparkles" size={15} color="#f97316" />
+                    </View>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant, { backgroundColor: '#fff7ed', borderColor: '#f9731640' }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <ActivityIndicator size="small" color={Colors.primary} />
@@ -410,7 +438,10 @@ export default function MayaScreen() {
 
                 {/* Typed loading indicator (backend round-trip for text) */}
                 {loading && (
-                  <View style={[styles.msgRow, styles.msgRowAssistant]}>
+                  <View style={styles.msgRowAssistantContainer}>
+                    <View style={styles.assistantAvatar}>
+                      <Ionicons name="sparkles" size={15} color="#f97316" />
+                    </View>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                       <View style={styles.dotsRow}>
                         <PulsingDot delay={0} />
@@ -423,7 +454,10 @@ export default function MayaScreen() {
 
                 {/* Thinking indicator (400ms gap between transcript and reply) */}
                 {isThinking && !isProcessing && !loading && (
-                  <View style={[styles.msgRow, styles.msgRowAssistant]}>
+                  <View style={styles.msgRowAssistantContainer}>
+                    <View style={styles.assistantAvatar}>
+                      <Ionicons name="sparkles" size={15} color="#f97316" />
+                    </View>
                     <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                       <View style={styles.dotsRow}>
                         <PulsingDot delay={0} />
@@ -605,6 +639,45 @@ const styles = StyleSheet.create({
   },
 
   // Chat messages
+  msgRowUserContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    marginBottom: 12,
+  },
+  msgRowAssistantContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 8,
+    width: '100%',
+    marginBottom: 12,
+  },
+  assistantAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f97316',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatarText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   msgRow: {
     marginBottom: 12,
     width: '100%',
