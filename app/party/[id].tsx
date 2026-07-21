@@ -15,7 +15,7 @@ interface ChatMessage {
 }
 
 export default function PartyDetailScreen() {
-  const { id } = useLocalSearchParams();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const router = useRouter();
   const { getToken } = useAuth();
   
@@ -25,6 +25,13 @@ export default function PartyDetailScreen() {
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'khata' | 'bills'>('khata');
+
+  useEffect(() => {
+    if (tab === 'bills' || tab === 'khata') {
+      setActiveTab(tab);
+    }
+  }, [tab]);
+
   const [ledgerLines, setLedgerLines] = useState<any[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerLoaded, setLedgerLoaded] = useState(false);

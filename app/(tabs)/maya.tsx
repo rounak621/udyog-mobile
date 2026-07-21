@@ -153,6 +153,8 @@ export default function MayaScreen() {
       { role: 'user', content: userSpokenText },
       { role: 'assistant', content: data.reply_text || '' },
     ]);
+
+    triggerNavigationWithDelay(data);
   };
 
   const handleVoiceError = (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => {
@@ -166,6 +168,48 @@ export default function MayaScreen() {
       alertTitle = 'Maya Understanding Error';
     }
     Alert.alert(alertTitle, message);
+  };
+
+  const triggerNavigationWithDelay = (data: MayaResponse) => {
+    const actionType = data.action_type || data.intent;
+    const normalizedAction = actionType?.toLowerCase();
+
+    setTimeout(() => {
+      if (normalizedAction === 'check_balance') {
+        const partyId = data.extracted_data?.party_id;
+        if (partyId) {
+          router.push(`/party/${partyId}?tab=khata`);
+        } else {
+          router.push('/(tabs)/parties');
+        }
+      } else if (normalizedAction === 'show_party_bills') {
+        const partyId = data.extracted_data?.party_id;
+        if (partyId) {
+          router.push(`/party/${partyId}?tab=bills`);
+        } else {
+          router.push('/(tabs)/parties');
+        }
+      } else if (normalizedAction === 'show_bills_summary') {
+        router.push('/(tabs)/bills');
+      } else if (normalizedAction === 'show_purchase_summary') {
+        router.push('/purchase-bills');
+      } else if (data.navigation_route) {
+        const routeMap: { [key: string]: string } = {
+          '/dashboard': '/(tabs)',
+          '/reports': '/reports',
+          '/bills': '/(tabs)/bills',
+          '/parties': '/(tabs)/parties',
+          '/items': '/items',
+          '/purchases': '/purchase-bills',
+          '/settings': '/(tabs)/more',
+          '/rentals': '/(rental)/overview',
+        };
+        const mappedRoute = routeMap[data.navigation_route];
+        if (mappedRoute) {
+          router.push(mappedRoute as any);
+        }
+      }
+    }, 800);
   };
 
   const handleSendText = async () => {
@@ -212,6 +256,8 @@ export default function MayaScreen() {
         { role: 'user', content: text },
         { role: 'assistant', content: data.reply_text || '' },
       ]);
+
+      triggerNavigationWithDelay(data);
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Could not process request';
       setMessages(prev => [...prev, { role: 'assistant', text: `Error: ${detail}` }]);
