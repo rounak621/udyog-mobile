@@ -77,26 +77,25 @@ function MayaTabBarButton(props: any) {
       {...props}
       activeOpacity={0.8}
       onPress={handlePress}
-      onPressIn={() => {
-        if (isMayaScreenActive) {
-          // Cancel any pending tail-buffer stop from a previous press
-          if (tailBufferTimerRef.current) {
-            clearTimeout(tailBufferTimerRef.current);
-            tailBufferTimerRef.current = null;
-          }
-          startRecording();
+      onPressIn={(e) => {
+        if (!isMayaScreenActive && props.onPress) {
+          props.onPress(e);
         }
+        // Cancel any pending tail-buffer stop from a previous press
+        if (tailBufferTimerRef.current) {
+          clearTimeout(tailBufferTimerRef.current);
+          tailBufferTimerRef.current = null;
+        }
+        startRecording();
       }}
       onPressOut={() => {
-        if (isMayaScreenActive) {
-          // Delay the actual stopRecording by 400ms to capture the audio
-          // tail buffer (last syllable). Visual state change (animation reset)
-          // happens instantly via isRecording going false inside the context.
-          tailBufferTimerRef.current = setTimeout(() => {
-            stopRecording();
-            tailBufferTimerRef.current = null;
-          }, 400);
-        }
+        // Delay the actual stopRecording by 400ms to capture the audio
+        // tail buffer (last syllable). Visual state change (animation reset)
+        // happens instantly via isRecording going false inside the context.
+        tailBufferTimerRef.current = setTimeout(() => {
+          stopRecording();
+          tailBufferTimerRef.current = null;
+        }, 400);
       }}
       style={[props.style, styles.tabButtonContainer]}
     >
