@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
 import { Colors } from '../../constants/theme';
 import { api } from '../../services/api';
 
@@ -34,9 +35,7 @@ export default function OrderPdfPreviewScreen() {
   }
 
   const pdfUrl = `${api.defaults.baseURL}/public/rental/${shareToken}/pdf?mode=inline`;
-  const viewerUrl = Platform.OS === 'android'
-    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`
-    : pdfUrl;
+  const pdfViewerHtml = getPdfViewerHtml(pdfUrl);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -52,13 +51,19 @@ export default function OrderPdfPreviewScreen() {
       {/* WebView Container */}
       <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
         <WebView
-          source={{ uri: viewerUrl }}
-          style={{ flex: 1, backgroundColor: '#fff' }}
-          scalesPageToFit={true}
+          source={{ html: pdfViewerHtml }}
+          style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+          originWhitelist={['*']}
+          javaScriptEnabled={true}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}
           onError={() => setHasError(true)}
-          onHttpError={() => setHasError(true)}
+          onMessage={(event) => {
+            try {
+              const data = JSON.parse(event.nativeEvent.data);
+              if (data.type === 'error') setHasError(true);
+            } catch {}
+          }}
         />
         {loading && (
           <View style={styles.loadingOverlay}>

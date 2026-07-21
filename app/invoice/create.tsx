@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Platform, Modal, FlatList, Animated, Easing, Linking
+  Alert, Modal, FlatList, Animated, Easing, Linking
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -13,6 +13,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { WebView } from 'react-native-webview';
+import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -427,9 +428,7 @@ export default function CreateInvoiceScreen() {
   const previewPdfUrl = createdInvoice?.share_token
     ? `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf?mode=inline`
     : '';
-  const viewerUrl = Platform.OS === 'android'
-    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(previewPdfUrl)}`
-    : previewPdfUrl;
+  const pdfViewerHtml = previewPdfUrl ? getPdfViewerHtml(previewPdfUrl) : '';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -962,13 +961,19 @@ export default function CreateInvoiceScreen() {
           <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
             {!!createdInvoice?.share_token && !hasError && (
               <WebView
-                source={{ uri: viewerUrl }}
-                style={{ flex: 1, backgroundColor: '#fff' }}
-                scalesPageToFit={true}
+                source={{ html: pdfViewerHtml }}
+                style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+                originWhitelist={['*']}
+                javaScriptEnabled={true}
                 onLoadStart={() => setWebViewLoading(true)}
                 onLoadEnd={() => setWebViewLoading(false)}
                 onError={() => setHasError(true)}
-                onHttpError={() => setHasError(true)}
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'error') setHasError(true);
+                  } catch {}
+                }}
               />
             )}
             {hasError && (

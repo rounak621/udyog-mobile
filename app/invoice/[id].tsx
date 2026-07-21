@@ -2,12 +2,13 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Linking, Modal, TextInput, Platform
+  TouchableOpacity, ActivityIndicator, Alert, Linking, Modal, TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
+import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -36,9 +37,7 @@ export default function InvoiceDetailScreen() {
   const previewPdfUrl = invoice?.share_token
     ? `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf?mode=inline`
     : '';
-  const viewerUrl = Platform.OS === 'android'
-    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(previewPdfUrl)}`
-    : previewPdfUrl;
+  const pdfViewerHtml = previewPdfUrl ? getPdfViewerHtml(previewPdfUrl) : '';
 
   // Payment recording states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -667,13 +666,19 @@ export default function InvoiceDetailScreen() {
           <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
             {!!invoice?.share_token && !hasError && (
               <WebView
-                source={{ uri: viewerUrl }}
-                style={{ flex: 1, backgroundColor: '#fff' }}
-                scalesPageToFit={true}
+                source={{ html: pdfViewerHtml }}
+                style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+                originWhitelist={['*']}
+                javaScriptEnabled={true}
                 onLoadStart={() => setWebViewLoading(true)}
                 onLoadEnd={() => setWebViewLoading(false)}
                 onError={() => setHasError(true)}
-                onHttpError={() => setHasError(true)}
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data);
+                    if (data.type === 'error') setHasError(true);
+                  } catch {}
+                }}
               />
             )}
             {hasError && (
