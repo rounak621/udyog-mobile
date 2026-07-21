@@ -40,7 +40,6 @@ export default function MayaScreen() {
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  const [creatingBillIndex, setCreatingBillIndex] = useState<number | null>(null);
   
   const scrollRef = useRef<ScrollView>(null);
 
@@ -227,73 +226,6 @@ export default function MayaScreen() {
     });
   };
 
-  const handleDirectCreateBill = async (draft: any, index: number) => {
-    if (!draft || !businessId) return;
-
-    if (!draft.customer_id) {
-      Alert.alert(
-        'Customer Unresolved',
-        'Could not automatically resolve customer details. Would you like to edit the invoice manually?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Edit Form', onPress: () => handleCreateInvoice(draft) },
-        ]
-      );
-      return;
-    }
-
-    setCreatingBillIndex(index);
-    try {
-      const token = await getToken();
-      setAuthToken(token);
-
-      const billType = draft.bill_type === 'non_gst' ? 'NONGST' : draft.bill_type === 'service' ? 'SERVICE' : 'INVOICE';
-
-      const lineItems = (draft.items || []).map((di: any) => ({
-        item_id: di.item_id || null,
-        item_name: di.name || 'Item',
-        quantity: Number(di.qty || di.quantity || 1),
-        rate: Number(di.rate || di.unit_price || 0),
-        gst_rate: Number(di.tax_rate || di.gst_rate || 0),
-        discount_percent: Number(di.discount_percent || 0),
-      }));
-
-      const payload: any = {
-        customer_id: draft.customer_id,
-        invoice_date: draft.invoice_date || new Date().toISOString().split('T')[0],
-        line_items: lineItems,
-        is_gst_applicable: true,
-        invoice_type: billType,
-        status: 'ISSUED',
-        walk_in_name: draft.walk_in_name || undefined,
-        notes: draft.notes || undefined,
-      };
-
-      const res = await api.post(`/invoices/?business_id=${businessId}`, payload);
-      const createdInvoice = res.data?.invoice || res.data;
-
-      if (createdInvoice && createdInvoice.id) {
-        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
-        router.push(`/invoice/${createdInvoice.id}` as any);
-      } else {
-        throw new Error('Invalid server response');
-      }
-    } catch (err: any) {
-      console.log('Direct Create Invoice Error:', err);
-      const detail = err.response?.data?.detail || 'Failed to create invoice directly.';
-      Alert.alert(
-        'Creation Failed',
-        `${detail}\n\nWould you like to open the create form to adjust details?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Form', onPress: () => handleCreateInvoice(draft) },
-        ]
-      );
-    } finally {
-      setCreatingBillIndex(null);
-    }
-  };
-
   const handleCancelDraft = (index: number) => {
     // TODO: wire cancel action
     setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
@@ -429,19 +361,9 @@ export default function MayaScreen() {
                             <Text style={styles.draftBtnOutlineText}>Edit</Text>
                           </TouchableOpacity>
 
-                          <TouchableOpacity
-                            style={[styles.draftBtnSolid, creatingBillIndex === i && { opacity: 0.7 }]}
-                            onPress={() => handleDirectCreateBill(msg.draft, i)}
-                            disabled={creatingBillIndex === i}
-                          >
-                            {creatingBillIndex === i ? (
-                              <ActivityIndicator size="small" color="#fff" />
-                            ) : (
-                              <>
-                                <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
-                                <Text style={styles.draftBtnSolidText}>Create Bill</Text>
-                              </>
-                            )}
+                          <TouchableOpacity style={styles.draftBtnSolid} onPress={() => handleCreateInvoice(msg.draft)}>
+                            <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={styles.draftBtnSolidText}>Create Bill</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
