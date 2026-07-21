@@ -116,7 +116,7 @@ function MayaTabBarButton(props: any) {
         isRecording && styles.fabRecording,
         { transform: [{ scale: scaleAnim }] }
       ]}>
-        <Ionicons name={isRecording ? 'mic' : (isMayaScreenActive ? 'mic-outline' : 'sparkles-outline')} size={28} color="#fff" />
+        <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={24} color="#fff" />
       </Animated.View>
     </TouchableOpacity>
   );
@@ -191,16 +191,16 @@ const styles = StyleSheet.create({
   },
   glowRing: {
     position: 'absolute',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: 'transparent',
     borderWidth: 3,
     borderColor: 'rgba(239, 68, 68, 0.35)',
     marginBottom: 16,
   },
   fab: {
-    width: 72, height: 72, borderRadius: 36,
+    width: 64, height: 64, borderRadius: 32,
     backgroundColor: Colors.primary,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 16,

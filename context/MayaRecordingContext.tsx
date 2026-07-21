@@ -276,6 +276,7 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         transcribeFormData,
         { headers, timeout: 30000 }
       );
+      console.log(`[RAW-TRANSCRIPT] "${transcribeResponse.data?.user_transcript}"`);
       const tTranscribe = Date.now();
       console.log(`[Maya-Latency] Phase 4.5: Transcription received in ${tTranscribe - t3}ms`);
 
