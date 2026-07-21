@@ -24,11 +24,32 @@ const INDIAN_STATES = [
 ];
 
 export default function BusinessSetupScreen() {
-  const { getToken } = useAuth();
+  const { getToken, signOut } = useAuth();
   const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { setHasBusiness } = useBusiness();
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      "Sign out? You'll need to sign in again.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch (err) {
+              console.log('Sign out error:', err);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const [name, setName] = useState('');
   const [gstEnabled, setGstEnabled] = useState(false);
@@ -188,10 +209,20 @@ export default function BusinessSetupScreen() {
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.logoIcon}>
-          <Ionicons name="document-text" size={16} color="#fff" />
+        <View style={styles.headerLeft}>
+          <View style={styles.logoIcon}>
+            <Ionicons name="document-text" size={16} color="#fff" />
+          </View>
+          <Text style={styles.logoText}>Udyog</Text>
         </View>
-        <Text style={styles.logoText}>Udyog</Text>
+        <TouchableOpacity
+          onPress={handleSignOut}
+          style={styles.signOutBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="log-out-outline" size={16} color="#64748B" />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
 
       <KeyboardAwareScrollView
@@ -476,9 +507,27 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingBottom: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  signOutText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
   },
   logoIcon: {
     width: 32,
