@@ -40,6 +40,19 @@ export default function BusinessSetupScreen() {
   const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // GST Verification state
+  const [verifyingGst, setVerifyingGst] = useState(false);
+  const [gstPreview, setGstPreview] = useState<{
+    trade_name?: string;
+    legal_name?: string;
+    address?: string;
+    state?: string;
+    pincode?: string;
+    status?: string;
+    is_active?: boolean;
+  } | null>(null);
+  const [gstError, setGstError] = useState<string | null>(null);
+
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
 
@@ -49,6 +62,55 @@ export default function BusinessSetupScreen() {
   const onChangePhone = useCallback((text: string) => setPhone(text), []);
   const onChangeEmail = useCallback((text: string) => setEmail(text), []);
   const onChangeAddress = useCallback((text: string) => setAddress(text), []);
+
+  const handleVerifyGST = async () => {
+    const clean = gstNumber.trim().toUpperCase();
+    if (clean.length !== 15) {
+      Alert.alert('Error', 'GSTIN must be exactly 15 characters long.');
+      return;
+    }
+
+    setVerifyingGst(true);
+    setGstPreview(null);
+    setGstError(null);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const res = await api.get(`/gst/verify?gstin=${clean}`);
+      setGstPreview(res.data);
+    } catch (err: any) {
+      console.log('GST verify error in setup:', err);
+      const msg = err.response?.data?.detail || 'Invalid GST number or verification failed.';
+      setGstError(msg);
+    } finally {
+      setVerifyingGst(false);
+    }
+  };
+
+  const handleUseGSTDetails = () => {
+    if (!gstPreview) return;
+    const { trade_name, legal_name, address: gstAddr, state: gstState } = gstPreview;
+
+    const finalName = trade_name || legal_name || '';
+
+    const matchedState = INDIAN_STATES.find(
+      s => s.toLowerCase().trim() === (gstState || '').toLowerCase().trim()
+    ) || gstState || '';
+
+    const parts = (gstAddr || '').split(',').map((p: string) => p.trim());
+    const extractedCity = parts.length >= 3 ? parts[parts.length - 3] : '';
+
+    if (finalName) setName(finalName);
+    if (gstAddr) setAddress(gstAddr);
+    if (matchedState) setState(matchedState);
+    if (extractedCity) setCity(extractedCity);
+
+    setGstPreview(null);
+  };
+
+  const handleDiscardGSTDetails = () => {
+    setGstPreview(null);
+  };
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Business name is required'); return; }
@@ -190,10 +252,87 @@ export default function BusinessSetupScreen() {
                 placeholder="27AAAAA0000A1Z5"
                 placeholderTextColor="#94A3B8"
                 value={gstNumber}
-                onChangeText={onChangeGstNumber}
+                onChangeText={(text) => {
+                  const clean = text.replace(/\s/g, '').toUpperCase();
+                  onChangeGstNumber(clean);
+                  if (clean.length !== 15) {
+                    setGstPreview(null);
+                    setGstError(null);
+                  }
+                }}
                 maxLength={15}
                 autoCapitalize="characters"
               />
+
+              {gstNumber.length === 15 && !gstPreview && !verifyingGst && (
+                <TouchableOpacity style={styles.fetchGstBtn} onPress={handleVerifyGST}>
+                  <Ionicons name="search" size={14} color="#F97316" style={{ marginRight: 4 }} />
+                  <Text style={styles.fetchGstBtnText}>Fetch Details</Text>
+                </TouchableOpacity>
+              )}
+
+              {verifyingGst && (
+                <View style={styles.gstStatusContainer}>
+                  <ActivityIndicator color="#F97316" size="small" />
+                  <Text style={styles.gstStatusText}>Fetching GST details...</Text>
+                </View>
+              )}
+
+              {gstError && (
+                <View style={styles.gstErrorContainer}>
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                  <Text style={styles.gstErrorText}>{gstError}</Text>
+                </View>
+              )}
+
+              {gstPreview && (
+                <View style={[styles.gstPreviewCard, !gstPreview.is_active && styles.gstPreviewCardInactive]}>
+                  <Text style={styles.gstPreviewHeader}>GSTIN Details Preview</Text>
+                  
+                  {!gstPreview.is_active && (
+                    <View style={styles.warningBanner}>
+                      <Ionicons name="warning" size={14} color="#B91C1C" style={{ marginRight: 6 }} />
+                      <Text style={styles.warningText}>Status is NOT Active ({gstPreview.status})</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Trade Name:</Text>
+                    <Text style={styles.previewValue}>{gstPreview.trade_name || '—'}</Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Legal Name:</Text>
+                    <Text style={styles.previewValue}>{gstPreview.legal_name || '—'}</Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Address:</Text>
+                    <Text style={styles.previewValue}>{gstPreview.address || '—'}</Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>State:</Text>
+                    <Text style={styles.previewValue}>{gstPreview.state || '—'}</Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Pincode:</Text>
+                    <Text style={styles.previewValue}>{gstPreview.pincode || '—'}</Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewLabel}>Status:</Text>
+                    <Text style={[styles.previewValue, gstPreview.is_active ? styles.statusActive : styles.statusInactive]}>
+                      {gstPreview.status || 'Unknown'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.previewActions}>
+                    <TouchableOpacity style={styles.useThisBtn} onPress={handleUseGSTDetails}>
+                      <Text style={styles.useThisText}>Use This</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.discardBtn} onPress={handleDiscardGSTDetails}>
+                      <Text style={styles.discardText}>Discard</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           )}
 
@@ -522,5 +661,145 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#0F172A',
+  },
+  fetchGstBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  fetchGstBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F97316',
+  },
+  gstStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    padding: 10,
+  },
+  gstStatusText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  gstErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+  },
+  gstErrorText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  gstPreviewCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 10,
+    gap: 8,
+  },
+  gstPreviewCardInactive: {
+    borderColor: '#FCA5A5',
+    backgroundColor: '#FFF5F5',
+  },
+  gstPreviewHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#CBD5E1',
+    paddingBottom: 4,
+    marginBottom: 2,
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    padding: 6,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  warningText: {
+    fontSize: 11,
+    color: '#B91C1C',
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  previewLabel: {
+    width: 90,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  previewValue: {
+    flex: 1,
+    fontSize: 12,
+    color: '#0F172A',
+    fontWeight: '500',
+  },
+  statusActive: {
+    color: '#16A34A',
+    fontWeight: '700',
+  },
+  statusInactive: {
+    color: '#DC2626',
+    fontWeight: '700',
+  },
+  previewActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: '#E2E8F0',
+    paddingTop: 8,
+  },
+  useThisBtn: {
+    flex: 1,
+    backgroundColor: '#F97316',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  useThisText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  discardBtn: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  discardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
   },
 });
