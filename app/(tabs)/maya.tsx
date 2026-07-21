@@ -133,7 +133,14 @@ export default function MayaScreen() {
   };
 
   const handleVoiceResponse = (data: MayaResponse) => {
-    const draft = data.current_draft || data.extracted_data || null;
+    let draft = null;
+    if (data.action_type === 'draft_invoice') {
+      draft = data.current_draft || data.extracted_data || null;
+    } else if (data.action_type === 'create_customer') {
+      draft = data.extracted_data?.new_party || null;
+    } else if (data.action_type === 'create_item') {
+      draft = data.extracted_data?.new_item || null;
+    }
     const userSpokenText = data.user_transcript || data.user_text || 'Voice message';
 
     // Step 2 has completed
@@ -143,7 +150,7 @@ export default function MayaScreen() {
     setMessages(prev => [...prev, {
       role: 'assistant',
       text: data.reply_text || '',
-      draft: data.action_type === 'draft_invoice' ? draft : undefined,
+      draft: draft || undefined,
       actionType: data.action_type || undefined,
     }]);
 
@@ -239,14 +246,21 @@ export default function MayaScreen() {
 
       const data: MayaResponse = res.data;
 
-      // Extract draft from either current_draft or extracted_data (backend compat)
-      const draft = data.current_draft || data.extracted_data || null;
+      // Extract draft based on action_type
+      let draft = null;
+      if (data.action_type === 'draft_invoice') {
+        draft = data.current_draft || data.extracted_data || null;
+      } else if (data.action_type === 'create_customer') {
+        draft = data.extracted_data?.new_party || null;
+      } else if (data.action_type === 'create_item') {
+        draft = data.extracted_data?.new_item || null;
+      }
 
       // Add assistant message
       setMessages(prev => [...prev, {
         role: 'assistant',
         text: data.reply_text || '',
-        draft: data.action_type === 'draft_invoice' ? draft : undefined,
+        draft: draft || undefined,
         actionType: data.action_type || undefined,
       }]);
 
@@ -277,6 +291,94 @@ export default function MayaScreen() {
   const handleCancelDraft = (index: number) => {
     // TODO: wire cancel action
     setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+  };
+
+  const handleEditCustomer = (draft: any, index: number) => {
+    router.push({
+      pathname: '/party/create',
+      params: {
+        name: draft.name || '',
+        phone: draft.phone || '',
+        gstin: draft.gstin || '',
+        state: draft.state || '',
+        partyType: draft.party_type || 'customer',
+      }
+    });
+    setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+  };
+
+  const handleEditItem = (draft: any, index: number) => {
+    router.push({
+      pathname: '/items/create',
+      params: {
+        name: draft.name || '',
+        rate: draft.price ? String(draft.price) : '',
+        gstRate: draft.gst_rate ? String(draft.gst_rate) : '',
+        hsnCode: draft.hsn_code || '',
+        unit: draft.unit || 'PCS',
+      }
+    });
+    setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+  };
+
+  const confirmCreateParty = async (draft: any, index: number) => {
+    if (!draft || !businessId) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const response = await api.post('/ai/maya-create-party', {
+        business_id: businessId,
+        party_data: draft
+      });
+
+      if (response.data.success) {
+        // Close card
+        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+        // Append helper success message
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          text: `Party "${draft.name}" successfully add ho gayi!`
+        }]);
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'assistant', content: `Party "${draft.name}" successfully add ho gayi!` }
+        ]);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Party create karne mein error aaya';
+      Alert.alert('Error', msg);
+    }
+  };
+
+  const confirmCreateItem = async (draft: any, index: number) => {
+    if (!draft || !businessId) return;
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const response = await api.post('/ai/maya-create-item', {
+        business_id: businessId,
+        item_data: draft
+      });
+
+      if (response.data.success) {
+        // Close card
+        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+        // Append helper success message
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          text: `Item "${draft.name}" successfully add ho gaya!`
+        }]);
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'assistant', content: `Item "${draft.name}" successfully add ho gaya!` }
+        ]);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Item create karne mein error aaya';
+      Alert.alert('Error', msg);
+    }
   };
 
   const handleClearChat = () => {
@@ -343,9 +445,144 @@ export default function MayaScreen() {
               <View style={styles.chatContainer}>
                 {messages.map((msg, i) => {
                   const hasText = !!(msg.text && msg.text.trim().length > 0);
-                  const hasDraft = !!(msg.draft && msg.actionType === 'draft_invoice');
+                  const hasInvoiceDraft = !!(msg.draft && msg.actionType === 'draft_invoice');
+                  const hasCustomerDraft = !!(msg.draft && msg.actionType === 'create_customer');
+                  const hasItemDraft = !!(msg.draft && msg.actionType === 'create_item');
+                  const hasAnyCard = hasInvoiceDraft || hasCustomerDraft || hasItemDraft;
 
-                  if (!hasText && !hasDraft) return null;
+                  if (!hasText && !hasAnyCard) return null;
+
+                  const renderCustomerCard = (isStandalone: boolean) => {
+                    const partyName = msg.draft.name || 'New Party';
+                    const getInitials = (name: string) => {
+                      if (!name) return '??';
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                      return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+                    };
+
+                    return (
+                      <View style={[styles.draftCard, isStandalone && { marginTop: 0 }]}>
+                        {/* Card Header */}
+                        <View style={styles.draftCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={styles.draftAvatar}>
+                              <Text style={styles.draftAvatarText}>{getInitials(partyName)}</Text>
+                            </View>
+                            <View>
+                              <Text style={styles.draftPartyName}>{partyName}</Text>
+                              <Text style={styles.draftDate}>Party Draft</Text>
+                            </View>
+                          </View>
+                          <View style={[styles.draftBadge, { backgroundColor: '#EFF6FF' }]}>
+                            <Text style={[styles.draftBadgeText, { color: '#2563EB' }]}>NEW PARTY</Text>
+                          </View>
+                        </View>
+
+                        {/* Details Fields */}
+                        <View style={{ marginVertical: 8, gap: 4 }}>
+                          {msg.draft.phone ? (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Phone</Text>
+                              <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '500' }}>{msg.draft.phone}</Text>
+                            </View>
+                          ) : null}
+                          {msg.draft.gstin ? (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>GSTIN</Text>
+                              <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '500' }}>{msg.draft.gstin}</Text>
+                            </View>
+                          ) : null}
+                          {msg.draft.state ? (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>State</Text>
+                              <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '500' }}>{msg.draft.state}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        {/* Action Buttons */}
+                        <View style={styles.draftActionsRow}>
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
+                            <Text style={styles.draftBtnOutlineText}>Cancel</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleEditCustomer(msg.draft, i)}>
+                            <Text style={styles.draftBtnOutlineText}>Edit</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.draftBtnSolid} onPress={() => confirmCreateParty(msg.draft, i)}>
+                            <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={styles.draftBtnSolidText}>Party Banao</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  };
+
+                  const renderItemCard = (isStandalone: boolean) => {
+                    const itemName = msg.draft.name || 'New Item';
+                    const getInitials = (name: string) => {
+                      if (!name) return '??';
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                      return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+                    };
+
+                    return (
+                      <View style={[styles.draftCard, isStandalone && { marginTop: 0 }]}>
+                        {/* Card Header */}
+                        <View style={styles.draftCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={styles.draftAvatar}>
+                              <Text style={styles.draftAvatarText}>{getInitials(itemName)}</Text>
+                            </View>
+                            <View>
+                              <Text style={styles.draftPartyName}>{itemName}</Text>
+                              <Text style={styles.draftDate}>Item Draft</Text>
+                            </View>
+                          </View>
+                          <View style={[styles.draftBadge, { backgroundColor: '#F0FDF4' }]}>
+                            <Text style={[styles.draftBadgeText, { color: '#16A34A' }]}>NEW ITEM</Text>
+                          </View>
+                        </View>
+
+                        {/* Details Fields */}
+                        <View style={{ marginVertical: 8, gap: 4 }}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>Price</Text>
+                            <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '500' }}>₹{msg.draft.price || 0}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>GST Rate</Text>
+                            <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '500' }}>{msg.draft.gst_rate || 0}%</Text>
+                          </View>
+                          {msg.draft.hsn_code ? (
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 12, color: '#64748B', fontWeight: '500' }}>HSN Code</Text>
+                              <Text style={{ fontSize: 12, color: '#0F172A', fontWeight: '500' }}>{msg.draft.hsn_code}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        {/* Action Buttons */}
+                        <View style={styles.draftActionsRow}>
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
+                            <Text style={styles.draftBtnOutlineText}>Cancel</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleEditItem(msg.draft, i)}>
+                            <Text style={styles.draftBtnOutlineText}>Edit</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.draftBtnSolid} onPress={() => confirmCreateItem(msg.draft, i)}>
+                            <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={styles.draftBtnSolidText}>Item Banao</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  };
 
                   const renderDraftCard = (isStandalone: boolean) => {
                     const partyName = msg.draft.customer_name || 'Walk-in';
@@ -444,10 +681,16 @@ export default function MayaScreen() {
                         {hasText ? (
                           <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                             <Text style={styles.msgText}>{msg.text}</Text>
-                            {hasDraft && renderDraftCard(false)}
+                            {hasInvoiceDraft && renderDraftCard(false)}
+                            {hasCustomerDraft && renderCustomerCard(false)}
+                            {hasItemDraft && renderItemCard(false)}
                           </View>
                         ) : (
-                          hasDraft && renderDraftCard(true)
+                          <>
+                            {hasInvoiceDraft && renderDraftCard(true)}
+                            {hasCustomerDraft && renderCustomerCard(true)}
+                            {hasItemDraft && renderItemCard(true)}
+                          </>
                         )}
                       </View>
                     </View>

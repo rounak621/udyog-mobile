@@ -19,14 +19,21 @@ export default function CreateItemScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, name: prefillName, rate: prefillRate, gstRate: prefillGstRate, hsnCode: prefillHsnCode, unit: prefillUnit } = useLocalSearchParams<{
+    id?: string;
+    name?: string;
+    rate?: string;
+    gstRate?: string;
+    hsnCode?: string;
+    unit?: string;
+  }>();
 
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [hsnCode, setHsnCode] = useState('');
-  const [rate, setRate] = useState('');
-  const [gstRate, setGstRate] = useState('18');
-  const [unit, setUnit] = useState('PCS');
+  const [name, setName] = useState(prefillName || '');
+  const [hsnCode, setHsnCode] = useState(prefillHsnCode || '');
+  const [rate, setRate] = useState(prefillRate || '');
+  const [gstRate, setGstRate] = useState(prefillGstRate || '18');
+  const [unit, setUnit] = useState((prefillUnit || 'PCS').toUpperCase());
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

@@ -26,17 +26,24 @@ export default function CreatePartyScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, name: prefillName, phone: prefillPhone, gstin: prefillGstin, state: prefillState, partyType: prefillPartyType } = useLocalSearchParams<{
+    id?: string;
+    name?: string;
+    phone?: string;
+    gstin?: string;
+    state?: string;
+    partyType?: 'customer' | 'supplier' | 'both';
+  }>();
   
   const [businessId, setBusinessId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState(prefillName || '');
+  const [phone, setPhone] = useState(prefillPhone || '');
   const [email, setEmail] = useState('');
-  const [gstin, setGstin] = useState('');
-  const [state, setState] = useState('');
+  const [gstin, setGstin] = useState(prefillGstin || '');
+  const [state, setState] = useState(prefillState || '');
   const [address, setAddress] = useState('');
   const [consignmentAddress, setConsignmentAddress] = useState('');
-  const [partyType, setPartyType] = useState<'customer' | 'supplier' | 'both'>('customer');
+  const [partyType, setPartyType] = useState<'customer' | 'supplier' | 'both'>(prefillPartyType || 'customer');
   const [saving, setSaving] = useState(false);
 
   const [showStatePicker, setShowStatePicker] = useState(false);
