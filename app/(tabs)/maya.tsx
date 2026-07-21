@@ -293,87 +293,96 @@ export default function MayaScreen() {
             {/* Chat messages list & indicators */}
             {(messages.length > 0 || isRecording || isProcessing || isThinking || loading) && (
               <View style={styles.chatContainer}>
-                {messages.map((msg, i) => (
-                  <View key={i} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAssistant]}>
-                    <View style={[styles.msgBubble, msg.role === 'user' ? styles.msgBubbleUser : styles.msgBubbleAssistant]}>
-                      <Text style={[styles.msgText, msg.role === 'user' && styles.msgTextUser]}>{msg.text}</Text>
+                {messages.map((msg, i) => {
+                  const hasText = !!(msg.text && msg.text.trim().length > 0);
+                  const hasDraft = !!(msg.draft && msg.actionType === 'draft_invoice');
 
-                      {/* Draft invoice card */}
-                      {msg.draft && msg.actionType === 'draft_invoice' && (() => {
-                        const partyName = msg.draft.customer_name || 'Walk-in';
-                        const getInitials = (name: string) => {
-                          if (!name) return '??';
-                          const parts = name.trim().split(/\s+/);
-                          if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-                          return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
-                        };
-                        
-                        return (
-                          <View style={styles.draftCard}>
-                            {/* Card Header */}
-                            <View style={styles.draftCardHeader}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={styles.draftAvatar}>
-                                  <Text style={styles.draftAvatarText}>{getInitials(partyName)}</Text>
-                                </View>
-                                <View>
-                                  <Text style={styles.draftPartyName}>{partyName}</Text>
-                                  <Text style={styles.draftDate}>{msg.draft.invoice_date || new Date().toISOString().split('T')[0]}</Text>
-                                </View>
-                              </View>
-                              <View style={styles.draftBadge}>
-                                <Text style={styles.draftBadgeText}>DRAFT</Text>
-                              </View>
+                  if (!hasText && !hasDraft) return null;
+
+                  const renderDraftCard = (isStandalone: boolean) => {
+                    const partyName = msg.draft.customer_name || 'Walk-in';
+                    const getInitials = (name: string) => {
+                      if (!name) return '??';
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                      return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+                    };
+
+                    return (
+                      <View style={[styles.draftCard, isStandalone && { marginTop: 0 }]}>
+                        {/* Card Header */}
+                        <View style={styles.draftCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={styles.draftAvatar}>
+                              <Text style={styles.draftAvatarText}>{getInitials(partyName)}</Text>
                             </View>
-
-                            {/* Line Items */}
-                            <View style={{ marginVertical: 8 }}>
-                              {(msg.draft.items || []).map((item: any, j: number) => (
-                                <View key={j} style={styles.draftItemRow}>
-                                  <View style={{ flex: 1 }}>
-                                    <Text style={styles.draftItemName}>{item.name || 'Item'}</Text>
-                                    <Text style={styles.draftItemDetail}>
-                                      {item.qty || item.quantity || 1} {item.unit || 'pcs'} x {fmt(item.rate || item.unit_price || 0)}
-                                    </Text>
-                                  </View>
-                                  <Text style={styles.draftItemAmount}>
-                                    {fmt((item.qty || item.quantity || 1) * (item.rate || item.unit_price || 0))}
-                                  </Text>
-                                </View>
-                              ))}
-                            </View>
-
-                            {/* Total row */}
-                            {msg.draft.total_amount && (
-                              <View style={styles.draftTotalContainer}>
-                                <Text style={styles.draftTotalLabel}>Total</Text>
-                                <Text style={styles.draftTotalValue}>{fmt(msg.draft.total_amount)}</Text>
-                              </View>
-                            )}
-
-                            {/* Action Buttons */}
-                            <View style={styles.draftActionsRow}>
-                              <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
-                                {/* TODO: wire cancel action */}
-                                <Text style={styles.draftBtnOutlineText}>Cancel</Text>
-                              </TouchableOpacity>
-                              
-                              <TouchableOpacity style={styles.draftBtnOutline} onPress={() => {}}>
-                                {/* TODO: wire edit action, not yet implemented. */}
-                                <Text style={styles.draftBtnOutlineText}>Edit</Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity style={styles.draftBtnSolid} onPress={() => handleCreateInvoice(msg.draft)}>
-                                <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
-                                <Text style={styles.draftBtnSolidText}>Create Bill</Text>
-                              </TouchableOpacity>
+                            <View>
+                              <Text style={styles.draftPartyName}>{partyName}</Text>
+                              <Text style={styles.draftDate}>{msg.draft.invoice_date || new Date().toISOString().split('T')[0]}</Text>
                             </View>
                           </View>
-                        );
-                      })()}
+                          <View style={styles.draftBadge}>
+                            <Text style={styles.draftBadgeText}>DRAFT</Text>
+                          </View>
+                        </View>
+
+                        {/* Line Items */}
+                        <View style={{ marginVertical: 8 }}>
+                          {(msg.draft.items || []).map((item: any, j: number) => (
+                            <View key={j} style={styles.draftItemRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.draftItemName}>{item.name || 'Item'}</Text>
+                                <Text style={styles.draftItemDetail}>
+                                  {item.qty || item.quantity || 1} {item.unit || 'pcs'} x {fmt(item.rate || item.unit_price || 0)}
+                                </Text>
+                              </View>
+                              <Text style={styles.draftItemAmount}>
+                                {fmt((item.qty || item.quantity || 1) * (item.rate || item.unit_price || 0))}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Total row */}
+                        {msg.draft.total_amount && (
+                          <View style={styles.draftTotalContainer}>
+                            <Text style={styles.draftTotalLabel}>Total</Text>
+                            <Text style={styles.draftTotalValue}>{fmt(msg.draft.total_amount)}</Text>
+                          </View>
+                        )}
+
+                        {/* Action Buttons */}
+                        <View style={styles.draftActionsRow}>
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
+                            <Text style={styles.draftBtnOutlineText}>Cancel</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCreateInvoice(msg.draft)}>
+                            <Text style={styles.draftBtnOutlineText}>Edit</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.draftBtnSolid} onPress={() => handleCreateInvoice(msg.draft)}>
+                            <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={styles.draftBtnSolidText}>Create Bill</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  };
+
+                  return (
+                    <View key={i} style={[styles.msgRow, msg.role === 'user' ? styles.msgRowUser : styles.msgRowAssistant]}>
+                      {hasText ? (
+                        <View style={[styles.msgBubble, msg.role === 'user' ? styles.msgBubbleUser : styles.msgBubbleAssistant]}>
+                          <Text style={[styles.msgText, msg.role === 'user' && styles.msgTextUser]}>{msg.text}</Text>
+                          {hasDraft && renderDraftCard(false)}
+                        </View>
+                      ) : (
+                        hasDraft && renderDraftCard(true)
+                      )}
                     </View>
-                  </View>
-                ))}
+                  );
+                })}
 
                 {/* Passive status indicator at the bottom of message history when recording */}
                 {isRecording && (
