@@ -53,7 +53,7 @@ export default function LoginScreen() {
       });
       if (createdSessionId) {
         await setActiveOAuth!({ session: createdSessionId });
-        router.replace('/(tabs)');
+        // AuthGuard handles post-auth routing (business-setup or tabs)
       }
     } catch (err: any) {
       Alert.alert('Google Sign In Failed', err.message || 'Something went wrong');
