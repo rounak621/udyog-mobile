@@ -376,8 +376,10 @@ export default function MayaScreen() {
                     return (
                       <View key={i} style={styles.msgRowUserContainer}>
                         {hasText && (
-                          <View style={[styles.msgBubble, styles.msgBubbleUser]}>
-                            <Text style={[styles.msgText, styles.msgTextUser]}>{msg.text}</Text>
+                          <View style={{ flexShrink: 1, maxWidth: '82%' }}>
+                            <View style={[styles.msgBubble, styles.msgBubbleUser]}>
+                              <Text style={[styles.msgText, styles.msgTextUser]}>{msg.text}</Text>
+                            </View>
                           </View>
                         )}
                         <View style={styles.userAvatar}>
@@ -689,7 +691,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   msgBubble: {
-    maxWidth: '80%',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -698,7 +699,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 4,
     elevation: 1,
-    flexShrink: 1,
   },
   msgBubbleUser: {
     backgroundColor: '#f97316', // Solid orange User messages
