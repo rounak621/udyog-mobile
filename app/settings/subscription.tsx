@@ -13,26 +13,39 @@ export default function SubscriptionScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const [business, setBusiness] = useState<any>(null);
+  const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const res = await api.get('/businesses/me');
+      const biz = res.data;
+      setBusiness(biz);
+      if (biz?.id) {
+        try {
+          const histRes = await api.get(`/subscriptions/billing-history?business_id=${biz.id}`);
+          setBillingHistory(histRes.data || []);
+        } catch {
+          setBillingHistory([]);
+        }
+      }
+    } catch {}
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const token = await getToken();
-        setAuthToken(token);
-        const res = await api.get('/businesses/me');
-        setBusiness(res.data);
-      } catch {}
-      setLoading(false);
-    };
-    load();
+    loadData();
   }, []);
 
   const isActive = business?.subscription_status === 'active' || business?.subscription_status === 'ACTIVE';
   const isTrial = business?.subscription_status === 'trial' || business?.subscription_status === 'TRIAL';
+  const isCancelled = business?.subscription_status === 'cancelled' || business?.subscription_status === 'CANCELLED';
 
   const daysLeft = () => {
-    const end = isActive ? business?.subscription_ends_at : business?.trial_ends_at;
+    const end = (isActive || isCancelled) ? business?.subscription_ends_at : business?.trial_ends_at;
     if (!end) return 0;
     return Math.max(0, Math.floor((new Date(end).getTime() - Date.now()) / 86400000));
   };
@@ -50,6 +63,39 @@ export default function SubscriptionScreen() {
     }
   };
 
+  const handleCancelSubscription = () => {
+    if (!business?.id) return;
+
+    Alert.alert(
+      'Cancel Subscription',
+      'Are you sure you want to cancel your subscription?\n\nYour access will continue until the end of your current billing period. No refunds are provided.',
+      [
+        { text: 'Keep Subscription', style: 'cancel' },
+        {
+          text: 'Cancel Plan',
+          style: 'destructive',
+          onPress: async () => {
+            setCancelLoading(true);
+            try {
+              const token = await getToken();
+              setAuthToken(token);
+              await api.post('/subscriptions/cancel', { business_id: business.id });
+              Alert.alert(
+                'Success',
+                'Subscription cancelled. You can continue using Udyog until your billing period ends.'
+              );
+              await loadData();
+            } catch (err: any) {
+              Alert.alert('Error', err?.response?.data?.detail || 'Failed to cancel subscription');
+            } finally {
+              setCancelLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background }}><ActivityIndicator color={Colors.primary} /></View>;
 
   return (
@@ -63,20 +109,50 @@ export default function SubscriptionScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Status Card */}
-        <View style={[styles.statusCard, isActive ? styles.statusActive : isTrial ? styles.statusTrial : styles.statusExpired]}>
+        <View style={[styles.statusCard, isActive ? styles.statusActive : isCancelled ? styles.statusCancelled : isTrial ? styles.statusTrial : styles.statusExpired]}>
           <View style={styles.statusIconRow}>
-            <Ionicons name={isActive ? 'shield-checkmark' : isTrial ? 'time' : 'alert-circle'} size={32} color={isActive ? Colors.success : isTrial ? Colors.primary : Colors.danger} />
+            <Ionicons name={isActive ? 'shield-checkmark' : isCancelled ? 'remove-circle-outline' : isTrial ? 'time' : 'alert-circle'} size={32} color={isActive ? Colors.success : isCancelled ? Colors.danger : isTrial ? Colors.primary : Colors.danger} />
           </View>
           <Text style={styles.statusTitle}>
-            {isActive ? 'Active Subscription' : isTrial ? 'Free Trial' : 'Subscription Expired'}
+            {isActive ? 'Active Subscription' : isCancelled ? 'Subscription Cancelled' : isTrial ? 'Free Trial' : 'Subscription Expired'}
           </Text>
           <Text style={styles.statusPlan}>
             {(business?.subscription_plan || 'basic').toUpperCase()} PLAN
           </Text>
-          {(isActive || isTrial) && (
+          {(isActive || isTrial || isCancelled) && (
             <Text style={styles.statusDays}>{daysLeft()} days remaining</Text>
           )}
         </View>
+
+        {/* Cancelled Banner */}
+        {isCancelled && (
+          <View style={styles.cancelledBanner}>
+            <Text style={styles.cancelledBannerText}>
+              Subscription cancelled. Access continues until{' '}
+              {business?.subscription_ends_at
+                ? new Date(business.subscription_ends_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '—'}.
+            </Text>
+            <TouchableOpacity style={styles.resubscribeBtn} onPress={() => handleUpgrade(business?.subscription_plan || 'vistaar')}>
+              <Text style={styles.resubscribeBtnText}>Resubscribe →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Cancel Subscription Action Button */}
+        {isActive && (
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={handleCancelSubscription}
+            disabled={cancelLoading}
+          >
+            {cancelLoading ? (
+              <ActivityIndicator color={Colors.textSecondary} size="small" />
+            ) : (
+              <Text style={styles.cancelBtnText}>Cancel Subscription</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Plan Features */}
         <View style={styles.card}>
@@ -97,7 +173,35 @@ export default function SubscriptionScreen() {
           ))}
         </View>
 
-        {!isActive && (
+        {/* Billing History Card */}
+        {billingHistory.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Billing History</Text>
+            {billingHistory.map((payment: any, index: number) => (
+              <View key={index} style={[styles.historyRow, index < billingHistory.length - 1 && styles.historyRowBorder]}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <Text style={styles.historyPlan}>{(payment.plan || 'plan').toUpperCase()}</Text>
+                    <View style={styles.historyBadge}>
+                      <Text style={styles.historyBadgeText}>{payment.status || 'captured'}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.historyDate}>
+                    {new Date(payment.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Text>
+                  {payment.razorpay_payment_id ? (
+                    <Text style={styles.historyPaymentId}>{payment.razorpay_payment_id}</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.historyAmount}>
+                  ₹{(payment.amount_inr ?? (payment.amount / 100)).toLocaleString('en-IN')}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {!isActive && !isCancelled && (
           <View style={{ gap: 16, marginTop: 12 }}>
             <Text style={styles.sectionTitle}>Upgrade or Renew</Text>
 
@@ -170,6 +274,7 @@ const styles = StyleSheet.create({
   statusActive: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
   statusTrial: { backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
   statusExpired: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
+  statusCancelled: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
   statusIconRow: { marginBottom: 12 },
   statusTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 4 },
   statusPlan: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginBottom: 4 },
@@ -197,4 +302,20 @@ const styles = StyleSheet.create({
   planBtnText: { color: Colors.text, fontSize: 14, fontWeight: '600' },
   planBtnTextRecommended: { color: '#fff', fontSize: 14, fontWeight: '700' },
   note: { textAlign: 'center', fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
+
+  cancelBtn: { backgroundColor: '#f8fafc', borderBottomWidth: 1, borderColor: '#e2e8f0', borderWidth: 1, borderRadius: Radius.sm, padding: 12, alignItems: 'center' },
+  cancelBtnText: { color: '#64748b', fontSize: 14, fontWeight: '600' },
+  cancelledBanner: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 14, gap: 10 },
+  cancelledBannerText: { fontSize: 13, color: '#991b1b', lineHeight: 18 },
+  resubscribeBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
+  resubscribeBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
+  historyRowBorder: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  historyPlan: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  historyBadge: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 100 },
+  historyBadgeText: { color: '#16a34a', fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
+  historyDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  historyPaymentId: { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  historyAmount: { fontSize: 14, fontWeight: '700', color: Colors.text }
 });
