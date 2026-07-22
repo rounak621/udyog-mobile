@@ -7,7 +7,8 @@ import {
   ActivityIndicator, BackHandler, Alert
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import { saveCsvToAndroidOrShare } from '../../services/safHelper';
+import * as Print from 'expo-print';
+import { saveCsvToAndroidOrShare, savePdfToAndroidOrShare } from '../../services/safHelper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
@@ -49,7 +50,8 @@ export default function PurchaseReportScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [bills, setBills] = useState<PurchaseBill[]>([]);
 
   // Filter states
@@ -93,15 +95,15 @@ export default function PurchaseReportScreen() {
                    Array.isArray(raw?.items) ? raw.items :
                    Array.isArray(raw?.bills) ? raw.bills : [];
 
-      setBills(list.map((bill: any) => ({
-        id: bill.id,
-        bill_number: bill.bill_number || bill.invoice_number || bill.supplier_invoice_number || '—',
-        bill_date: bill.bill_date || bill.created_at || '—',
-        vendor_name: bill.supplier?.name || bill.party?.name || 'Walk-in Vendor',
-        taxable_amount: Number(bill.taxable_amount || bill.subTotal || 0),
-        total_tax: Number(bill.gst_amount || bill.total_tax || bill.taxAmount || 0),
-        total_amount: Number(bill.total_amount || 0),
-        payment_status: bill.payment_status || 'UNPAID'
+      setBills(list.map((b: any) => ({
+        id: b.id,
+        bill_number: b.bill_number || b.invoice_number || b.supplier_invoice_number || '—',
+        bill_date: b.bill_date || b.created_at || '—',
+        vendor_name: b.vendor_name || b.vendor?.name || b.party?.name || 'Walk-in Vendor',
+        taxable_amount: Number(b.taxable_amount || b.subTotal || 0),
+        total_tax: Number(b.gst_amount || b.total_tax || b.taxAmount || 0),
+        total_amount: Number(b.total_amount || 0),
+        payment_status: b.payment_status || 'UNPAID'
       })));
 
     } catch (err) {
@@ -151,7 +153,7 @@ export default function PurchaseReportScreen() {
       return;
     }
 
-    setExporting(true);
+    setExportingCsv(true);
     try {
       const headers = ['Bill No', 'Date', 'Vendor Name', 'Taxable Amount', 'GST', 'Total Amount', 'Status'];
       const rows = bills.map(bill => [
@@ -181,7 +183,128 @@ export default function PurchaseReportScreen() {
       console.log('CSV export error:', err);
       Alert.alert('Error', 'Failed to export Purchase Report CSV.');
     } finally {
-      setExporting(false);
+      setExportingCsv(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (bills.length === 0) {
+      Alert.alert('No Data', 'There are no purchase bills to export for this period.');
+      return;
+    }
+
+    setExportingPdf(true);
+    try {
+      const periodLabel = filterType === 'monthly'
+        ? recentMonths[selectedMonthIdx].label
+        : `${startDate || 'Start'} to ${endDate || 'End'}`;
+
+      const rowsHtml = bills.map((bill, idx) => `
+        <tr style="background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; font-weight: 600;">${bill.bill_number}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${bill.bill_date}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${bill.vendor_name}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right;">₹${bill.taxable_amount.toFixed(2)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right;">₹${bill.total_tax.toFixed(2)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right; font-weight: 600;">₹${bill.total_amount.toFixed(2)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: center;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; ${
+              bill.payment_status.toUpperCase() === 'PAID'
+                ? 'background-color: #DCFCE7; color: #166534;'
+                : 'background-color: #FEF2F2; color: #991B1B;'
+            }">${bill.payment_status}</span>
+          </td>
+        </tr>
+      `).join('');
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; margin: 24px; color: #1E293B; }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F97316; padding-bottom: 12px; margin-bottom: 20px; }
+              .title { font-size: 22px; font-weight: 800; color: #F97316; margin: 0; }
+              .subtitle { font-size: 13px; color: #64748B; margin-top: 4px; }
+              .stats-grid { display: flex; gap: 12px; margin-bottom: 24px; }
+              .stat-card { flex: 1; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; }
+              .stat-label { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; }
+              .stat-value { font-size: 16px; font-weight: 800; color: #0F172A; margin-top: 4px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+              th { background-color: #F1F5F9; color: #475569; font-weight: 700; padding: 10px 8px; text-align: left; border-bottom: 2px solid #CBD5E1; }
+              th.right, td.right { text-align: right; }
+              th.center, td.center { text-align: center; }
+              .footer { margin-top: 24px; font-size: 11px; color: #94A3B8; text-align: center; border-top: 1px solid #E2E8F0; padding-top: 12px; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <h1 class="title">Purchase Report</h1>
+                <div class="subtitle">Period: ${periodLabel}</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 16px; font-weight: 800; color: #1E293B;">Udyog</div>
+                <div style="font-size: 11px; color: #64748B;">GST Billing & Accounting</div>
+              </div>
+            </div>
+
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">Total Purchase</div>
+                <div class="stat-value">₹${totalPurchasesVal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Total GST</div>
+                <div class="stat-value">₹${totalGstVal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Taxable Amount</div>
+                <div class="stat-value">₹${totalTaxableVal.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Bills</div>
+                <div class="stat-value">${billsCount}</div>
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Bill No</th>
+                  <th>Date</th>
+                  <th>Vendor Name</th>
+                  <th class="right">Taxable Amount</th>
+                  <th class="right">GST</th>
+                  <th class="right">Total Amount</th>
+                  <th class="center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              Generated automatically via Udyog App
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      const fileNameLabel = filterType === 'monthly'
+        ? recentMonths[selectedMonthIdx].label.replace(/\s+/g, '_')
+        : 'Custom';
+      const fileName = `Purchase_Report_${fileNameLabel}.pdf`;
+
+      await savePdfToAndroidOrShare(uri, fileName, 'Export Purchase Report PDF');
+    } catch (err) {
+      console.log('PDF export error:', err);
+      Alert.alert('Error', 'Failed to export Purchase Report PDF.');
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -196,20 +319,37 @@ export default function PurchaseReportScreen() {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Purchase Report</Text>
           </View>
-          <TouchableOpacity
-            style={[styles.exportBtn, exporting && { opacity: 0.7 }]}
-            onPress={handleExportCsv}
-            disabled={exporting || loading}
-          >
-            {exporting ? (
-              <ActivityIndicator size="small" color="#F97316" />
-            ) : (
-              <>
-                <Ionicons name="download-outline" size={16} color="#F97316" />
-                <Text style={styles.exportBtnText}>Export</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={[styles.exportBtn, exportingCsv && { opacity: 0.7 }]}
+              onPress={handleExportCsv}
+              disabled={exportingCsv || exportingPdf || loading}
+            >
+              {exportingCsv ? (
+                <ActivityIndicator size="small" color="#F97316" />
+              ) : (
+                <>
+                  <Ionicons name="document-text-outline" size={15} color="#F97316" />
+                  <Text style={styles.exportBtnText}>CSV</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.exportBtn, exportingPdf && { opacity: 0.7 }]}
+              onPress={handleExportPdf}
+              disabled={exportingCsv || exportingPdf || loading}
+            >
+              {exportingPdf ? (
+                <ActivityIndicator size="small" color="#F97316" />
+              ) : (
+                <>
+                  <Ionicons name="document-outline" size={15} color="#F97316" />
+                  <Text style={styles.exportBtnText}>PDF</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
