@@ -44,6 +44,8 @@ export default function CreateInvoiceScreen() {
   const [dualAddressEnabled, setDualAddressEnabled] = useState(false);
   const [isInterState, setIsInterState] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState<string>('');
+  const [invoicePrefix, setInvoicePrefix] = useState<string>('');
+  const [showPatternHint, setShowPatternHint] = useState<boolean>(false);
   const [parties, setParties] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
@@ -123,6 +125,9 @@ export default function CreateInvoiceScreen() {
       }
       if (numRes.status === 'fulfilled') {
         setInvoiceNumber(numRes.value.data.next_number || numRes.value.data.invoice_number || '');
+        if (numRes.value.data.prefix) {
+          setInvoicePrefix(numRes.value.data.prefix);
+        }
       }
 
       if (isEditMode) {
@@ -173,7 +178,14 @@ export default function CreateInvoiceScreen() {
   useEffect(() => {
     if (businessId && !isEditMode) {
       api.get(`/invoices/next-number?business_id=${businessId}&invoice_type=${invoiceType}`)
-        .then(res => setInvoiceNumber(res.data.invoice_number || res.data.next_number || ''))
+        .then(res => {
+          const num = res.data.invoice_number || res.data.next_number || '';
+          setInvoiceNumber(num);
+          if (res.data.prefix) {
+            setInvoicePrefix(res.data.prefix);
+          }
+          setShowPatternHint(false);
+        })
         .catch(() => {});
     }
   }, [invoiceType, businessId]);
@@ -360,6 +372,15 @@ export default function CreateInvoiceScreen() {
     }
   };
 
+  const handleInvoiceNumberChange = (value: string) => {
+    setInvoiceNumber(value);
+    if (value && invoicePrefix && !value.startsWith(invoicePrefix)) {
+      setShowPatternHint(true);
+    } else {
+      setShowPatternHint(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
     if (lineItems.some(i => !i.name || !i.rate)) { Alert.alert('Error', 'Please fill all item details'); return; }
@@ -388,6 +409,7 @@ export default function CreateInvoiceScreen() {
         payload.status = 'ISSUED';
         payload.notes = notes || undefined;
         payload.show_discount = showDiscount || false;
+        payload.requested_invoice_number = invoiceNumber.trim() || undefined;
       }
       
       if (isEditMode) {
@@ -498,7 +520,20 @@ export default function CreateInvoiceScreen() {
         <View style={{ flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 16 }}>
           <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.cardLabel}>INVOICE NO.</Text>
-            <Text style={styles.cardValue}>{invoiceNumber || 'Auto-generating...'}</Text>
+            <TextInput
+              style={[styles.cardValue, { padding: 0, marginTop: 2 }, isEditMode && { color: '#64748B' }]}
+              value={invoiceNumber}
+              onChangeText={handleInvoiceNumberChange}
+              editable={!isEditMode}
+              placeholder="Auto-generating..."
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+            />
+            {showPatternHint && !isEditMode && (
+              <Text style={{ fontSize: 10, color: '#F97316', marginTop: 4, fontWeight: '500' }}>
+                💡 Pattern mismatch from default ({invoicePrefix})
+              </Text>
+            )}
           </View>
           <View style={[styles.card, { flex: 1 }]}>
             <Text style={styles.cardLabel}>DATE</Text>
