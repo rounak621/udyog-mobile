@@ -10,7 +10,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import Svg, { Circle } from 'react-native-svg';
 
-const MOBILE_PLANS = [
+const PLANS = [
   {
     id: 'saral',
     name: 'Saral',
@@ -40,6 +40,35 @@ const MOBILE_PLANS = [
       'Core GST Billing & Invoicing',
     ],
     excluded: [],
+  },
+  {
+    id: 'basic',
+    name: 'Basic',
+    tagline: 'Essential Billing',
+    price: '₹1,788',
+    period: '/ year',
+    platform: 'web' as const,
+    features: [
+      'Unlimited Sales & Purchase Invoices',
+      'Customer & Vendor Management',
+      'Basic Stock Tracking',
+    ],
+    excluded: ['Maya Voice Agent', 'GST Reports', 'CA Sync Portal'],
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    tagline: 'Smart Business',
+    price: '₹2,988',
+    period: '/ year',
+    platform: 'web' as const,
+    features: [
+      'All Basic features',
+      'Maya AI Voice Billing',
+      'AI Expense Tracking',
+      'Staff Access (Limited)',
+    ],
+    excluded: ['GST Reports', 'CA Sync Portal'],
   },
   {
     id: 'premium',
@@ -97,6 +126,7 @@ export default function SubscriptionScreen() {
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [platformFilter, setPlatformFilter] = useState<'mobile' | 'desktop' | 'both'>('mobile');
 
   const loadData = async () => {
     try {
@@ -189,6 +219,13 @@ export default function SubscriptionScreen() {
   const progress = total > 0 ? days / total : 0;
   const currentPlanId = (business?.subscription_plan || '').toLowerCase();
   const planName = (business?.subscription_plan || 'basic').toUpperCase();
+
+  const filteredPlans = PLANS.filter(plan => {
+    if (platformFilter === 'mobile') return plan.platform === 'mobile' || plan.platform === 'both';
+    if (platformFilter === 'desktop') return plan.platform === 'web' || plan.platform === 'both';
+    if (platformFilter === 'both') return plan.platform === 'both';
+    return true;
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -301,14 +338,67 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* Plan Cards (Always Visible) */}
-        <View style={{ gap: 12, marginTop: 12 }}>
-          {/* Mobile Plans Section */}
-          <Text style={styles.sectionTitle}>📱 For Mobile</Text>
-          {MOBILE_PLANS.filter(p => p.platform === 'mobile').map(plan => {
+        {/* 3-Way Platform Filter Segmented Control */}
+        <View style={styles.segmentedContainer}>
+          <TouchableOpacity
+            style={[styles.segmentedBtn, platformFilter === 'mobile' && styles.segmentedBtnActive]}
+            onPress={() => setPlatformFilter('mobile')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="phone-portrait-outline"
+              size={15}
+              color={platformFilter === 'mobile' ? '#fff' : Colors.textSecondary}
+            />
+            <Text style={[styles.segmentedText, platformFilter === 'mobile' && styles.segmentedTextActive]}>
+              Mobile
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentedBtn, platformFilter === 'desktop' && styles.segmentedBtnActive]}
+            onPress={() => setPlatformFilter('desktop')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="desktop-outline"
+              size={15}
+              color={platformFilter === 'desktop' ? '#fff' : Colors.textSecondary}
+            />
+            <Text style={[styles.segmentedText, platformFilter === 'desktop' && styles.segmentedTextActive]}>
+              Desktop
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentedBtn, platformFilter === 'both' && styles.segmentedBtnActive]}
+            onPress={() => setPlatformFilter('both')}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="layers-outline"
+              size={15}
+              color={platformFilter === 'both' ? '#fff' : Colors.textSecondary}
+            />
+            <Text style={[styles.segmentedText, platformFilter === 'both' && styles.segmentedTextActive]}>
+              Mobile + Desktop
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Plan Cards */}
+        <View style={{ gap: 12, marginTop: 4 }}>
+          {filteredPlans.map(plan => {
             const isCurrent = isActive && plan.id === currentPlanId;
             return (
-              <View key={plan.id} style={[styles.planCard, plan.recommended && !isCurrent && styles.planCardRecommended, isCurrent && styles.planCardCurrent]}>
+              <View
+                key={plan.id}
+                style={[
+                  styles.planCard,
+                  plan.recommended && !isCurrent && styles.planCardRecommended,
+                  isCurrent && styles.planCardCurrent,
+                ]}
+              >
                 {isCurrent ? (
                   <View style={styles.currentBadge}>
                     <Text style={styles.currentBadgeText}>✓ CURRENT PLAN</Text>
@@ -318,67 +408,36 @@ export default function SubscriptionScreen() {
                     <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
                   </View>
                 ) : null}
-                {/* Platform badge */}
-                <View style={styles.mobileBadge}>
-                  <Text style={styles.mobileBadgeText}>Mobile</Text>
-                </View>
-                <View style={styles.planHeader}>
-                  <View>
-                    <Text style={styles.planName}>{plan.name}</Text>
-                    <Text style={styles.planTagline}>{plan.tagline}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.planPrice}>{plan.price}</Text>
-                    <Text style={styles.planPriceSub}>{plan.period}</Text>
-                  </View>
-                </View>
-                <View style={styles.planDivider} />
-                <View style={styles.planFeatures}>
-                  {plan.features.map((f, i) => (
-                    <View key={i} style={styles.planFeatureRow}>
-                      <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
-                      <Text style={styles.planFeatureText}>{f}</Text>
-                    </View>
-                  ))}
-                  {plan.excluded.map((f, i) => (
-                    <View key={`ex-${i}`} style={styles.planFeatureRow}>
-                      <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-                      <Text style={[styles.planFeatureText, { color: Colors.textMuted }]}>{f}</Text>
-                    </View>
-                  ))}
-                </View>
-                {isCurrent ? (
-                  <TouchableOpacity style={styles.planBtnCurrent} disabled={true}>
-                    <Text style={styles.planBtnTextCurrent}>✓ Current Plan</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={[styles.planBtn, plan.recommended && styles.planBtnRecommended]} onPress={() => handleUpgrade(plan.id)}>
-                    <Text style={plan.recommended ? styles.planBtnTextRecommended : styles.planBtnText}>
-                      {isActive ? `Upgrade to ${plan.name}` : `Choose ${plan.name}`}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })}
 
-          {/* Mobile + Web Plans Section */}
-          <Text style={[styles.sectionTitle, { marginTop: 12 }]}>📱 + 🖥 For Mobile + Web</Text>
-          {MOBILE_PLANS.filter(p => p.platform === 'both').map(plan => {
-            const isCurrent = isActive && plan.id === currentPlanId;
-            return (
-              <View key={plan.id} style={[styles.planCard, isCurrent && styles.planCardCurrent]}>
-                {isCurrent && (
-                  <View style={styles.currentBadge}>
-                    <Text style={styles.currentBadgeText}>✓ CURRENT PLAN</Text>
-                  </View>
-                )}
                 {/* Platform badge */}
-                <View style={styles.bothBadge}>
-                  <Text style={styles.bothBadgeText}>Mobile + Web</Text>
+                <View
+                  style={
+                    plan.platform === 'mobile'
+                      ? styles.mobileBadge
+                      : plan.platform === 'web'
+                      ? styles.webBadge
+                      : styles.bothBadge
+                  }
+                >
+                  <Text
+                    style={
+                      plan.platform === 'mobile'
+                        ? styles.mobileBadgeText
+                        : plan.platform === 'web'
+                        ? styles.webBadgeText
+                        : styles.bothBadgeText
+                    }
+                  >
+                    {plan.platform === 'mobile'
+                      ? 'Mobile Only'
+                      : plan.platform === 'web'
+                      ? 'Web Only'
+                      : 'Mobile + Web'}
+                  </Text>
                 </View>
+
                 <View style={styles.planHeader}>
-                  <View>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
                     <Text style={styles.planName}>{plan.name}</Text>
                     <Text style={styles.planTagline}>{plan.tagline}</Text>
                   </View>
@@ -387,7 +446,9 @@ export default function SubscriptionScreen() {
                     <Text style={styles.planPriceSub}>{plan.period}</Text>
                   </View>
                 </View>
+
                 <View style={styles.planDivider} />
+
                 <View style={styles.planFeatures}>
                   {plan.features.map((f, i) => (
                     <View key={i} style={styles.planFeatureRow}>
@@ -402,13 +463,17 @@ export default function SubscriptionScreen() {
                     </View>
                   ))}
                 </View>
+
                 {isCurrent ? (
                   <TouchableOpacity style={styles.planBtnCurrent} disabled={true}>
                     <Text style={styles.planBtnTextCurrent}>✓ Current Plan</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={styles.planBtn} onPress={() => handleUpgrade(plan.id)}>
-                    <Text style={styles.planBtnText}>
+                  <TouchableOpacity
+                    style={[styles.planBtn, plan.recommended && styles.planBtnRecommended]}
+                    onPress={() => handleUpgrade(plan.id)}
+                  >
+                    <Text style={plan.recommended ? styles.planBtnTextRecommended : styles.planBtnText}>
                       {isActive ? `Upgrade to ${plan.name}` : `Choose ${plan.name}`}
                     </Text>
                   </TouchableOpacity>
@@ -440,8 +505,43 @@ const styles = StyleSheet.create({
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   cardTitle: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 14 },
 
-  // Section title
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginTop: 12, marginBottom: 4 },
+  // Segmented control styles
+  segmentedContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 100,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  segmentedBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 100,
+    gap: 4,
+  },
+  segmentedBtnActive: {
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  segmentedText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  segmentedTextActive: {
+    color: '#fff',
+  },
 
   // Plan cards
   planCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 20, borderWidth: 0.5, borderColor: Colors.border, position: 'relative' },
@@ -468,8 +568,10 @@ const styles = StyleSheet.create({
   planBtnTextCurrent: { color: '#16a34a', fontSize: 14, fontWeight: '700' },
 
   // Platform badges
-  mobileBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#fff7ed', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#fed7aa' },
-  mobileBadgeText: { color: '#ea580c', fontSize: 10, fontWeight: '700' },
+  mobileBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#e0f2fe', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#bae6fd' },
+  mobileBadgeText: { color: '#0369a1', fontSize: 10, fontWeight: '700' },
+  webBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#f1f5f9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#cbd5e1' },
+  webBadgeText: { color: '#475569', fontSize: 10, fontWeight: '700' },
   bothBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#fff7ed', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#fed7aa' },
   bothBadgeText: { color: '#c2410c', fontSize: 10, fontWeight: '700' },
 
