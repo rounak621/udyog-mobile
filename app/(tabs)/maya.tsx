@@ -132,10 +132,128 @@ export default function MayaScreen() {
     setIsThinking(true);
   };
 
+  const handleEditDraftResponse = (data: MayaResponse) => {
+    setIsThinking(false);
+    const { field, item_name, new_value } = data.extracted_data || {};
+
+    setMessages(prev => {
+      const draftIndex = prev.map(m => !!m.draft).lastIndexOf(true);
+      if (draftIndex === -1) {
+        return [
+          ...prev,
+          {
+            role: 'assistant',
+            text: 'No active draft to edit.',
+          },
+        ];
+      }
+
+      const targetMsg = prev[draftIndex];
+      const draft = JSON.parse(JSON.stringify(targetMsg.draft));
+
+      if (field === 'rate' && item_name) {
+        if (Array.isArray(draft.items)) {
+          draft.items = draft.items.map((it: any) => {
+            if (it.name?.toLowerCase().includes(item_name.toLowerCase())) {
+              const newRate = Number(new_value);
+              const qty = Number(it.qty || it.quantity || 1);
+              return {
+                ...it,
+                rate: newRate,
+                unit_price: newRate,
+                amount: qty * newRate,
+              };
+            }
+            return it;
+          });
+        }
+      } else if (field === 'quantity' && item_name) {
+        if (Array.isArray(draft.items)) {
+          draft.items = draft.items.map((it: any) => {
+            if (it.name?.toLowerCase().includes(item_name.toLowerCase())) {
+              const newQty = Number(new_value);
+              const rate = Number(it.rate || it.unit_price || 0);
+              return {
+                ...it,
+                qty: newQty,
+                quantity: newQty,
+                amount: newQty * rate,
+              };
+            }
+            return it;
+          });
+        }
+      } else if (field === 'customer_name' || field === 'party_name') {
+        draft.customer_name = String(new_value);
+        draft.party_name = String(new_value);
+      } else if (field === 'hsn_code' && item_name) {
+        if (Array.isArray(draft.items)) {
+          draft.items = draft.items.map((it: any) => {
+            if (it.name?.toLowerCase().includes(item_name.toLowerCase())) {
+              return { ...it, hsn_code: String(new_value) };
+            }
+            return it;
+          });
+        }
+      } else if ((field === 'tax_rate' || field === 'gst_rate') && item_name) {
+        if (Array.isArray(draft.items)) {
+          draft.items = draft.items.map((it: any) => {
+            if (it.name?.toLowerCase().includes(item_name.toLowerCase())) {
+              return { ...it, tax_rate: Number(new_value), gst_rate: Number(new_value) };
+            }
+            return it;
+          });
+        }
+      } else if (field === 'start_date') {
+        draft.start_date = String(new_value);
+      } else if (field === 'end_date') {
+        draft.end_date = String(new_value);
+      } else if (field === 'rate_type') {
+        draft.rate_type = String(new_value);
+      }
+
+      if (Array.isArray(draft.items)) {
+        draft.total_amount = draft.items.reduce((sum: number, it: any) => {
+          const qty = Number(it.qty || it.quantity || 1);
+          const rate = Number(it.rate || it.unit_price || 0);
+          return sum + (it.amount !== undefined ? Number(it.amount) : qty * rate);
+        }, 0);
+      }
+
+      const updated = [...prev];
+      updated[draftIndex] = {
+        ...targetMsg,
+        draft,
+      };
+      updated.push({
+        role: 'assistant',
+        text: data.reply_text || 'Updated! Check karo.',
+      });
+      return updated;
+    });
+
+    const userSpokenText = data.user_transcript || data.user_text || '';
+    if (userSpokenText) {
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'user', content: userSpokenText },
+        { role: 'assistant', content: data.reply_text || 'Updated! Check karo.' },
+      ]);
+    }
+  };
+
   const handleVoiceResponse = (data: MayaResponse) => {
+    if (data.action_type === 'edit_draft') {
+      handleEditDraftResponse(data);
+      return;
+    }
+
     let draft = null;
     if (data.action_type === 'draft_invoice') {
       draft = data.current_draft || data.extracted_data || null;
+    } else if (data.action_type === 'draft_rental') {
+      draft = data.extracted_data || data.current_draft || null;
+      if (draft) draft.is_rental = true;
     } else if (data.action_type === 'create_customer') {
       draft = data.extracted_data?.new_party || null;
     } else if (data.action_type === 'create_item') {
@@ -246,10 +364,18 @@ export default function MayaScreen() {
 
       const data: MayaResponse = res.data;
 
+      if (data.action_type === 'edit_draft') {
+        handleEditDraftResponse(data);
+        return;
+      }
+
       // Extract draft based on action_type
       let draft = null;
       if (data.action_type === 'draft_invoice') {
         draft = data.current_draft || data.extracted_data || null;
+      } else if (data.action_type === 'draft_rental') {
+        draft = data.extracted_data || data.current_draft || null;
+        if (draft) draft.is_rental = true;
       } else if (data.action_type === 'create_customer') {
         draft = data.extracted_data?.new_party || null;
       } else if (data.action_type === 'create_item') {
@@ -284,6 +410,14 @@ export default function MayaScreen() {
     if (!draft) return;
     router.push({
       pathname: '/invoice/create',
+      params: { maya_data: JSON.stringify(draft) },
+    });
+  };
+
+  const handleCreateRental = (draft: any) => {
+    if (!draft) return;
+    router.push({
+      pathname: '/rental-order/create',
       params: { maya_data: JSON.stringify(draft) },
     });
   };
@@ -446,11 +580,85 @@ export default function MayaScreen() {
                 {messages.map((msg, i) => {
                   const hasText = !!(msg.text && msg.text.trim().length > 0);
                   const hasInvoiceDraft = !!(msg.draft && msg.actionType === 'draft_invoice');
+                  const hasRentalDraft = !!(msg.draft && msg.actionType === 'draft_rental');
                   const hasCustomerDraft = !!(msg.draft && msg.actionType === 'create_customer');
                   const hasItemDraft = !!(msg.draft && msg.actionType === 'create_item');
-                  const hasAnyCard = hasInvoiceDraft || hasCustomerDraft || hasItemDraft;
+                  const hasAnyCard = hasInvoiceDraft || hasRentalDraft || hasCustomerDraft || hasItemDraft;
 
                   if (!hasText && !hasAnyCard) return null;
+
+                  const renderRentalDraftCard = (isStandalone: boolean) => {
+                    const partyName = msg.draft.customer_name || msg.draft.party_name || 'Walk-in';
+                    const getInitials = (name: string) => {
+                      if (!name) return '??';
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                      return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+                    };
+
+                    return (
+                      <View style={[styles.draftCard, isStandalone && { marginTop: 0 }]}>
+                        {/* Card Header */}
+                        <View style={styles.draftCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={styles.draftAvatar}>
+                              <Text style={styles.draftAvatarText}>{getInitials(partyName)}</Text>
+                            </View>
+                            <View>
+                              <Text style={styles.draftPartyName}>{partyName}</Text>
+                              <Text style={styles.draftDate}>
+                                {msg.draft.start_date || 'Today'}{msg.draft.end_date ? ` to ${msg.draft.end_date}` : ''}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={[styles.draftBadge, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA', borderWidth: 1 }]}>
+                            <Text style={[styles.draftBadgeText, { color: '#F97316' }]}>RENTAL</Text>
+                          </View>
+                        </View>
+
+                        {/* Line Items */}
+                        <View style={{ marginVertical: 8 }}>
+                          {(msg.draft.items || []).map((item: any, j: number) => (
+                            <View key={j} style={styles.draftItemRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.draftItemName}>{item.name || 'Rental Item'}</Text>
+                                <Text style={styles.draftItemDetail}>
+                                  {item.qty || item.quantity || 1} {item.unit || 'pcs'} x {fmt(item.rate || item.unit_price || 0)} {item.rate_type ? `/${item.rate_type}` : ''}
+                                </Text>
+                              </View>
+                              <Text style={styles.draftItemAmount}>
+                                {fmt((item.qty || item.quantity || 1) * (item.rate || item.unit_price || 0))}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Total row */}
+                        {msg.draft.total_amount ? (
+                          <View style={styles.draftTotalContainer}>
+                            <Text style={styles.draftTotalLabel}>Total</Text>
+                            <Text style={styles.draftTotalValue}>{fmt(msg.draft.total_amount)}</Text>
+                          </View>
+                        ) : null}
+
+                        {/* Action Buttons */}
+                        <View style={styles.draftActionsRow}>
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
+                            <Text style={styles.draftBtnOutlineText}>Cancel</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCreateRental(msg.draft)}>
+                            <Text style={styles.draftBtnOutlineText}>Edit</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.draftBtnSolid} onPress={() => handleCreateRental(msg.draft)}>
+                            <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={styles.draftBtnSolidText}>Create Rental</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  };
 
                   const renderCustomerCard = (isStandalone: boolean) => {
                     const partyName = msg.draft.name || 'New Party';
@@ -682,12 +890,14 @@ export default function MayaScreen() {
                           <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
                             <Text style={styles.msgText}>{msg.text}</Text>
                             {hasInvoiceDraft && renderDraftCard(false)}
+                            {hasRentalDraft && renderRentalDraftCard(false)}
                             {hasCustomerDraft && renderCustomerCard(false)}
                             {hasItemDraft && renderItemCard(false)}
                           </View>
                         ) : (
                           <>
                             {hasInvoiceDraft && renderDraftCard(true)}
+                            {hasRentalDraft && renderRentalDraftCard(true)}
                             {hasCustomerDraft && renderCustomerCard(true)}
                             {hasItemDraft && renderItemCard(true)}
                           </>

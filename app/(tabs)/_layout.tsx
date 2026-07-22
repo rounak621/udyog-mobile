@@ -83,6 +83,7 @@ function MayaTabBarButton(props: any) {
       activeOpacity={0.8}
       onPress={handlePress}
       onPressIn={(e) => {
+        console.log(`[MIC-DEBUG] onPressIn fired at ${Date.now()}`);
         // Cancel any pending tail-buffer stop from a previous press
         if (tailBufferTimerRef.current) {
           clearTimeout(tailBufferTimerRef.current);
@@ -91,6 +92,7 @@ function MayaTabBarButton(props: any) {
         startRecording();
       }}
       onPressOut={(e) => {
+        console.log(`[MIC-DEBUG] onPressOut fired at ${Date.now()}`);
         // Delay the actual stopRecording by 400ms to capture the audio
         // tail buffer (last syllable). Visual state change (animation reset)
         // happens instantly via isRecording going false inside the context.

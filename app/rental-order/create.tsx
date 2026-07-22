@@ -5,7 +5,7 @@ import {
   ActivityIndicator, Alert, Modal, FlatList, ScrollView,
   Animated, Easing
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
@@ -174,6 +174,60 @@ export default function OrderCreateScreen() {
     };
     loadMasterData();
   }, [business?.id, getToken]);
+
+  const params = useLocalSearchParams<{ maya_data?: string }>();
+
+  // Pre-fill from Maya draft data if maya_data was passed in route params
+  useEffect(() => {
+    if (!params.maya_data || customers.length === 0) return;
+    try {
+      const draft = JSON.parse(params.maya_data as string);
+      if (draft.customer_name && !selectedCustomer) {
+        const draftCust = draft.customer_name.toLowerCase().trim();
+        const match = customers.find(
+          (c: any) => c.name?.toLowerCase().trim() === draftCust || c.name?.toLowerCase().includes(draftCust)
+        );
+        if (match) {
+          setSelectedCustomer(match);
+        }
+      }
+      if (draft.start_date) {
+        const d = new Date(draft.start_date);
+        if (!isNaN(d.getTime())) setStartDate(d);
+      }
+      if (draft.end_date) {
+        const d = new Date(draft.end_date);
+        if (!isNaN(d.getTime())) setEndDate(d);
+      }
+      if (draft.rate_type) {
+        setRateType(String(draft.rate_type).toUpperCase());
+      }
+      if (draft.items && draft.items.length > 0) {
+        const mappedItems: OrderItem[] = draft.items.map((di: any) => {
+          const prodName = (di.name || '').toLowerCase().trim();
+          const pMatch = products.find(
+            (p: any) => p.name?.toLowerCase().trim() === prodName || p.name?.toLowerCase().includes(prodName)
+          );
+          return {
+            id: Math.random().toString(),
+            product: pMatch || (di.name ? { id: '', name: di.name, rate: Number(di.rate || 0), gst_rate: Number(di.gst_rate || di.tax_rate || 18) } : null),
+            quantity: String(di.qty || di.quantity || 1),
+            rate: String(di.rate || pMatch?.rate || ''),
+            gstRate: String(di.gst_rate || di.tax_rate || pMatch?.gst_rate || '18'),
+            assetCodes: [],
+            availableAssets: [],
+            loadingAssets: false,
+            availabilityChecked: false,
+            isAvailable: true,
+            availableQtyMsg: ''
+          };
+        });
+        setItems(mappedItems);
+      }
+    } catch (e) {
+      console.log('Error parsing maya_data in rental-order create:', e);
+    }
+  }, [params.maya_data, customers, products]);
 
   // Load Available Assets for selected Product row
   const fetchAvailableAssetsForItem = async (index: number, productId: string) => {
