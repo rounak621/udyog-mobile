@@ -8,6 +8,87 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import Svg, { Circle } from 'react-native-svg';
+
+const MOBILE_PLANS = [
+  {
+    id: 'saral',
+    name: 'Saral',
+    tagline: 'Mobile Billing',
+    price: '₹799',
+    period: '/ year',
+    platform: 'mobile' as const,
+    features: [
+      '2 Businesses Limit',
+      'Maya AI Voice Billing',
+      'Core GST Billing & Invoicing',
+    ],
+    excluded: ['No CA Access'],
+  },
+  {
+    id: 'vistaar',
+    name: 'Vistaar',
+    tagline: 'Expansion Pack',
+    price: '₹999',
+    period: '/ year',
+    platform: 'mobile' as const,
+    recommended: true,
+    features: [
+      '6 Businesses Limit',
+      '1 CA Collaboration Access',
+      'Maya AI Voice Billing',
+      'Core GST Billing & Invoicing',
+    ],
+    excluded: [],
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    tagline: 'Complete Accounting',
+    price: '₹3,588',
+    period: '/ year',
+    platform: 'both' as const,
+    features: [
+      'All Pro features',
+      'One-Click GST Reports',
+      'CA Collaboration Portal',
+      'Profit & Loss Statements',
+      'Advanced Staff Permissions',
+    ],
+    excluded: ['Rental Business'],
+  },
+  {
+    id: 'enterprise',
+    name: 'Enterprise',
+    tagline: 'Rental & Advanced',
+    price: '₹5,988',
+    period: '/ year',
+    platform: 'both' as const,
+    features: [
+      'All Premium features',
+      'Rental Equipment Scheduling',
+      'Automated Late Fee Deductions',
+      'Custom Branding on Invoices',
+      'Priority Support',
+    ],
+    excluded: [],
+  },
+];
+
+// Progress ring component for days remaining
+function ProgressRing({ progress, size = 56, strokeWidth = 4, color = '#F97316' }: { progress: number; size?: number; strokeWidth?: number; color?: string }) {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - Math.min(progress, 1));
+  return (
+    <Svg width={size} height={size}>
+      <Circle cx={size / 2} cy={size / 2} r={radius} stroke="rgba(255,255,255,0.2)" strokeWidth={strokeWidth} fill="none" />
+      <Circle cx={size / 2} cy={size / 2} r={radius} stroke={color} strokeWidth={strokeWidth} fill="none"
+        strokeDasharray={`${circumference}`} strokeDashoffset={strokeDashoffset} strokeLinecap="round"
+        rotation="-90" origin={`${size / 2}, ${size / 2}`} />
+    </Svg>
+  );
+}
 
 export default function SubscriptionScreen() {
   const { getToken } = useAuth();
@@ -48,6 +129,11 @@ export default function SubscriptionScreen() {
     const end = (isActive || isCancelled) ? business?.subscription_ends_at : business?.trial_ends_at;
     if (!end) return 0;
     return Math.max(0, Math.floor((new Date(end).getTime() - Date.now()) / 86400000));
+  };
+
+  const totalDays = () => {
+    if (isTrial) return 14;
+    return 365;
   };
 
   const handleUpgrade = async (planId: string) => {
@@ -98,6 +184,11 @@ export default function SubscriptionScreen() {
 
   if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background }}><ActivityIndicator color={Colors.primary} /></View>;
 
+  const days = daysLeft();
+  const total = totalDays();
+  const progress = total > 0 ? days / total : 0;
+  const planName = (business?.subscription_plan || 'basic').toUpperCase();
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
@@ -108,20 +199,32 @@ export default function SubscriptionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Status Card */}
-        <View style={[styles.statusCard, isActive ? styles.statusActive : isCancelled ? styles.statusCancelled : isTrial ? styles.statusTrial : styles.statusExpired]}>
-          <View style={styles.statusIconRow}>
-            <Ionicons name={isActive ? 'shield-checkmark' : isCancelled ? 'remove-circle-outline' : isTrial ? 'time' : 'alert-circle'} size={32} color={isActive ? Colors.success : isCancelled ? Colors.danger : isTrial ? Colors.primary : Colors.danger} />
+        {/* Gradient Status Card */}
+        <View style={styles.statusCard}>
+          <View style={styles.statusRow}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Ionicons name="shield-checkmark" size={22} color="#fff" />
+                <Text style={styles.statusLabel}>
+                  {isActive ? 'Active' : isCancelled ? 'Cancelled' : isTrial ? 'Free Trial' : 'Expired'}
+                </Text>
+              </View>
+              <View style={styles.planPill}>
+                <Text style={styles.planPillText}>{planName}</Text>
+              </View>
+            </View>
+            {(isActive || isTrial || isCancelled) && (
+              <View style={{ alignItems: 'center' }}>
+                <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+                  <ProgressRing progress={progress} size={56} strokeWidth={4} color="#fff" />
+                  <View style={{ position: 'absolute', alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>{days}</Text>
+                  </View>
+                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10, marginTop: 4, fontWeight: '600' }}>days left</Text>
+              </View>
+            )}
           </View>
-          <Text style={styles.statusTitle}>
-            {isActive ? 'Active Subscription' : isCancelled ? 'Subscription Cancelled' : isTrial ? 'Free Trial' : 'Subscription Expired'}
-          </Text>
-          <Text style={styles.statusPlan}>
-            {(business?.subscription_plan || 'basic').toUpperCase()} PLAN
-          </Text>
-          {(isActive || isTrial || isCancelled) && (
-            <Text style={styles.statusDays}>{daysLeft()} days remaining</Text>
-          )}
         </View>
 
         {/* Cancelled Banner */}
@@ -139,7 +242,7 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* Cancel Subscription Action Button */}
+        {/* Cancel Subscription */}
         {isActive && (
           <TouchableOpacity
             style={styles.cancelBtn}
@@ -154,109 +257,134 @@ export default function SubscriptionScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Plan Features */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>What's included</Text>
-          {[
-            'Unlimited GST invoices',
-            'Customer & supplier management',
-            'GSTR-1, GSTR-3B reports',
-            'Tally XML export',
-            'PDF invoice sharing',
-            'Maya AI voice billing',
-            'Multi-device access',
-          ].map((f, i) => (
-            <View key={i} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={18} color={Colors.success} />
-              <Text style={styles.featureText}>{f}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Billing History Card */}
+        {/* Billing History Timeline */}
         {billingHistory.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Billing History</Text>
             {billingHistory.map((payment: any, index: number) => (
-              <View key={index} style={[styles.historyRow, index < billingHistory.length - 1 && styles.historyRowBorder]}>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <Text style={styles.historyPlan}>{(payment.plan || 'plan').toUpperCase()}</Text>
-                    <View style={styles.historyBadge}>
-                      <Text style={styles.historyBadgeText}>{payment.status || 'captured'}</Text>
+              <View key={index} style={styles.timelineRow}>
+                {/* Timeline dot and line */}
+                <View style={styles.timelineDotCol}>
+                  <View style={styles.timelineDot} />
+                  {index < billingHistory.length - 1 && <View style={styles.timelineLine} />}
+                </View>
+                {/* Content */}
+                <View style={styles.timelineContent}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <Text style={styles.historyPlan}>{(payment.plan || 'plan').toUpperCase()}</Text>
+                        <View style={styles.paidBadge}>
+                          <Text style={styles.paidBadgeText}>PAID</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.historyDate}>
+                        {new Date(payment.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </Text>
+                      {payment.razorpay_payment_id ? (
+                        <Text style={styles.historyPaymentId}>{payment.razorpay_payment_id}</Text>
+                      ) : null}
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text style={styles.historyAmount}>
+                        ₹{(payment.amount_inr ?? (payment.amount / 100)).toLocaleString('en-IN')}
+                      </Text>
+                      <TouchableOpacity hitSlop={8}>
+                        <Ionicons name="download-outline" size={16} color={Colors.textMuted} />
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  <Text style={styles.historyDate}>
-                    {new Date(payment.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                  {payment.razorpay_payment_id ? (
-                    <Text style={styles.historyPaymentId}>{payment.razorpay_payment_id}</Text>
-                  ) : null}
                 </View>
-                <Text style={styles.historyAmount}>
-                  ₹{(payment.amount_inr ?? (payment.amount / 100)).toLocaleString('en-IN')}
-                </Text>
               </View>
             ))}
           </View>
         )}
 
+        {/* Plan Cards */}
         {!isActive && !isCancelled && (
-          <View style={{ gap: 16, marginTop: 12 }}>
-            <Text style={styles.sectionTitle}>Upgrade or Renew</Text>
+          <View style={{ gap: 12, marginTop: 12 }}>
+            {/* Mobile Plans Section */}
+            <Text style={styles.sectionTitle}>📱 For Mobile</Text>
+            {MOBILE_PLANS.filter(p => p.platform === 'mobile').map(plan => (
+              <View key={plan.id} style={[styles.planCard, plan.recommended && styles.planCardRecommended]}>
+                {plan.recommended && (
+                  <View style={styles.recommendedBadge}>
+                    <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
+                  </View>
+                )}
+                {/* Platform badge */}
+                <View style={styles.mobileBadge}>
+                  <Text style={styles.mobileBadgeText}>Mobile</Text>
+                </View>
+                <View style={styles.planHeader}>
+                  <View>
+                    <Text style={styles.planName}>{plan.name}</Text>
+                    <Text style={styles.planTagline}>{plan.tagline}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.planPrice}>{plan.price}</Text>
+                    <Text style={styles.planPriceSub}>{plan.period}</Text>
+                  </View>
+                </View>
+                <View style={styles.planDivider} />
+                <View style={styles.planFeatures}>
+                  {plan.features.map((f, i) => (
+                    <View key={i} style={styles.planFeatureRow}>
+                      <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                      <Text style={styles.planFeatureText}>{f}</Text>
+                    </View>
+                  ))}
+                  {plan.excluded.map((f, i) => (
+                    <View key={`ex-${i}`} style={styles.planFeatureRow}>
+                      <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                      <Text style={[styles.planFeatureText, { color: Colors.textMuted }]}>{f}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity style={[styles.planBtn, plan.recommended && styles.planBtnRecommended]} onPress={() => handleUpgrade(plan.id)}>
+                  <Text style={plan.recommended ? styles.planBtnTextRecommended : styles.planBtnText}>Choose {plan.name}</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
 
-            {/* Saral Card */}
-            <View style={styles.planCard}>
-              <View style={styles.planHeader}>
-                <View>
-                  <Text style={styles.planName}>Saral</Text>
-                  <Text style={styles.planTagline}>Mobile Billing</Text>
+            {/* Mobile + Web Plans Section */}
+            <Text style={[styles.sectionTitle, { marginTop: 12 }]}>📱 + 🖥 For Mobile + Web</Text>
+            {MOBILE_PLANS.filter(p => p.platform === 'both').map(plan => (
+              <View key={plan.id} style={styles.planCard}>
+                {/* Platform badge */}
+                <View style={styles.bothBadge}>
+                  <Text style={styles.bothBadgeText}>Mobile + Web</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.planPrice}>₹799</Text>
-                  <Text style={styles.planPriceSub}>/ year</Text>
+                <View style={styles.planHeader}>
+                  <View>
+                    <Text style={styles.planName}>{plan.name}</Text>
+                    <Text style={styles.planTagline}>{plan.tagline}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.planPrice}>{plan.price}</Text>
+                    <Text style={styles.planPriceSub}>{plan.period}</Text>
+                  </View>
                 </View>
-              </View>
-              <View style={styles.planDivider} />
-              <View style={styles.planFeatures}>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>2 Businesses Limit</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>30 E-Way Bills / Month</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Maya AI Voice Billing</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Core GST Billing & Invoicing</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="close-circle" size={16} color={Colors.textMuted} /><Text style={[styles.planFeatureText, { color: Colors.textMuted }]}>No CA Access</Text></View>
-              </View>
-              <TouchableOpacity style={styles.planBtn} onPress={() => handleUpgrade('saral')}>
-                <Text style={styles.planBtnText}>Choose Saral</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Vistaar Card (Recommended) */}
-            <View style={[styles.planCard, styles.planCardRecommended]}>
-              <View style={styles.recommendedBadge}>
-                <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
-              </View>
-              <View style={styles.planHeader}>
-                <View>
-                  <Text style={styles.planName}>Vistaar</Text>
-                  <Text style={styles.planTagline}>Expansion Pack</Text>
+                <View style={styles.planDivider} />
+                <View style={styles.planFeatures}>
+                  {plan.features.map((f, i) => (
+                    <View key={i} style={styles.planFeatureRow}>
+                      <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                      <Text style={styles.planFeatureText}>{f}</Text>
+                    </View>
+                  ))}
+                  {plan.excluded.map((f, i) => (
+                    <View key={`ex-${i}`} style={styles.planFeatureRow}>
+                      <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                      <Text style={[styles.planFeatureText, { color: Colors.textMuted }]}>{f}</Text>
+                    </View>
+                  ))}
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.planPrice}>₹999</Text>
-                  <Text style={styles.planPriceSub}>/ year</Text>
-                </View>
+                <TouchableOpacity style={styles.planBtn} onPress={() => handleUpgrade(plan.id)}>
+                  <Text style={styles.planBtnText}>Choose {plan.name}</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.planDivider} />
-              <View style={styles.planFeatures}>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>6 Businesses Limit</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>75 E-Way Bills / Month</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>1 CA Collaboration Access</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Maya AI Voice Billing</Text></View>
-                <View style={styles.planFeatureRow}><Ionicons name="checkmark-circle" size={16} color={Colors.success} /><Text style={styles.planFeatureText}>Core GST Billing & Invoicing</Text></View>
-              </View>
-              <TouchableOpacity style={[styles.planBtn, styles.planBtnRecommended]} onPress={() => handleUpgrade('vistaar')}>
-                <Text style={styles.planBtnTextRecommended}>Choose Vistaar</Text>
-              </TouchableOpacity>
-            </View>
+            ))}
           </View>
         )}
 
@@ -270,25 +398,27 @@ const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   topbarTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
   content: { padding: 12, gap: 12, paddingBottom: 40 },
-  statusCard: { borderRadius: Radius.lg, padding: 24, alignItems: 'center', borderWidth: 1 },
-  statusActive: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
-  statusTrial: { backgroundColor: '#fff7ed', borderColor: '#fed7aa' },
-  statusExpired: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
-  statusCancelled: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
-  statusIconRow: { marginBottom: 12 },
-  statusTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 4 },
-  statusPlan: { fontSize: 13, fontWeight: '700', color: Colors.primary, marginBottom: 4 },
-  statusDays: { fontSize: 13, color: Colors.textSecondary },
+
+  // Status card with gradient
+  statusCard: { borderRadius: Radius.lg, padding: 20, backgroundColor: '#F97316', overflow: 'hidden' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  statusLabel: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  planPill: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 100, alignSelf: 'flex-start', marginTop: 4 },
+  planPillText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+
+  // Cards
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   cardTitle: { fontSize: 14, fontWeight: '600', color: Colors.text, marginBottom: 14 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
-  featureText: { fontSize: 13, color: Colors.text },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginTop: 12, marginBottom: 4 },
+
+  // Section title
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginTop: 12, marginBottom: 4 },
+
+  // Plan cards
   planCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 20, borderWidth: 0.5, borderColor: Colors.border, position: 'relative' },
   planCardRecommended: { borderColor: Colors.primary, borderWidth: 1.5, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
   recommendedBadge: { position: 'absolute', top: -10, right: 20, backgroundColor: Colors.primary, paddingHorizontal: 10, paddingVertical: 2, borderRadius: Radius.sm },
   recommendedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   planName: { fontSize: 18, fontWeight: '700', color: Colors.text },
   planTagline: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
   planPrice: { fontSize: 24, fontWeight: '800', color: Colors.text },
@@ -301,8 +431,27 @@ const styles = StyleSheet.create({
   planBtnRecommended: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   planBtnText: { color: Colors.text, fontSize: 14, fontWeight: '600' },
   planBtnTextRecommended: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  note: { textAlign: 'center', fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
 
+  // Platform badges
+  mobileBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#fff7ed', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#fed7aa' },
+  mobileBadgeText: { color: '#ea580c', fontSize: 10, fontWeight: '700' },
+  bothBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#fff7ed', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#fed7aa' },
+  bothBadgeText: { color: '#c2410c', fontSize: 10, fontWeight: '700' },
+
+  // Billing timeline
+  timelineRow: { flexDirection: 'row', marginBottom: 0 },
+  timelineDotCol: { width: 20, alignItems: 'center', paddingTop: 6 },
+  timelineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
+  timelineLine: { width: 1.5, flex: 1, backgroundColor: Colors.border, marginTop: 4 },
+  timelineContent: { flex: 1, paddingLeft: 10, paddingBottom: 16 },
+  paidBadge: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 100 },
+  paidBadgeText: { color: '#16a34a', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  historyPlan: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  historyDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  historyPaymentId: { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  historyAmount: { fontSize: 14, fontWeight: '700', color: Colors.text },
+
+  // Cancel button
   cancelBtn: { backgroundColor: '#f8fafc', borderBottomWidth: 1, borderColor: '#e2e8f0', borderWidth: 1, borderRadius: Radius.sm, padding: 12, alignItems: 'center' },
   cancelBtnText: { color: '#64748b', fontSize: 14, fontWeight: '600' },
   cancelledBanner: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: Radius.md, padding: 14, gap: 10 },
@@ -310,12 +459,5 @@ const styles = StyleSheet.create({
   resubscribeBtn: { backgroundColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
   resubscribeBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
-  historyRowBorder: { borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  historyPlan: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  historyBadge: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 100 },
-  historyBadgeText: { color: '#16a34a', fontSize: 10, fontWeight: '700', textTransform: 'capitalize' },
-  historyDate: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  historyPaymentId: { fontSize: 11, color: Colors.textMuted, marginTop: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  historyAmount: { fontSize: 14, fontWeight: '700', color: Colors.text }
+  note: { textAlign: 'center', fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
 });
