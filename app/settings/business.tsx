@@ -35,8 +35,11 @@ export default function BusinessSettingsScreen() {
     tagline: '',
     phone: '',
     email: '',
-    address: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
     state: '',
+    pincode: '',
     bank_name: '',
     bank_account_number: '',
     ifsc_code: '',
@@ -64,8 +67,11 @@ export default function BusinessSettingsScreen() {
           tagline: data.tagline || '',
           phone: data.phone || '',
           email: data.email || '',
-          address: data.address_line1 || '',
+          address_line1: data.address_line1 || '',
+          address_line2: data.address_line2 || '',
+          city: data.city || '',
           state: data.state || '',
+          pincode: data.pincode || '',
           bank_name: data.bank_name || '',
           bank_account_number: data.bank_account_number || '',
           ifsc_code: data.ifsc_code || '',
@@ -92,8 +98,11 @@ export default function BusinessSettingsScreen() {
         tagline: form.tagline,
         phone: form.phone,
         email: form.email,
-        address_line1: form.address, // Fixed critical bug
+        address_line1: form.address_line1,
+        address_line2: form.address_line2 ? form.address_line2 : null,
+        city: form.city,
         state: form.state,
+        pincode: form.pincode,
         bank_name: form.bank_name,
         bank_account_number: form.bank_account_number,
         ifsc_code: form.ifsc_code,
@@ -262,7 +271,7 @@ export default function BusinessSettingsScreen() {
     }
   };
 
-  const Field = ({ label, field, placeholder, keyboardType, autoCapitalize, onChangeText }: any) => (
+  const Field = ({ label, field, placeholder, keyboardType, autoCapitalize, onChangeText, maxLength }: any) => (
     <View style={{ marginBottom: 14 }}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
@@ -273,6 +282,7 @@ export default function BusinessSettingsScreen() {
         placeholderTextColor={Colors.textMuted}
         keyboardType={keyboardType || 'default'}
         autoCapitalize={autoCapitalize || 'words'}
+        maxLength={maxLength}
       />
     </View>
   );
@@ -307,8 +317,11 @@ export default function BusinessSettingsScreen() {
           <Text style={styles.sectionTitle}>Contact & Address</Text>
           <Field label="Phone" field="phone" placeholder="Mobile number" keyboardType="phone-pad" autoCapitalize="none" />
           <Field label="Email" field="email" placeholder="business@email.com" keyboardType="email-address" autoCapitalize="none" />
-          <Field label="State" field="state" placeholder="Maharashtra" />
-          <Field label="Address" field="address" placeholder="Full business address" />
+          <Field label="Address Line 1" field="address_line1" placeholder="Building, Street, Area" />
+          <Field label="Address Line 2 (optional)" field="address_line2" placeholder="Suite, Landmark, etc." />
+          <Field label="City" field="city" placeholder="City" />
+          <Field label="State" field="state" placeholder="State" />
+          <Field label="Pincode" field="pincode" placeholder="6-digit pincode" keyboardType="numeric" maxLength={6} autoCapitalize="none" />
         </View>
 
         {/* SECTION 3: BANK DETAILS */}
