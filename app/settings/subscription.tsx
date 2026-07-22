@@ -441,7 +441,7 @@ export default function SubscriptionScreen() {
                     <Text style={styles.planName}>{plan.name}</Text>
                     <Text style={styles.planTagline}>{plan.tagline}</Text>
                   </View>
-                  <View style={{ alignItems: 'flex-end' }}>
+                  <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
                     <Text style={styles.planPrice}>{plan.price}</Text>
                     <Text style={styles.planPriceSub}>{plan.period}</Text>
                   </View>
@@ -559,7 +559,7 @@ const styles = StyleSheet.create({
   planDivider: { height: 0.5, backgroundColor: Colors.border, marginVertical: 16 },
   planFeatures: { gap: 10, marginBottom: 20 },
   planFeatureRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  planFeatureText: { fontSize: 13, color: Colors.text },
+  planFeatureText: { fontSize: 13, color: Colors.text, flex: 1 },
   planBtn: { backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, padding: 12, alignItems: 'center' },
   planBtnRecommended: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   planBtnText: { color: Colors.text, fontSize: 14, fontWeight: '600' },
