@@ -5,17 +5,19 @@ import * as SecureStore from 'expo-secure-store';
 
 const STORAGE_KEY = 'udyog_save_folder_uri';
 
-export async function savePdfToAndroidOrShare(
+export async function saveFileToAndroidOrShare(
   cachedUri: string,
   fileName: string,
-  dialogTitle: string
+  dialogTitle: string,
+  mimeType: string = 'application/pdf',
+  uti: string = 'com.adobe.pdf'
 ): Promise<void> {
   if (Platform.OS !== 'android') {
     // iOS standard sharing sheet
     await Sharing.shareAsync(cachedUri, {
-      mimeType: 'application/pdf',
+      mimeType: mimeType,
       dialogTitle: dialogTitle,
-      UTI: 'com.adobe.pdf',
+      UTI: uti,
     });
     return;
   }
@@ -33,9 +35,9 @@ export async function savePdfToAndroidOrShare(
       if (!permissions.granted) {
         // Fallback to Sharing.shareAsync if canceled/denied
         await Sharing.shareAsync(cachedUri, {
-          mimeType: 'application/pdf',
+          mimeType: mimeType,
           dialogTitle: dialogTitle,
-          UTI: 'com.adobe.pdf',
+          UTI: uti,
         });
         return;
       }
@@ -74,11 +76,11 @@ export async function savePdfToAndroidOrShare(
       encoding: 'base64',
     });
 
-    // 4. Create the PDF file in the SAF directory
+    // 4. Create the destination file in the SAF directory
     const newFileUri = await StorageAccessFramework.createFileAsync(
       udyogFolderUri,
       fileName,
-      'application/pdf'
+      mimeType
     );
 
     if (!newFileUri) {
@@ -99,13 +101,29 @@ export async function savePdfToAndroidOrShare(
     // Graceful fallback to share sheet for this attempt
     try {
       await Sharing.shareAsync(cachedUri, {
-        mimeType: 'application/pdf',
+        mimeType: mimeType,
         dialogTitle: dialogTitle,
-        UTI: 'com.adobe.pdf',
+        UTI: uti,
       });
     } catch (shareErr) {
       console.log('Fallback sharing error:', shareErr);
-      Alert.alert('Error', 'Could not save or share PDF. Please try again.');
+      Alert.alert('Error', 'Could not save or share file. Please try again.');
     }
   }
+}
+
+export async function savePdfToAndroidOrShare(
+  cachedUri: string,
+  fileName: string,
+  dialogTitle: string
+): Promise<void> {
+  return saveFileToAndroidOrShare(cachedUri, fileName, dialogTitle, 'application/pdf', 'com.adobe.pdf');
+}
+
+export async function saveCsvToAndroidOrShare(
+  cachedUri: string,
+  fileName: string,
+  dialogTitle: string
+): Promise<void> {
+  return saveFileToAndroidOrShare(cachedUri, fileName, dialogTitle, 'text/csv', 'public.comma-separated-values-text');
 }

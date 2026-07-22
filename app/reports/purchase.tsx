@@ -4,8 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, BackHandler
+  ActivityIndicator, BackHandler, Alert
 } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { saveCsvToAndroidOrShare } from '../../services/safHelper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
@@ -47,6 +49,7 @@ export default function PurchaseReportScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [bills, setBills] = useState<PurchaseBill[]>([]);
 
   // Filter states
@@ -133,15 +136,80 @@ export default function PurchaseReportScreen() {
 
   const fmt = (n: number) => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
+  const escapeCsv = (str: any) => {
+    if (str === null || str === undefined) return '';
+    const s = String(str);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const handleExportCsv = async () => {
+    if (bills.length === 0) {
+      Alert.alert('No Data', 'There are no purchase bills to export for this period.');
+      return;
+    }
+
+    setExporting(true);
+    try {
+      const headers = ['Bill No', 'Date', 'Vendor Name', 'Taxable Amount', 'GST', 'Total Amount', 'Status'];
+      const rows = bills.map(bill => [
+        escapeCsv(bill.bill_number),
+        escapeCsv(bill.bill_date),
+        escapeCsv(bill.vendor_name),
+        escapeCsv(bill.taxable_amount.toFixed(2)),
+        escapeCsv(bill.total_tax.toFixed(2)),
+        escapeCsv(bill.total_amount.toFixed(2)),
+        escapeCsv(bill.payment_status)
+      ].join(','));
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+
+      const periodLabel = filterType === 'monthly'
+        ? recentMonths[selectedMonthIdx].label.replace(/\s+/g, '_')
+        : 'Custom';
+      const fileName = `Purchase_Report_${periodLabel}.csv`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      await saveCsvToAndroidOrShare(fileUri, fileName, 'Export Purchase Report');
+    } catch (err) {
+      console.log('CSV export error:', err);
+      Alert.alert('Error', 'Failed to export Purchase Report CSV.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Top Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/more')} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color={Colors.text} />
+        <View style={[styles.headerRow, { justifyContent: 'space-between' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => router.replace('/(tabs)/more')} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={22} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Purchase Report</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.exportBtn, exporting && { opacity: 0.7 }]}
+            onPress={handleExportCsv}
+            disabled={exporting || loading}
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color="#F97316" />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={16} color="#F97316" />
+                <Text style={styles.exportBtnText}>Export</Text>
+              </>
+            )}
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Purchase Report</Text>
         </View>
       </View>
 
@@ -324,6 +392,22 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   backBtn: { padding: 4, marginRight: 8 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F97316',
+  },
 
   filterBar: { backgroundColor: Colors.card, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: Colors.border, gap: 10 },
   filterToggleRow: { flexDirection: 'row', alignSelf: 'center', backgroundColor: '#F1F5F9', borderRadius: Radius.sm, padding: 3, width: '92%' },
