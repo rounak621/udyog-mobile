@@ -187,6 +187,7 @@ export default function SubscriptionScreen() {
   const days = daysLeft();
   const total = totalDays();
   const progress = total > 0 ? days / total : 0;
+  const currentPlanId = (business?.subscription_plan || '').toLowerCase();
   const planName = (business?.subscription_plan || 'basic').toUpperCase();
 
   return (
@@ -300,18 +301,23 @@ export default function SubscriptionScreen() {
           </View>
         )}
 
-        {/* Plan Cards */}
-        {!isActive && !isCancelled && (
-          <View style={{ gap: 12, marginTop: 12 }}>
-            {/* Mobile Plans Section */}
-            <Text style={styles.sectionTitle}>📱 For Mobile</Text>
-            {MOBILE_PLANS.filter(p => p.platform === 'mobile').map(plan => (
-              <View key={plan.id} style={[styles.planCard, plan.recommended && styles.planCardRecommended]}>
-                {plan.recommended && (
+        {/* Plan Cards (Always Visible) */}
+        <View style={{ gap: 12, marginTop: 12 }}>
+          {/* Mobile Plans Section */}
+          <Text style={styles.sectionTitle}>📱 For Mobile</Text>
+          {MOBILE_PLANS.filter(p => p.platform === 'mobile').map(plan => {
+            const isCurrent = isActive && plan.id === currentPlanId;
+            return (
+              <View key={plan.id} style={[styles.planCard, plan.recommended && !isCurrent && styles.planCardRecommended, isCurrent && styles.planCardCurrent]}>
+                {isCurrent ? (
+                  <View style={styles.currentBadge}>
+                    <Text style={styles.currentBadgeText}>✓ CURRENT PLAN</Text>
+                  </View>
+                ) : plan.recommended ? (
                   <View style={styles.recommendedBadge}>
                     <Text style={styles.recommendedBadgeText}>RECOMMENDED</Text>
                   </View>
-                )}
+                ) : null}
                 {/* Platform badge */}
                 <View style={styles.mobileBadge}>
                   <Text style={styles.mobileBadgeText}>Mobile</Text>
@@ -341,16 +347,32 @@ export default function SubscriptionScreen() {
                     </View>
                   ))}
                 </View>
-                <TouchableOpacity style={[styles.planBtn, plan.recommended && styles.planBtnRecommended]} onPress={() => handleUpgrade(plan.id)}>
-                  <Text style={plan.recommended ? styles.planBtnTextRecommended : styles.planBtnText}>Choose {plan.name}</Text>
-                </TouchableOpacity>
+                {isCurrent ? (
+                  <TouchableOpacity style={styles.planBtnCurrent} disabled={true}>
+                    <Text style={styles.planBtnTextCurrent}>✓ Current Plan</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={[styles.planBtn, plan.recommended && styles.planBtnRecommended]} onPress={() => handleUpgrade(plan.id)}>
+                    <Text style={plan.recommended ? styles.planBtnTextRecommended : styles.planBtnText}>
+                      {isActive ? `Upgrade to ${plan.name}` : `Choose ${plan.name}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            ))}
+            );
+          })}
 
-            {/* Mobile + Web Plans Section */}
-            <Text style={[styles.sectionTitle, { marginTop: 12 }]}>📱 + 🖥 For Mobile + Web</Text>
-            {MOBILE_PLANS.filter(p => p.platform === 'both').map(plan => (
-              <View key={plan.id} style={styles.planCard}>
+          {/* Mobile + Web Plans Section */}
+          <Text style={[styles.sectionTitle, { marginTop: 12 }]}>📱 + 🖥 For Mobile + Web</Text>
+          {MOBILE_PLANS.filter(p => p.platform === 'both').map(plan => {
+            const isCurrent = isActive && plan.id === currentPlanId;
+            return (
+              <View key={plan.id} style={[styles.planCard, isCurrent && styles.planCardCurrent]}>
+                {isCurrent && (
+                  <View style={styles.currentBadge}>
+                    <Text style={styles.currentBadgeText}>✓ CURRENT PLAN</Text>
+                  </View>
+                )}
                 {/* Platform badge */}
                 <View style={styles.bothBadge}>
                   <Text style={styles.bothBadgeText}>Mobile + Web</Text>
@@ -380,13 +402,21 @@ export default function SubscriptionScreen() {
                     </View>
                   ))}
                 </View>
-                <TouchableOpacity style={styles.planBtn} onPress={() => handleUpgrade(plan.id)}>
-                  <Text style={styles.planBtnText}>Choose {plan.name}</Text>
-                </TouchableOpacity>
+                {isCurrent ? (
+                  <TouchableOpacity style={styles.planBtnCurrent} disabled={true}>
+                    <Text style={styles.planBtnTextCurrent}>✓ Current Plan</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.planBtn} onPress={() => handleUpgrade(plan.id)}>
+                    <Text style={styles.planBtnText}>
+                      {isActive ? `Upgrade to ${plan.name}` : `Choose ${plan.name}`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            ))}
-          </View>
-        )}
+            );
+          })}
+        </View>
 
         <Text style={styles.note}>Payments are processed securely via Razorpay on the web app.</Text>
       </ScrollView>
@@ -416,8 +446,11 @@ const styles = StyleSheet.create({
   // Plan cards
   planCard: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 20, borderWidth: 0.5, borderColor: Colors.border, position: 'relative' },
   planCardRecommended: { borderColor: Colors.primary, borderWidth: 1.5, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  planCardCurrent: { borderColor: '#16a34a', borderWidth: 2 },
   recommendedBadge: { position: 'absolute', top: -10, right: 20, backgroundColor: Colors.primary, paddingHorizontal: 10, paddingVertical: 2, borderRadius: Radius.sm },
   recommendedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  currentBadge: { position: 'absolute', top: -10, right: 20, backgroundColor: '#16a34a', paddingHorizontal: 10, paddingVertical: 2, borderRadius: Radius.sm },
+  currentBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
   planHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   planName: { fontSize: 18, fontWeight: '700', color: Colors.text },
   planTagline: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
@@ -431,6 +464,8 @@ const styles = StyleSheet.create({
   planBtnRecommended: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   planBtnText: { color: Colors.text, fontSize: 14, fontWeight: '600' },
   planBtnTextRecommended: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  planBtnCurrent: { backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', borderRadius: Radius.sm, padding: 12, alignItems: 'center' },
+  planBtnTextCurrent: { color: '#16a34a', fontSize: 14, fontWeight: '700' },
 
   // Platform badges
   mobileBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: '#fff7ed', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 100, borderWidth: 1, borderColor: '#fed7aa' },
