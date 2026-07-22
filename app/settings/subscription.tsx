@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Linking, Alert
+  TouchableOpacity, ActivityIndicator, Linking, Alert, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
