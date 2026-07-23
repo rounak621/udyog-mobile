@@ -15,10 +15,78 @@ Android first. Same backend as web app (api.udyogbook.in).
 github.com/rounak621/udyog-mobile
 
 ## Architecture
-- Backend: Shared with web app (api.udyogbook.in) — no changes needed
+- Backend: Shared with web app (api.udyogbook.in) — single source of truth for business logic
 - Auth: Clerk React Native SDK
 - Navigation: Expo Router with tab + stack navigation
 - State: React hooks + Context (no Redux)
+
+### Single Source of Truth & Business Logic Isolation
+* **Backend as Single Source of Truth**: The FastAPI backend (`api.udyogbook.in/api/v1`) is the single source of truth for all business logic, financial calculations (GST breakdown, tax slabs, round-off), auto-numbering sequences, inventory stock tracking, and user authorization/subscription enforcement. Both web (`app.udyogbook.in`) and mobile (`udyog-mobile`) consume identical API endpoints.
+* **Platform Separation**: Mobile-specific code covers UI rendering, layout responsiveness, user interaction workflows, and native device hardware integrations (microphone, Storage Access Framework, share sheet, camera). Zero business calculation or validation rules are independently invented or duplicated on the mobile client.
+
+### 1. Maya AI Voice & Text Assistant Architecture
+* **Two-Step Architecture**: Maya utilizes a decoupled two-step processing pipeline:
+  1. `/ai/transcribe`: Fast Speech-To-Text (STT) endpoint utilizing OpenAI Whisper for rapid audio-to-text conversion.
+  2. `/ai/maya-chat`: Reasoning and intent-parsing endpoint utilizing Gemini LLM models. Accepts natural language text, user conversation history, and business context, returning structured JSON containing reply text, intent actions, and bill/rental drafts.
+* **Session Registration Pattern**: Implemented via `MayaRecordingContext` exposing `registerSession` and `clearSession` methods. Allows cross-screen mic access and background audio processing across tab switches while managing audio recording streams cleanly without memory leaks or race conditions.
+* **Tail-Buffer Delay Pattern**: Audio capture uses a mandatory tail-buffer delay (~300-500ms) before executing `safeUnloadRecording()`. This ensures trailing audio words/silence cutoffs are fully captured before the native audio encoder unloads.
+* **Supported Action Types & Generated UI**:
+  * `draft_invoice`: Renders an Interactive Invoice Draft Card displaying customer details, itemized breakdown, CGST/SGST/IGST breakdown, grand total, and action buttons (`Create Invoice`, `Edit`, `Cancel`).
+  * `draft_rental`: Renders an Interactive Rental Draft Card displaying rental products, duration/dates, customer details, and actions (`Create Rental`, `Edit`, `Cancel`).
+  * `edit_draft`: Dynamically updates active draft state and re-renders draft cards with updated quantities, rates, or items.
+  * `create_customer`: Renders a Customer Creation Confirmation Card pre-filling customer name, phone, GSTIN, and state with a single-tap save button.
+  * `create_item`: Renders an Item Creation Confirmation Card pre-filling item name, sale price, and GST slab with a single-tap save button.
+  * `check_balance`: Renders a Financial Balance Summary Card highlighting cash-in-hand, bank balances, and pending receivables.
+  * `show_bills_summary`: Renders a Bills Summary Card with sales totals, paid/unpaid counts, and overdue figures.
+  * `show_purchase_summary`: Renders a Purchase Summary Card with total vendor purchases, payables, and recent purchase bills.
+  * `navigate`: Triggers programmatic Expo Router navigation (e.g., `router.push('/invoices')`, `/reports`, `/party/create`).
+  * `ask_question`: Renders a conversational assistant text response card without any invoice draft UI.
+* **TTS Removal Decision**: Text-To-Speech (TTS) audio playback was explicitly removed for v1. Maya v1 operates strictly with text and visual UI cards. TTS playback was deferred to v2 to eliminate audio playback latency (~2-4 seconds), eliminate `expo-av` sound player locking issues, and reduce bandwidth/memory overhead on low-end Android devices.
+
+### 2. Payment System Architecture
+* **Sales Invoices & Purchase Bills Parity**: Both Sales Invoices and Purchase Bills share identical payment capability:
+  * **Partial Payments**: Record multiple partial payments against an unpaid or partially paid document until fully settled.
+  * **Payment Timeline**: Detailed chronological payment timeline modal rendering transaction date, payment mode (Cash, UPI, Net Banking, Cheque), reference number, and amount.
+  * **Payment Revert**: Supports reversing/deleting any individual payment entry. Automatically recalculates document status back to `PARTIAL` or `UNPAID` and updates outstanding balance ledger totals on the backend.
+* **Safe Audio Unload Pattern (`safeUnloadRecording`)**: Reusable pattern applied during audio capture to prevent native thread crashes or lockups during rapid microphone toggle interactions.
+
+### 3. Report Exports & Storage Access Framework (SAF)
+* **CSV Export**: Client-side string generation building standard RFC 4180 CSV streams for Sales Registers, Purchase Registers, Day Book, and Party Ledgers.
+* **PDF Export**: Uses `expo-print` to compile dynamic HTML templates into vector PDF files locally on the device.
+* **Shared Storage Helper (`safHelper.ts`)**:
+  * **Android SAF Integration**: Uses Android's Storage Access Framework (SAF) to save exported files directly into user-designated local storage folders (e.g., `Documents/Udyog`).
+  * **Persistent Directory Permission**: Folder permissions granted by the user are stored securely using `expo-secure-store`. Subsequent exports re-use this saved permission uri without prompting the user repeatedly.
+  * **Filename De-duplication**: Automatically checks target directory contents and appends sequence tags (`(1)`, `(2)`) or timestamps if a file with the same name already exists.
+  * **Selective Permission-Error Handling**: Gracefully traps SAF permission revocations or user-cancellation exceptions (`E_USER_CANCELLED`), falling back to Expo's native share sheet (`expo-sharing`) so export never fails silently.
+
+### 4. Subscription System Architecture
+* **Dual Database Sync (`businesses` + `users` tables)**:
+  * Subscription columns (`subscription_plan`, `subscription_expires_at`, `plan_status`, `is_trial`) exist on BOTH the `businesses` table and the `users` table in PostgreSQL.
+  * **CRITICAL INVARIANT**: Any subscription update, renewal, or manual restore MUST update both `businesses` and `users` tables simultaneously. (Confirmed production bug: restoring subscription on `businesses` while leaving `users` out of sync caused access-gating inconsistencies).
+* **Handover-Token Web-Checkout Pattern**:
+  * Mobile application initiates plan upgrades by fetching a short-lived auth handover token from `/auth/handover-token`.
+  * The mobile app opens web checkout (`https://app.udyogbook.in/checkout?token=...`) in browser/WebBrowser.
+  * Payment is completed securely via Razorpay on web, after which subscription state syncs across both tables and reflects in mobile upon refocusing the app.
+* **Platform-Restricted Plans & Interface Filtering (Option C)**:
+  * Plan Tiers:
+    * `Saral` & `Vistaar`: Mobile-only plans.
+    * `Basic` & `Pro`: Web-only plans.
+    * `Premium` & `Enterprise`: Dual-platform plans (Web + Mobile access).
+  * **Interface-Level Enforcement (Option C)**: Because mobile checkout redirects users to a web-based payment flow where HTTP requests become indistinguishable from standard web traffic, plan restriction is enforced purely via UI/interface-level filtering (hiding web-only plans on mobile and mobile-only plans on web) rather than rigid backend blocking.
+
+### 5. PDF Preview Architecture
+* **PDF.js WebView Renderer**: Standardized on a custom PDF.js HTML renderer embedded inside `<WebView>`, replacing the previous Google Docs Viewer (`https://docs.google.com/gview?embedded=true&url=...`). Google Docs Viewer was removed due to severe fixed-scale zoom bugging, text letterboxing, and intermittent HTTP 204 loading failures on mobile screens.
+* **Backend Inlining Requirement**: Requires backend endpoints to accept the `?mode=inline` query parameter, instructing the server to return PDF binaries with `Content-Disposition: inline` instead of `Content-Disposition: attachment`.
+* **CORS Origin Allowance**: Backend CORS policy explicitly allows `"null"` origins to permit local WebView fetch operations (`file://` or `about:blank` origins) to retrieve PDF binary streams cleanly.
+
+### 6. Native Rebuild Requirements vs. JS Reload
+* **EAS Native Build (`eas build`) vs. Dev Client Reload (`expo start --dev-client`)**:
+  * **JS Reload Sufficient**: Modifying React Native components, styling, hooks, state management, screen navigation, or pure JS utility functions.
+  * **Fresh Native Build Required**: Any modification to `app.json` (Android permissions, scheme, plugins, deep links, `google-services.json`), OR installing/updating any native module dependency containing C++/Java/Kotlin native code (e.g. `expo-print`, `expo-av`, `expo-secure-store`, `@react-native-firebase/app`).
+* **Real Production Incident Lessons**:
+  1. *Firebase Push Notifications*: Adding `google-services.json` and `@react-native-firebase/app` to JS code failed silently until a fresh EAS build produced a native APK containing the Firebase Android SDK initialization hooks.
+  2. *Maya Microphone Permissions*: Updating `app.json` to request `RECORD_AUDIO` permission had no effect under JS reload until a new native binary compiled the permission string into `AndroidManifest.xml`.
+  3. *PDF Printing (`expo-print`)*: Installing `expo-print` crashed the JS bundle on reload because the native Java print service bridge was missing from the running dev client binary.
 
 ## Infrastructure Notes
 - Production database is AWS RDS PostgreSQL (`udyog-prod.c7smismgi9rk.ap-south-1.rds.amazonaws.com`, db: `udyog_prod`), connection string in `~/billmitra-backend/.env.production` on EC2 — NOT Neon. Any references to Neon as the production database elsewhere are outdated.

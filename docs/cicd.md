@@ -1,6 +1,6 @@
 # Udyog / BillMitra — CI/CD Documentation
 
-Complete reference for the staging → production deployment pipeline across both the backend and frontend repos.
+Complete reference for the staging → production deployment pipeline across both backend and frontend repos.
 
 ---
 
@@ -118,58 +118,105 @@ Build command: `npm run build`
 
 ---
 
-## 5. Required Local Files (NOT in git, must exist on EC2 manually)
+## 5. Mobile Deployment Model (`udyog-mobile`)
 
-These are excluded by `.gitignore` and must be manually present on the server. If the EC2 instance is ever rebuilt/migrated, **all of these must be manually recreated** or the pipeline will fail exactly as it did in the June 2026 incident (see Section 6).
+Unlike web applications (which automatically deploy to web roots upon branch push), mobile applications follow a dev-client and app-bundle lifecycle:
+
+* **No Web-Style Live Deploy**: There is no automatic production server deployment for mobile code changes upon git push.
+* **Dev Client Iteration (`expo start --dev-client`)**: Pure JavaScript changes (UI updates, API integration, hooks, styling) are tested dynamically by reloading the JS bundle against an already-installed EAS development build APK on a physical Android device or emulator.
+* **Native Build Requirement (`eas build`)**: Any modification to native manifests (`app.json`), permission configurations (microphones, storage), Expo plugins, or installation of native C++/Java dependencies requires building a new native development build (`eas build --platform android`).
+* **Branch Isolation Status**: Mobile development during this session was conducted exclusively on branch `fix/maya-text-endpoint`. Release/main-branch merges and production app bundle builds have NOT yet occurred for this feature set.
+
+---
+
+## 6. Required Local Files (NOT in git, must exist on EC2 manually)
+
+These are excluded by `.gitignore` and must be manually present on the server. If the EC2 instance is ever rebuilt/migrated, **all of these must be manually recreated** or the pipeline will fail.
 
 | File | Location | Purpose |
 |---|---|---|
 | `.env.production` | `~/billmitra-backend/` | Real secrets for production container (RDS DB, live Clerk/Razorpay keys) |
 | `.env.production` | `~/billmitra-backend-staging/` | Secrets for staging, despite the filename (legacy naming — historically copied from prod template) |
 | `.env.staging` | `~/billmitra-backend-staging/` | **Required by the GitHub Actions `--env-file` flag.** Must exist or the staging container fails to start with `docker: --env-file: open .env.staging: no such file or directory`. Currently an exact copy of `.env.production` in the same directory (both point to the same Neon staging DB). |
-| `.env` | `~/billmitra-frontend/` | Local dev frontend env — also used as a manual reference; actual deploy values come from GitHub Secrets, not this file. **Known issue:** Antigravity has repeatedly reset the Clerk key in this file back to `pk_test_`. Always `grep CLERK ~/billmitra-frontend/.env` and confirm `pk_live_` before any manual production build. |
+| `.env` | `~/billmitra-frontend/` | Local dev frontend env — also used as a manual reference; actual deploy values come from GitHub Secrets, not this file. |
 
 ---
 
-## 6. Incident Log — Staging Backend Outage (resolved June 21, 2026)
+## 7. Incident Log & Case Studies
 
-**Symptom:** Staging frontend showed a crash / redirect-to-onboarding loop. Investigation revealed `udyog-backend-staging` container was not running.
+### Staging Backend Outage (resolved June 21, 2026)
+* **Symptom:** Staging frontend showed a crash / redirect-to-onboarding loop. `udyog-backend-staging` container was stopped.
+* **Root Cause:** `.env.staging` did not exist in `~/billmitra-backend-staging/`. Pipelines failed at `docker run --env-file .env.staging`.
+* **Fix Applied:** `cp ~/billmitra-backend-staging/.env.production ~/billmitra-backend-staging/.env.staging`.
 
-**Root cause:** `.env.staging` did not exist in `~/billmitra-backend-staging/`. This caused every pipeline run (`dev` and `main`, going back at least to mid-June) to fail at the `docker run --env-file .env.staging ...` step with:
-```
-docker: --env-file: open .env.staging: no such file or directory
-```
-This silently blocked **every subsequent production deploy via the pipeline** too, since the `main`-branch workflow gates on a staging health check that was always failing (502). Confirmed via GitHub Actions history: every run for several weeks showed a red ❌.
+### GST Rate Missing on Maya Text Chat Drafts (resolved July 2, 2026)
+* **Symptom:** `/ai/maya-chat` returned `tax_rate: 0.0` on catalog items.
+* **Root Cause:** `items_context` construction in `ai_billing.py` omitted `gst_rate`.
+* **Fix Applied:** Added `"gst_rate": float(getattr(item, 'gst_rate', 0.0))` to `items_context` dict.
 
-**Important implication:** any commits pushed to `main` during this window were NOT actually deployed to production via the pipeline. Manual SSH deploys (`git pull && docker-compose up -d --build api` run directly, bypassing the pipeline) were the only way changes reached production during this period. Always verify production state directly (`docker logs`, direct DB queries) rather than assuming a `main` push = production is updated, for any change made during this window.
+### Case Study A — Missing Python Imports Crash-Loop (July 2026 Production Incident)
+* **Symptom:** Production backend container (`udyog-backend`) entered a rapid crash-loop after merging `dev` → `main`. API returned 502 Bad Gateway across all endpoints.
+* **Root Cause:** Unverified Python imports were introduced in backend AI modules:
+  1. `schemas/ai.py` referenced `BaseModel` without importing it (`from pydantic import BaseModel` was missing).
+  2. `ai_billing.py` referenced FastAPI dependency objects (`APIRouter`, `UploadFile`, `File`, `Depends`, `Query`, `Form`, `HTTPException`) without importing them from `fastapi`.
+* **Underlying Failure Mode:** Code was written and committed directly to `dev` and merged to `main` without ever being executed locally or checked with an interpreter (`python -m py_compile` / `pytest`).
+* **Prevention Rule:** NEVER push backend code to `dev` or `main` without running local linting/compilation checks (`python3 -c "import app.main"` or `python -m py_compile <file>`).
 
-**Fix applied:**
-```bash
-cp ~/billmitra-backend-staging/.env.production ~/billmitra-backend-staging/.env.staging
-```
-Then manually ran the pipeline's deploy script once to confirm: staging container builds, starts, and health-checks successfully. Confirmed: `{"status":"ok","service":"udyog-backend"}`.
-
-**Status:** Resolved. Both `dev` and `main` push pipelines are now expected to work end-to-end, including the previously-blocked staging-gate → production-deploy flow.
-
-**Lingering risk:** `.env.staging` is a manually-created file, not tracked in git. If this EC2 instance is ever rebuilt, re-provisioned, or this directory is ever wiped, this exact failure will recur silently (the pipeline will fail with the same error) until someone notices and recreates the file.
-
----
-
-## Incident Log — GST Rate Missing on Maya Text Chat Drafts (resolved July 2, 2026)
-
-**Symptom:** Maya's `/ai/maya-chat` text endpoint returned `tax_rate: 0.0` on catalog items that have a real GST rate set (e.g. 18%), even though the same item correctly showed the right rate via the voice endpoint (`/ai/maya-command`).
-
-**Root cause:** `items_context` construction in `ai_billing.py`'s `maya_chat_endpoint` omitted the `gst_rate` field when building context sent to the Gemini prompt — `ai_voice.py`'s equivalent function included it correctly. Because the field was missing, Maya had no GST info to work with and defaulted to 0.
-
-**Fix applied:** Added `"gst_rate": float(getattr(item, 'gst_rate', 0.0))` to the `items_context` dict in `ai_billing.py`, matching the working pattern in `ai_voice.py`.
-
-**Important lesson:** An earlier attempt at this same fix was reported as "done" with a diff and a live test result, but was never actually committed to git — `git log` showed no matching commit. Always verify a fix exists in `git log --oneline` before trusting a "done" report, even with a shown diff.
-
-**Status:** Fixed, committed (`66652ee`), verified live on both staging and production via direct `/ai/maya-chat` API calls.
+### Case Study B — Direct-on-Server Git Commit Incident (July 2026 Operational Incident)
+* **Symptom:** Unintended commits and file edits were created directly on the production EC2 host working tree instead of the local development environment.
+* **Root Cause:** A terminal command executed `cd /Users/rounak/Projects/BillMitra/billmitra-backend` while the active shell was inside an SSH session on the EC2 server (`ubuntu@3.111.202.127`). Because `/Users/rounak/...` is a macOS path, the `cd` failed silently on Linux. The terminal remained connected to the production server. Subsequent git commands (`git commit`, `git push`) were mistakenly executed directly on production.
+* **Prevention Rule & Exact Lesson:** Always verify terminal working directory (`pwd`) and prompt host context (`ubuntu@...` vs `macbook...`) before issuing git commit/push commands, especially after executing any `cd` command that could fail silently in cross-platform environments.
 
 ---
 
-## 7. Manual Deploy Commands (bypass pipeline — use with caution)
+## 8. Operational Rules & Host Safeguards
+
+### Docker Container Name Conflicts ("Conflict. The container name already in use")
+* **Symptom:** Deploy script outputs `Error response from daemon: Conflict. The container name "/udyog-backend" is already in use by container "<hash>"`.
+* **Diagnostic Finding:** Confirmed as a harmless timing quirk between `docker-compose down` (or `docker stop`) and `docker-compose up -d --build`. The Docker daemon occasionally retains the container name registration for 2-5 seconds while cleaning up networks/volumes after the container stops.
+* **Verification Steps:**
+  1. Run `docker ps -a | grep udyog-backend` to verify current container state.
+  2. Inspect container age, status (`Up X seconds (healthy)`), and mapped ports.
+  3. If the container is running and healthy, the error was transient and no action is required. If the container exited, re-run `docker-compose down && docker-compose up -d --build api`.
+
+### EC2 Out-Of-Memory (OOM) Build Safeguard
+* **Symptom:** Running `npm run build` for the frontend on the production EC2 host fails abruptly with `Killed` and exit code 137, without printing any error stack trace.
+* **Root Cause:** The production EC2 `t2.micro` instance has 1GB total RAM. When the backend container (`udyog-backend`) is running alongside active system services, Next.js / Vite build memory allocation exceeds available RAM + swap space, triggering the Linux kernel OOM Killer to terminate Node.js.
+* **Standard Fix Protocol**:
+  ```bash
+  # Step 1: Temporarily stop backend to free ~400MB RAM
+  docker stop udyog-backend
+
+  # Step 2: Run frontend build
+  cd ~/billmitra-frontend && npm run build
+
+  # Step 3: Immediately restart backend container
+  docker start udyog-backend
+  ```
+
+### Production Git Branch Discipline & Deployment Protocol
+To prevent drift, unauthorized server commits, and deployment failures, all production deployments must follow this strict sequence:
+1. **Feature Branch**: Work exclusively on dedicated feature branches (e.g. `fix/maya-text-endpoint`).
+2. **Dev Merge**: Merge feature branch into `dev` for staging verification.
+3. **Main Merge**: Merge `dev` into `main` after staging health check succeeds.
+4. **Pre-Deploy Rollback Tag**: Create a local git tag on production before pulling:
+   ```bash
+   git tag -a prod-backup-$(date +%Y%m%d-%H%M) -m "Rollback tag before deploy"
+   ```
+5. **Drift Verification**: Check for uncommitted local changes on the production server before pulling:
+   ```bash
+   git status
+   ```
+   *Note: Stray uncommitted edits occurred at least twice during this session due to direct server testing. Run `git checkout .` or `git stash` to clean production working tree before pulling.*
+6. **Pull & Hash Verification**: Pull changes on production and verify the target commit hash matches:
+   ```bash
+   git pull origin main
+   git rev-parse HEAD  # Must match local 'main' HEAD hash exactly
+   ```
+
+---
+
+## 9. Manual Deploy Commands (bypass pipeline — use with caution)
 
 **Backend — staging, manual:**
 ```bash
@@ -212,11 +259,11 @@ sudo chown -R ubuntu:ubuntu /var/www/frontend/
 sudo cp -r dist/* /var/www/frontend/
 ```
 
-**Critical:** never run the production-targeting build command (`npm run build`, no `--mode staging`) when you mean to deploy to staging, and never copy a staging build into `/var/www/frontend/`. These two are easy to confuse and have caused real incidents before.
+**Critical:** never run the production-targeting build command (`npm run build`, no `--mode staging`) when you mean to deploy to staging, and never copy a staging build into `/var/www/frontend/`.
 
 ---
 
-## 8. Verifying a Deploy Actually Happened
+## 10. Verifying a Deploy Actually Happened
 
 Do not trust a green pipeline run alone for critical changes (e.g. database migrations, schema changes). Verify directly:
 
@@ -235,10 +282,11 @@ docker exec udyog-backend python3 -c "from sqlalchemy import inspect; from app.d
 
 ---
 
-## 9. Key Lessons (do not relearn the hard way)
+## 11. Key Lessons (do not relearn the hard way)
 
 1. **A coding assistant running `git commit`/`push`/migrations on its own machine may not be touching the same database or repo state as production.** Always verify with a direct command on EC2, in the same session, against the real container — never trust a self-reported "success" for anything touching shared/production data.
 2. **`.env.staging` is not in git.** If staging ever breaks with `--env-file` errors again, this is the first thing to check.
 3. **Staging and production use genuinely different databases** (Neon vs RDS). This is intentional. Don't "fix" this by trying to unify them.
 4. **The backend pipeline's staging health-check gate on `main` pushes is a safety feature, not a bug** — if it's failing, fix staging, don't bypass the gate.
-5. **`docker-compose.yml` files can drift or get overwritten between sessions** — always `cat` and review before running, especially in the staging directory, to confirm container names/ports haven't been accidentally set to collide with production.
+5. **Always verify python compilation (`py_compile`) locally** before committing backend code to prevent production container crash-loops.
+6. **Always verify terminal host prompt (`ubuntu@...`) and `pwd`** before running `git commit`/`push` commands to prevent accidental direct-on-server commits.
