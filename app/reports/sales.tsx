@@ -13,6 +13,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { escapeHtml } from '../../utils/escapeHtml';
 
 interface Invoice {
   id: string;
@@ -201,9 +202,9 @@ export default function SalesReportScreen() {
 
       const rowsHtml = invoices.map((inv, idx) => `
         <tr style="background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
-          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; font-weight: 600;">${inv.invoice_number}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${inv.invoice_date}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${inv.customer_name}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; font-weight: 600;">${escapeHtml(inv.invoice_number)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(inv.invoice_date)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(inv.customer_name)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right;">₹${inv.taxable_amount.toFixed(2)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right;">₹${inv.total_tax.toFixed(2)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right; font-weight: 600;">₹${inv.total_amount.toFixed(2)}</td>
@@ -212,7 +213,7 @@ export default function SalesReportScreen() {
               inv.payment_status.toUpperCase() === 'PAID'
                 ? 'background-color: #DCFCE7; color: #166534;'
                 : 'background-color: #FEF2F2; color: #991B1B;'
-            }">${inv.payment_status}</span>
+            }">${escapeHtml(inv.payment_status)}</span>
           </td>
         </tr>
       `).join('');
@@ -242,7 +243,7 @@ export default function SalesReportScreen() {
             <div class="header">
               <div>
                 <h1 class="title">Sales Report</h1>
-                <div class="subtitle">Period: ${periodLabel}</div>
+                <div class="subtitle">Period: ${escapeHtml(periodLabel)}</div>
               </div>
               <div style="text-align: right;">
                 <div style="font-size: 16px; font-weight: 800; color: #1E293B;">Udyog</div>

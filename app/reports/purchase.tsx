@@ -13,6 +13,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { escapeHtml } from '../../utils/escapeHtml';
 
 interface PurchaseBill {
   id: string;
@@ -95,15 +96,15 @@ export default function PurchaseReportScreen() {
                    Array.isArray(raw?.items) ? raw.items :
                    Array.isArray(raw?.bills) ? raw.bills : [];
 
-      setBills(list.map((b: any) => ({
-        id: b.id,
-        bill_number: b.bill_number || b.invoice_number || b.supplier_invoice_number || '—',
-        bill_date: b.bill_date || b.created_at || '—',
-        vendor_name: b.vendor_name || b.vendor?.name || b.party?.name || 'Walk-in Vendor',
-        taxable_amount: Number(b.taxable_amount || b.subTotal || 0),
-        total_tax: Number(b.gst_amount || b.total_tax || b.taxAmount || 0),
-        total_amount: Number(b.total_amount || 0),
-        payment_status: b.payment_status || 'UNPAID'
+      setBills(list.map((bill: any) => ({
+        id: bill.id,
+        bill_number: bill.bill_number || '—',
+        bill_date: bill.bill_date || bill.created_at || '—',
+        vendor_name: bill.vendor_name || bill.supplier_name || bill.supplier?.name || 'Unknown Supplier',
+        taxable_amount: Number(bill.taxable_amount || 0),
+        total_tax: Number(bill.total_tax || 0),
+        total_amount: Number(bill.total_amount || 0),
+        payment_status: bill.payment_status || 'UNPAID'
       })));
 
     } catch (err) {
@@ -201,9 +202,9 @@ export default function PurchaseReportScreen() {
 
       const rowsHtml = bills.map((bill, idx) => `
         <tr style="background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
-          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; font-weight: 600;">${bill.bill_number}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${bill.bill_date}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${bill.vendor_name}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; font-weight: 600;">${escapeHtml(bill.bill_number)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(bill.bill_date)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(bill.vendor_name)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right;">₹${bill.taxable_amount.toFixed(2)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right;">₹${bill.total_tax.toFixed(2)}</td>
           <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right; font-weight: 600;">₹${bill.total_amount.toFixed(2)}</td>
@@ -212,7 +213,7 @@ export default function PurchaseReportScreen() {
               bill.payment_status.toUpperCase() === 'PAID'
                 ? 'background-color: #DCFCE7; color: #166534;'
                 : 'background-color: #FEF2F2; color: #991B1B;'
-            }">${bill.payment_status}</span>
+            }">${escapeHtml(bill.payment_status)}</span>
           </td>
         </tr>
       `).join('');
@@ -242,7 +243,7 @@ export default function PurchaseReportScreen() {
             <div class="header">
               <div>
                 <h1 class="title">Purchase Report</h1>
-                <div class="subtitle">Period: ${periodLabel}</div>
+                <div class="subtitle">Period: ${escapeHtml(periodLabel)}</div>
               </div>
               <div style="text-align: right;">
                 <div style="font-size: 16px; font-weight: 800; color: #1E293B;">Udyog</div>
