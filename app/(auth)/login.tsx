@@ -20,8 +20,6 @@ export default function LoginScreen() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showOTP, setShowOTP] = useState(false);
-  const [otp, setOtp] = useState('');
 
   const handleLogin = async () => {
     if (!isLoaded) { Alert.alert('Please wait', 'Auth loading...'); return; }
@@ -33,7 +31,7 @@ export default function LoginScreen() {
         await setActive({ session: result.createdSessionId });
         router.replace('/(tabs)');
       } else if (result.status === 'needs_second_factor') {
-        setShowOTP(true);
+        Alert.alert('Login Failed', 'Login requires additional verification. Please contact support.');
       } else {
         Alert.alert('Login Failed', `Status: ${result.status}`);
       }
@@ -61,86 +59,6 @@ export default function LoginScreen() {
       setGoogleLoading(false);
     }
   };
-
-  const handleOTP = async () => {
-    if (!otp) { Alert.alert('Error', 'Enter the OTP sent to your email'); return; }
-    setLoading(true);
-    try {
-      const result = await signIn.attemptSecondFactor({
-        strategy: 'email_code',
-        code: otp,
-      });
-      if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert('Error', 'Invalid OTP. Please try again.');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.errors?.[0]?.message || 'OTP verification failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (showOTP) {
-    return (
-      <KeyboardAwareScrollView
-        style={{ flex: 1, backgroundColor: '#FDF8F3' }}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        enableOnAndroid
-        extraScrollHeight={20}
-        keyboardShouldPersistTaps="handled"
-      >
-        <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
-
-        {/* Header */}
-        <View style={[styles.header, { marginTop: insets.top + 12 }]}>
-          <TouchableOpacity onPress={() => setShowOTP(false)} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={22} color="#0F172A" />
-          </TouchableOpacity>
-          <View style={styles.logoIcon}>
-            <Ionicons name="document-text" size={16} color="#fff" />
-          </View>
-          <Text style={styles.logoText}>Udyog</Text>
-        </View>
-
-        {/* OTP verification screen */}
-        <View style={{ paddingHorizontal: 24, marginTop: 24, alignItems: 'flex-start' }}>
-          <View style={styles.otpIconBox}>
-            <Ionicons name="mail-outline" size={28} color="#F97316" />
-          </View>
-          <Text style={styles.heading}>Verify your email</Text>
-          <Text style={styles.subheading}>
-            Enter the 6-digit code we sent to{'\n'}
-            <Text style={{ fontWeight: '700', color: '#0F172A' }}>{email}</Text>
-          </Text>
-          
-          <View style={[styles.inputBox, { marginTop: 24, alignSelf: 'stretch' }]}>
-            <Ionicons name="keypad-outline" size={18} color="#94A3B8" />
-            <TextInput
-              style={[styles.input, { textAlign: 'center', fontSize: 20, letterSpacing: 8 }]}
-              placeholder="000000"
-              placeholderTextColor="#CBD5E1"
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="number-pad"
-              maxLength={6}
-              autoFocus
-            />
-          </View>
-
-          <TouchableOpacity style={[styles.ctaBtn, { marginHorizontal: 0, marginTop: 24, alignSelf: 'stretch' }]} onPress={handleOTP} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaBtnText}>Verify</Text>}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setShowOTP(false)} style={{ marginTop: 16 }}>
-            <Text style={styles.footerLink}>← Back to login</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAwareScrollView>
-    );
-  }
 
   return (
     <KeyboardAwareScrollView
@@ -266,7 +184,6 @@ const styles = StyleSheet.create({
   ctaBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   footerText: { fontSize: 13, color: '#64748B', lineHeight: 18 },
   footerLink: { fontSize: 13, color: '#F97316', fontWeight: '700', lineHeight: 18 },
-  otpIconBox: { width: 56, height: 56, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   forgotLink: { fontSize: 12, color: '#F97316', fontWeight: '600', marginTop: 16 },
   trustRow: { alignItems: 'center', marginTop: 32, paddingHorizontal: 24 },
   trustText: { fontSize: 11, color: '#94A3B8', flexShrink: 1, flexWrap: 'wrap' },
