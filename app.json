@@ -9,7 +9,6 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/blank-splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
