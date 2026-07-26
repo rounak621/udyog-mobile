@@ -724,6 +724,7 @@ export default function CreateInvoiceScreen() {
                     onChangeText={t => updateItem(item.id, 'qty', t)}
                     keyboardType="numeric"
                     placeholder="Qty"
+                    placeholderTextColor="#94A3B8"
                   />
                   <Text style={{ color: '#94A3B8' }}>×</Text>
                   <TextInput
@@ -734,6 +735,7 @@ export default function CreateInvoiceScreen() {
                     onChangeText={t => updateItem(item.id, 'rate', t)}
                     keyboardType="numeric"
                     placeholder="Rate (₹)"
+                    placeholderTextColor="#94A3B8"
                   />
                   {showDiscount && (
                     <>
@@ -746,6 +748,7 @@ export default function CreateInvoiceScreen() {
                         onChangeText={t => updateItem(item.id, 'discount_percent', t)}
                         keyboardType="numeric"
                         placeholder="Disc %"
+                        placeholderTextColor="#94A3B8"
                       />
                     </>
                   )}

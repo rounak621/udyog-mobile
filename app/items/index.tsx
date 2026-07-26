@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
 
   // MODAL STYLES
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', padding: 16 },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%', flex: 1, padding: 16 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, paddingBottom: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
   modalSubtitle: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },

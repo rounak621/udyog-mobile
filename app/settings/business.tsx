@@ -3,13 +3,24 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, Image
+  Alert, KeyboardAvoidingView, Platform, Image, Modal, FlatList
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
+  'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+  'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+  'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+  'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
 
 const Field = ({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize, maxLength }: any) => (
   <View style={{ marginBottom: 14 }}>
@@ -34,6 +45,9 @@ export default function BusinessSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+
+  const [showStatePicker, setShowStatePicker] = useState(false);
+  const [stateSearch, setStateSearch] = useState('');
 
   const updateField = (field: string) => (v: string) => setForm(f => ({ ...f, [field]: v }));
 
@@ -322,7 +336,24 @@ export default function BusinessSettingsScreen() {
           <Field label="Address Line 1" value={form.address_line1} onChangeText={updateField('address_line1')} placeholder="Building, Street, Area" />
           <Field label="Address Line 2 (optional)" value={form.address_line2} onChangeText={updateField('address_line2')} placeholder="Suite, Landmark, etc." />
           <Field label="City" value={form.city} onChangeText={updateField('city')} placeholder="City" />
-          <Field label="State" value={form.state} onChangeText={updateField('state')} placeholder="State" />
+
+          {/* State Dropdown */}
+          <View style={{ marginBottom: 14 }}>
+            <Text style={styles.label}>State *</Text>
+            <TouchableOpacity
+              style={[styles.input, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
+              onPress={() => {
+                setStateSearch('');
+                setShowStatePicker(true);
+              }}
+            >
+              <Text style={{ fontSize: 14, color: form.state ? Colors.text : Colors.textMuted }}>
+                {form.state || 'Select State'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+
           <Field label="Pincode" value={form.pincode} onChangeText={updateField('pincode')} placeholder="6-digit pincode" keyboardType="numeric" maxLength={6} autoCapitalize="none" />
         </View>
 
@@ -393,7 +424,7 @@ export default function BusinessSettingsScreen() {
                     <ActivityIndicator color={Colors.primary} />
                   ) : (
                     <>
-                      <Ionicons name="image-outline" size={20} color={Colors.primary} />
+                      <Ionicons name="cloud-upload-outline" size={20} color={Colors.primary} />
                       <Text style={styles.placeholderText}>Upload Signature (PNG/JPG, Max 2MB)</Text>
                     </>
                   )}
@@ -407,6 +438,53 @@ export default function BusinessSettingsScreen() {
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Changes</Text>}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* State Picker Modal */}
+      <Modal
+        visible={showStatePicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowStatePicker(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select State</Text>
+              <TouchableOpacity onPress={() => setShowStatePicker(false)}>
+                <Ionicons name="close" size={24} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalSearch}>
+              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
+              <TextInput
+                style={styles.modalSearchInput}
+                placeholder="Search states..."
+                placeholderTextColor="#94A3B8"
+                value={stateSearch}
+                onChangeText={setStateSearch}
+                autoFocus
+              />
+            </View>
+            <FlatList
+              data={INDIAN_STATES.filter(s => s.toLowerCase().includes(stateSearch.toLowerCase()))}
+              keyExtractor={item => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setForm(f => ({ ...f, state: item }));
+                    setShowStatePicker(false);
+                  }}
+                >
+                  <Text style={styles.modalItemName}>{item}</Text>
+                  {form.state === item && <Ionicons name="checkmark" size={18} color="#F97316" />}
+                </TouchableOpacity>
+              )}
+              keyboardShouldPersistTaps="handled"
+            />
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -434,5 +512,15 @@ const styles = StyleSheet.create({
   deleteBtn: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fca5a5', borderRadius: Radius.sm, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
   deleteBtnText: { color: '#b91c1c', fontWeight: '600', fontSize: 13 },
   uploadPlaceholder: { height: 90, borderWidth: 1, borderColor: '#cbd5e1', borderStyle: 'dashed', borderRadius: Radius.sm, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  placeholderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' }
+  placeholderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%', padding: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  modalSearch: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16 },
+  modalSearchInput: { flex: 1, fontSize: 14, color: '#0F172A', padding: 0 },
+  modalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#E2E8F0' },
+  modalItemName: { fontSize: 15, color: '#0F172A', fontWeight: '500' },
 });
