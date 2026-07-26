@@ -74,7 +74,7 @@ export default function InvoiceDetailScreen() {
   const handleWhatsAppShare = async () => {
     try {
       const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
-      const fileUri = (FileSystem as any).cacheDirectory + `invoice_${invoice.invoice_number?.replace('/', '_')}.pdf`;
+      const fileUri = (FileSystem as any).cacheDirectory + `invoice_${invoice.invoice_number?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
       const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
       await Sharing.shareAsync(uri, {
         mimeType: 'application/pdf',
@@ -661,7 +661,9 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.pdfHeaderTitle} numberOfLines={1}>
               {invoice?.invoice_number || 'Invoice'}
             </Text>
-            <View style={{ width: 36 }} />
+            <TouchableOpacity onPress={handleDownloadPDF} style={{ padding: 6 }}>
+              <Ionicons name="download-outline" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
           <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
             {!!invoice?.share_token && !hasError && (

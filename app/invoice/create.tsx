@@ -359,7 +359,7 @@ export default function CreateInvoiceScreen() {
           throw new Error('Download failed');
         }
       } else {
-        const fileUri = (FileSystem as any).cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace('/', '_')}.pdf`;
+        const fileUri = (FileSystem as any).cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
         const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
@@ -955,7 +955,7 @@ export default function CreateInvoiceScreen() {
               onPress={() => shareInvoicePDF('download')}
             >
               <Ionicons name="download-outline" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">View & Download</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">Download PDF</Text>
             </TouchableOpacity>
 
             {/* View Invoice — opens PDF preview in-app */}
@@ -995,7 +995,9 @@ export default function CreateInvoiceScreen() {
             <Text style={styles.pdfHeaderTitle} numberOfLines={1}>
               {createdInvoice?.invoice_number || 'Invoice'}
             </Text>
-            <View style={{ width: 36 }} />
+            <TouchableOpacity onPress={() => shareInvoicePDF('download')} style={{ padding: 6 }}>
+              <Ionicons name="download-outline" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
           <View style={{ flex: 1, position: 'relative', backgroundColor: '#fff' }}>
             {!!createdInvoice?.share_token && !hasError && (

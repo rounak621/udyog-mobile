@@ -134,7 +134,8 @@ export async function saveFileToAndroidOrShare(
     });
     console.log('[SAF-DEBUG] writeAsStringAsync completed successfully!');
 
-    Alert.alert('Saved Successfully', `Saved to Udyog folder as ${targetFileName}`);
+    const destinationPath = decodeURIComponent(newFileUri || udyogFolderUri || folderUri);
+    Alert.alert('Saved Successfully', `Saved as "${targetFileName}" in Udyog folder.\n\nPath:\n${destinationPath}`);
   } catch (err: any) {
     console.log('[SAF-DEBUG] CATCH BLOCK TRIGGERED! Raw error:', err);
     console.log('[SAF-DEBUG] Error message string:', err?.message || String(err));

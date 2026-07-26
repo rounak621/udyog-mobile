@@ -123,7 +123,7 @@ export default function PurchaseReportScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.replace('/(tabs)/more');
+        router.replace('/reports');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -316,7 +316,7 @@ export default function PurchaseReportScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={[styles.headerRow, { justifyContent: 'space-between' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => router.replace('/(tabs)/more')} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => router.replace('/reports')} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color={Colors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Purchase Report</Text>
