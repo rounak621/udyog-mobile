@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Modal, FlatList, Animated, Easing, Linking
+  Alert, Modal, FlatList, Animated, Easing, Linking,
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -846,7 +847,10 @@ export default function CreateInvoiceScreen() {
         transparent={true}
         onRequestClose={() => { setShowCustomerPicker(false); setPartySearch(''); }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Customer</Text>
@@ -908,7 +912,7 @@ export default function CreateInvoiceScreen() {
               keyboardShouldPersistTaps="handled"
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
 

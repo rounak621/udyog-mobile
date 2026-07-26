@@ -12,7 +12,11 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
-const UNITS = ['BOX', 'BAG', 'BOTTLE', 'KG', 'G', 'L', 'ML', 'PCS'];
+const UNITS = [
+  'BAG', 'BOX', 'BTL', 'CM', 'DOZ', 'FT', 'GMS', 'IN', 'KGS', 'KM',
+  'LTR', 'MLT', 'MM', 'MTR', 'NOS', 'PAIR', 'PCS', 'PER-DAY', 'PER-SHIFT', 'PKT',
+  'ROLL', 'SET', 'SQF', 'SQM', 'SRV-MON', 'SRV-QTR', 'SRV-YR', 'TON', 'UNIT'
+];
 const GST_RATES = ['0', '5', '18', '40'];
 
 export default function CreateItemScreen() {

@@ -101,9 +101,18 @@ export default function PurchaseBillsScreen() {
   );
 
   const filtered = bills.filter(bill => {
-    const matchSearch = !search || 
-      bill.supplier?.name?.toLowerCase().includes(search.toLowerCase()) || 
-      bill.supplier_invoice_number?.toLowerCase().includes(search.toLowerCase());
+    const sLower = search.toLowerCase().trim();
+    const supplierName = bill.supplier?.name || (bill as any).supplier_name || (bill as any).vendor_name || '';
+    const invoiceNum = bill.supplier_invoice_number || (bill as any).invoice_number || (bill as any).bill_number || '';
+    const supplierPhone = bill.supplier?.phone || '';
+    const supplierGstin = bill.supplier?.gstin || '';
+
+    const matchSearch = !sLower ||
+      supplierName.toLowerCase().includes(sLower) ||
+      invoiceNum.toLowerCase().includes(sLower) ||
+      supplierPhone.toLowerCase().includes(sLower) ||
+      supplierGstin.toLowerCase().includes(sLower);
+
     const ps = (bill.payment_status || 'UNPAID').toUpperCase();
     let matchFilter = true;
     if (filter === 'Unpaid') {

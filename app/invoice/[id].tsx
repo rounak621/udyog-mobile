@@ -69,7 +69,7 @@ export default function InvoiceDetailScreen() {
     loadInvoice();
   }, [id]);
 
-  const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
+  const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const handleWhatsAppShare = async () => {
     try {
