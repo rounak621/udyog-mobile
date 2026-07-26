@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, TextInput, RefreshControl,
+  TouchableOpacity, RefreshControl,
   ActivityIndicator, BackHandler, Alert
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -13,6 +13,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import DateRangePicker from '../../components/DateRangePicker';
 import { escapeHtml } from '../../utils/escapeHtml';
 
 interface Invoice {
@@ -386,25 +387,14 @@ export default function SalesReportScreen() {
             ))}
           </ScrollView>
         ) : (
-          <View style={styles.customDateContainer}>
-            <TextInput
-              style={styles.dateInput}
-              placeholder="Start: YYYY-MM-DD"
-              placeholderTextColor={Colors.textMuted}
-              value={startDate}
-              onChangeText={setStartDate}
-            />
-            <TextInput
-              style={styles.dateInput}
-              placeholder="End: YYYY-MM-DD"
-              placeholderTextColor={Colors.textMuted}
-              value={endDate}
-              onChangeText={setEndDate}
-            />
-            <TouchableOpacity style={styles.applyBtn} onPress={loadData}>
-              <Ionicons name="checkmark" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <DateRangePicker
+            startDate={startDate}
+            endDate={endDate}
+            onApply={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+          />
         )}
       </View>
 
@@ -563,9 +553,7 @@ const styles = StyleSheet.create({
   monthText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
   monthTextActive: { color: Colors.primary, fontWeight: '700' },
 
-  customDateContainer: { flexDirection: 'row', gap: 6, paddingHorizontal: 16, alignItems: 'center' },
-  dateInput: { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 0.5, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, height: 36, fontSize: 12, color: Colors.text },
-  applyBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+
 
   statsStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, marginTop: 10 },
   statCard: { flex: 1, minWidth: '22%', backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 10, alignItems: 'center' },
