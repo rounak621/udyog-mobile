@@ -9,14 +9,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Colors, Spacing, Radius } from '../../constants/theme';
+import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
-const UNITS = [
-  'BAG', 'BOX', 'BTL', 'CM', 'DOZ', 'FT', 'GMS', 'IN', 'KGS', 'KM',
-  'LTR', 'MLT', 'MM', 'MTR', 'NOS', 'PAIR', 'PCS', 'PER-DAY', 'PER-SHIFT', 'PKT',
-  'ROLL', 'SET', 'SQF', 'SQM', 'SRV-MON', 'SRV-QTR', 'SRV-YR', 'TON', 'UNIT'
-];
 const GST_RATES = ['0', '5', '18', '40'];
 
 export default function CreateItemScreen() {

@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Spacing, Radius } from '../../constants/theme';
+import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
 interface Item {
@@ -34,7 +34,6 @@ const createEmptyRow = (): BulkRow => ({
 });
 
 const GST_RATES = ['0', '5', '12', '18', '28'];
-const UNITS = ['PCS', 'NOS', 'BOX', 'KGS', 'MTR', 'SET', 'PACK', 'DOZ'];
 
 export default function ItemsScreen() {
   const { getToken } = useAuth();

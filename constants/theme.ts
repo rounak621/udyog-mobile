@@ -20,3 +20,9 @@ export const Spacing = {
 export const Radius = {
   sm: 8, md: 12, lg: 16, xl: 24,
 };
+
+export const UNITS = [
+  'BAG', 'BOX', 'BTL', 'CM', 'DOZ', 'FT', 'GMS', 'IN', 'KGS', 'KM',
+  'LTR', 'MLT', 'MM', 'MTR', 'NOS', 'PAIR', 'PCS', 'PER-DAY', 'PER-SHIFT', 'PKT',
+  'ROLL', 'SET', 'SQF', 'SQM', 'SRV-MON', 'SRV-QTR', 'SRV-YR', 'TON', 'UNIT'
+];
