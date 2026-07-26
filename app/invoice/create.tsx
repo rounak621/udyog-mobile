@@ -53,7 +53,7 @@ export default function CreateInvoiceScreen() {
   const [partySearch, setPartySearch] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '0', isCustom: false }
+    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', isCustom: false }
   ]);
   const [notes, setNotes] = useState('');
   const [consignmentAddress, setConsignmentAddress] = useState('');
@@ -108,10 +108,9 @@ export default function CreateInvoiceScreen() {
       setShowDiscount(!!bizRes.data.show_discount);
       setDualAddressEnabled(!!bizRes.data.dual_address_enabled);
       
-      const [custRes, itemRes, numRes] = await Promise.allSettled([
+      const [custRes, itemRes] = await Promise.allSettled([
         api.get(`/customers/?business_id=${bId}&limit=100`),
         api.get(`/items/?business_id=${bId}&limit=100`),
-        isEditMode ? Promise.reject('skip') : api.get(`/invoices/next-number?business_id=${bId}&invoice_type=${invoiceType}`),
       ]);
       
       let partiesList: any[] = [];
@@ -123,12 +122,6 @@ export default function CreateInvoiceScreen() {
       if (itemRes.status === 'fulfilled') {
         const data = itemRes.value.data;
         setItems(Array.isArray(data) ? data : data.items || []);
-      }
-      if (numRes.status === 'fulfilled') {
-        setInvoiceNumber(numRes.value.data.next_number || numRes.value.data.invoice_number || '');
-        if (numRes.value.data.prefix) {
-          setInvoicePrefix(numRes.value.data.prefix);
-        }
       }
 
       if (isEditMode) {
@@ -175,12 +168,12 @@ export default function CreateInvoiceScreen() {
     loadData();
   }, []);
 
-  // Fetch next invoice number when invoiceType or businessId changes
+  // Fetch next invoice number when invoiceType or businessId changes (single source of truth)
   useEffect(() => {
     if (businessId && !isEditMode) {
       api.get(`/invoices/next-number?business_id=${businessId}&invoice_type=${invoiceType}`)
         .then(res => {
-          const num = res.data.invoice_number || res.data.next_number || '';
+          const num = String(res.data.invoice_number || res.data.next_number || '');
           setInvoiceNumber(num);
           if (res.data.prefix) {
             setInvoicePrefix(res.data.prefix);
@@ -286,7 +279,7 @@ export default function CreateInvoiceScreen() {
 
   const addLineItem = () => {
     const newId = Math.random().toString();
-    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '0', isCustom: false }]);
+    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', isCustom: false }]);
     setTimeout(() => {
       const y = itemPositions.current[newId];
       if (typeof y === 'number' && scrollViewRef.current) {

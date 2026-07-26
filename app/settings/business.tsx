@@ -11,6 +11,22 @@ import * as ImagePicker from 'expo-image-picker';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
+const Field = ({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize, maxLength }: any) => (
+  <View style={{ marginBottom: 14 }}>
+    <Text style={styles.label}>{label}</Text>
+    <TextInput
+      style={styles.input}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={Colors.textMuted}
+      keyboardType={keyboardType || 'default'}
+      autoCapitalize={autoCapitalize || 'words'}
+      maxLength={maxLength}
+    />
+  </View>
+);
+
 export default function BusinessSettingsScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
@@ -18,6 +34,8 @@ export default function BusinessSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+
+  const updateField = (field: string) => (v: string) => setForm(f => ({ ...f, [field]: v }));
 
   // Branding states
   const [hasLogo, setHasLogo] = useState(false);
@@ -271,22 +289,6 @@ export default function BusinessSettingsScreen() {
     }
   };
 
-  const Field = ({ label, field, placeholder, keyboardType, autoCapitalize, onChangeText, maxLength }: any) => (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={form[field as keyof typeof form]}
-        onChangeText={onChangeText || (v => setForm(f => ({ ...f, [field]: v })))}
-        placeholder={placeholder}
-        placeholderTextColor={Colors.textMuted}
-        keyboardType={keyboardType || 'default'}
-        autoCapitalize={autoCapitalize || 'words'}
-        maxLength={maxLength}
-      />
-    </View>
-  );
-
   if (loading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.background }}><ActivityIndicator color={Colors.primary} /></View>;
 
   return (
@@ -306,32 +308,32 @@ export default function BusinessSettingsScreen() {
         {/* SECTION 1: CORE IDENTITY */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Core Identity</Text>
-          <Field label="Business Name *" field="name" placeholder="Your business name" />
-          <Field label="Legal Name" field="legal_name" placeholder="Your registered legal name" />
-          <Field label="GSTIN" field="gstin" placeholder="22AAAAA0000A1Z5" autoCapitalize="characters" />
-          <Field label="Tagline" field="tagline" placeholder="Business tagline or slogan" />
+          <Field label="Business Name *" value={form.name} onChangeText={updateField('name')} placeholder="Your business name" />
+          <Field label="Legal Name" value={form.legal_name} onChangeText={updateField('legal_name')} placeholder="Your registered legal name" />
+          <Field label="GSTIN" value={form.gstin} onChangeText={updateField('gstin')} placeholder="22AAAAA0000A1Z5" autoCapitalize="characters" />
+          <Field label="Tagline" value={form.tagline} onChangeText={updateField('tagline')} placeholder="Business tagline or slogan" />
         </View>
 
         {/* SECTION 2: CONTACT & ADDRESS */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Contact & Address</Text>
-          <Field label="Phone" field="phone" placeholder="Mobile number" keyboardType="phone-pad" autoCapitalize="none" />
-          <Field label="Email" field="email" placeholder="business@email.com" keyboardType="email-address" autoCapitalize="none" />
-          <Field label="Address Line 1" field="address_line1" placeholder="Building, Street, Area" />
-          <Field label="Address Line 2 (optional)" field="address_line2" placeholder="Suite, Landmark, etc." />
-          <Field label="City" field="city" placeholder="City" />
-          <Field label="State" field="state" placeholder="State" />
-          <Field label="Pincode" field="pincode" placeholder="6-digit pincode" keyboardType="numeric" maxLength={6} autoCapitalize="none" />
+          <Field label="Phone" value={form.phone} onChangeText={updateField('phone')} placeholder="Mobile number" keyboardType="phone-pad" autoCapitalize="none" />
+          <Field label="Email" value={form.email} onChangeText={updateField('email')} placeholder="business@email.com" keyboardType="email-address" autoCapitalize="none" />
+          <Field label="Address Line 1" value={form.address_line1} onChangeText={updateField('address_line1')} placeholder="Building, Street, Area" />
+          <Field label="Address Line 2 (optional)" value={form.address_line2} onChangeText={updateField('address_line2')} placeholder="Suite, Landmark, etc." />
+          <Field label="City" value={form.city} onChangeText={updateField('city')} placeholder="City" />
+          <Field label="State" value={form.state} onChangeText={updateField('state')} placeholder="State" />
+          <Field label="Pincode" value={form.pincode} onChangeText={updateField('pincode')} placeholder="6-digit pincode" keyboardType="numeric" maxLength={6} autoCapitalize="none" />
         </View>
 
         {/* SECTION 3: BANK DETAILS */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Bank Details & UPI</Text>
-          <Field label="Bank Name" field="bank_name" placeholder="e.g. ICICI Bank" />
-          <Field label="Account Number" field="bank_account_number" placeholder="Enter account number" keyboardType="numeric" autoCapitalize="none" />
-          <Field label="IFSC Code" field="ifsc_code" placeholder="e.g. ICIC0000104" autoCapitalize="characters" onChangeText={(v: string) => setForm(f => ({ ...f, ifsc_code: v.toUpperCase() }))} />
-          <Field label="Branch" field="bank_branch" placeholder="Branch location" />
-          <Field label="UPI ID" field="upi_id" placeholder="e.g. name@upi" autoCapitalize="none" />
+          <Field label="Bank Name" value={form.bank_name} onChangeText={updateField('bank_name')} placeholder="e.g. ICICI Bank" />
+          <Field label="Account Number" value={form.bank_account_number} onChangeText={updateField('bank_account_number')} placeholder="Enter account number" keyboardType="numeric" autoCapitalize="none" />
+          <Field label="IFSC Code" value={form.ifsc_code} onChangeText={(v: string) => setForm(f => ({ ...f, ifsc_code: v.toUpperCase() }))} placeholder="e.g. ICIC0000104" autoCapitalize="characters" />
+          <Field label="Branch" value={form.bank_branch} onChangeText={updateField('bank_branch')} placeholder="Branch location" />
+          <Field label="UPI ID" value={form.upi_id} onChangeText={updateField('upi_id')} placeholder="e.g. name@upi" autoCapitalize="none" />
         </View>
 
         {/* SECTION 4: BRANDING */}

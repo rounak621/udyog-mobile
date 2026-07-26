@@ -416,7 +416,7 @@ export default function CreatePartyScreen() {
         transparent={true}
         onRequestClose={() => setShowStatePicker(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select State</Text>
@@ -453,7 +453,7 @@ export default function CreatePartyScreen() {
               keyboardShouldPersistTaps="handled"
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

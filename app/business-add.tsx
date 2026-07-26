@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Modal, FlatList, StatusBar
+  Alert, Modal, FlatList, StatusBar, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -204,7 +204,7 @@ export default function BusinessAddScreen() {
         transparent={true}
         onRequestClose={() => setShowStatePicker(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select State</Text>
@@ -241,7 +241,7 @@ export default function BusinessAddScreen() {
               keyboardShouldPersistTaps="handled"
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
