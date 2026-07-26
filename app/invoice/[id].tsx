@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
@@ -35,7 +35,7 @@ export default function InvoiceDetailScreen() {
   }, [showPdfPreview]);
 
   const previewPdfUrl = invoice?.share_token
-    ? `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf?mode=inline`
+    ? `${API_BASE_URL}/public/invoice/${invoice.share_token}/pdf?mode=inline`
     : '';
   const pdfViewerHtml = previewPdfUrl ? getPdfViewerHtml(previewPdfUrl) : '';
 
@@ -73,14 +73,18 @@ export default function InvoiceDetailScreen() {
 
   const handleWhatsAppShare = async () => {
     try {
-      const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
+      const pdfUrl = `${API_BASE_URL}/public/invoice/${invoice.share_token}/pdf`;
       const fileUri = (FileSystem as any).cacheDirectory + `invoice_${invoice.invoice_number?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: `Invoice ${invoice.invoice_number}`,
-        UTI: 'com.adobe.pdf',
-      });
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+      if (downloadResult.status === 200) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Invoice ${invoice.invoice_number}`,
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        throw new Error('Download failed');
+      }
     } catch (err) {
       Alert.alert('Error', 'Could not share PDF');
     }
@@ -92,7 +96,7 @@ export default function InvoiceDetailScreen() {
       const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `${customerName}_${invoiceNum}.pdf`;
 
-      const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${invoice.share_token}/pdf`;
+      const pdfUrl = `${API_BASE_URL}/public/invoice/${invoice.share_token}/pdf`;
       const fileUri = (FileSystem as any).cacheDirectory + fileName;
 
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
@@ -225,7 +229,7 @@ export default function InvoiceDetailScreen() {
       const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `Statement_${customerName}_${invoiceNum}.pdf`;
       
-      const pdfUrl = `https://api.udyogbook.in/api/v1/invoices/${id}/payment-statement-pdf?business_id=${invoice.business_id}`;
+      const pdfUrl = `${API_BASE_URL}/invoices/${id}/payment-statement-pdf?business_id=${invoice.business_id}`;
       const fileUri = (FileSystem as any).cacheDirectory + fileName;
       
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
@@ -258,7 +262,7 @@ export default function InvoiceDetailScreen() {
       const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `challan-${invoiceNum}.pdf`;
       
-      const pdfUrl = `https://api.udyogbook.in/api/v1/invoices/${id}/challan-pdf?business_id=${invoice.business_id}`;
+      const pdfUrl = `${API_BASE_URL}/invoices/${id}/challan-pdf?business_id=${invoice.business_id}`;
       const fileUri = (FileSystem as any).cacheDirectory + fileName;
       
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {

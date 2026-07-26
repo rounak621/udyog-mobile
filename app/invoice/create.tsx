@@ -9,7 +9,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
@@ -345,7 +345,7 @@ export default function CreateInvoiceScreen() {
   const shareInvoicePDF = async (mode: 'whatsapp' | 'download') => {
     if (!createdInvoice?.share_token) return;
     try {
-      const pdfUrl = `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf`;
+      const pdfUrl = `${API_BASE_URL}/public/invoice/${createdInvoice.share_token}/pdf`;
 
       if (mode === 'download') {
         const customerName = (selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
@@ -360,12 +360,16 @@ export default function CreateInvoiceScreen() {
         }
       } else {
         const fileUri = (FileSystem as any).cacheDirectory + `invoice_${createdInvoice.invoice_number?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-        const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Invoice ${createdInvoice.invoice_number}`,
-          UTI: 'com.adobe.pdf',
-        });
+        const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+        if (downloadResult.status === 200) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Invoice ${createdInvoice.invoice_number}`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          throw new Error('Share failed');
+        }
       }
     } catch (err) {
       console.log('Share error:', err);
@@ -449,7 +453,7 @@ export default function CreateInvoiceScreen() {
   const handleSubmit = handleSave;
 
   const previewPdfUrl = createdInvoice?.share_token
-    ? `https://api.udyogbook.in/api/v1/public/invoice/${createdInvoice.share_token}/pdf?mode=inline`
+    ? `${API_BASE_URL}/public/invoice/${createdInvoice.share_token}/pdf?mode=inline`
     : '';
   const pdfViewerHtml = previewPdfUrl ? getPdfViewerHtml(previewPdfUrl) : '';
 

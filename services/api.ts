@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.udyogbook.in/api/v1';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.udyogbook.in/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

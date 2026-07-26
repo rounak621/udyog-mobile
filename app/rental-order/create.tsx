@@ -14,7 +14,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
 
 interface Customer {
@@ -452,7 +452,7 @@ export default function OrderCreateScreen() {
   const shareOrderPDF = async (mode: 'whatsapp' | 'download') => {
     if (!createdOrder?.share_token) return;
     try {
-      const pdfUrl = `https://api.udyogbook.in/api/v1/public/rental/${createdOrder.share_token}/pdf`;
+      const pdfUrl = `${API_BASE_URL}/public/rental/${createdOrder.share_token}/pdf`;
       if (mode === 'download') {
         const customerName = (selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
         const orderNum = (createdOrder?.order_number || 'order').replace(/[^a-zA-Z0-9]/g, '_');
@@ -465,13 +465,17 @@ export default function OrderCreateScreen() {
           throw new Error('Download failed');
         }
       } else {
-        const fileUri = (FileSystem as any).cacheDirectory + `order_${createdOrder.order_number?.replace('/', '_')}.pdf`;
-        const { uri } = await FileSystem.downloadAsync(pdfUrl, fileUri);
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: `Rental Order ${createdOrder.order_number}`,
-          UTI: 'com.adobe.pdf',
-        });
+        const fileUri = (FileSystem as any).cacheDirectory + `order_${createdOrder.order_number?.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+        const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
+        if (downloadResult.status === 200) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: `Order ${createdOrder.order_number}`,
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          throw new Error('Share failed');
+        }
       }
     } catch (err) {
       console.log('Share error:', err);
