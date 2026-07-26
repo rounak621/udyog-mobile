@@ -189,16 +189,6 @@ export default function CreatePartyScreen() {
           <Text style={styles.headerTitle}>{id ? 'Edit Party' : 'New Party'}</Text>
           <Text style={styles.headerSub}>{id ? 'Update profile' : 'Draft · auto-saved'}</Text>
         </View>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator color="#F97316" size="small" />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={16} color="#F97316" style={{ marginRight: 6 }} />
-              <Text style={styles.saveBtnText}>Save</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </View>
 
       <KeyboardAwareScrollView
@@ -491,21 +481,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 1,
   },
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1.5,
-    borderColor: '#F97316',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  saveBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F97316',
-  },
+
   content: {
     padding: 16,
     gap: 16,

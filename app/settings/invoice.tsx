@@ -361,7 +361,80 @@ export default function InvoiceSettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* SECTION 2: SERVICE INVOICE NUMBERING */}
+        {/* SECTION 2: NON-GST INVOICE NUMBERING */}
+        <View style={styles.card}>
+          <Text style={styles.sectionLabel}>Non-GST Invoice Numbering</Text>
+          <Text style={styles.subtitle}>Customize how your Non-GST invoice numbers are generated. This is a separate sequence from GST invoices.</Text>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.label}>Prefix</Text>
+              <TextInput 
+                style={styles.input} 
+                value={nongstForm.prefix} 
+                onChangeText={v => setNongstForm(f => ({ ...f, prefix: v }))} 
+                placeholder="e.g. NONGST-" 
+                placeholderTextColor={Colors.textMuted} 
+                autoCapitalize="characters" 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Suffix (optional)</Text>
+              <TextInput 
+                style={styles.input} 
+                value={nongstForm.suffix} 
+                onChangeText={v => setNongstForm(f => ({ ...f, suffix: v }))} 
+                placeholder="Added after the number." 
+                placeholderTextColor={Colors.textMuted} 
+                autoCapitalize="characters" 
+              />
+            </View>
+          </View>
+
+          <Text style={[styles.label, { marginTop: 12 }]}>Number Length</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            {[1, 2, 3, 4, 5, 6].map(len => {
+              const isActive = nongstForm.padding === len;
+              return (
+                <TouchableOpacity 
+                  key={len} 
+                  style={[styles.pill, isActive && styles.pillActive]} 
+                  onPress={() => setNongstForm(f => ({ ...f, padding: len }))}
+                >
+                  <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
+                    {len} {len === 1 ? 'digit' : 'digits'} (e.g. {String(1).padStart(len, '0')})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <Text style={styles.label}>Next Non-GST Invoice Number</Text>
+          <TextInput 
+            style={[styles.input, { marginBottom: 16 }]} 
+            value={nongstForm.next_number} 
+            onChangeText={v => setNongstForm(f => ({ ...f, next_number: v.replace(/[^0-9]/g, '') }))} 
+            placeholder="Starting sequence number" 
+            placeholderTextColor={Colors.textMuted} 
+            keyboardType="number-pad" 
+          />
+
+          <View style={styles.previewBox}>
+            <Ionicons name="eye-outline" size={16} color={Colors.primary} />
+            <Text style={styles.previewLabel}>Next Non-GST invoice will be: </Text>
+            <Text style={styles.previewValue}>{nongstPreviewText}</Text>
+          </View>
+
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>⚠️ Changes apply to future invoices only. Existing invoice numbers will not be affected.</Text>
+          </View>
+
+          <TouchableOpacity style={styles.submitBtn} onPress={handleSaveNongstNumbering} disabled={savingNongst}>
+            {savingNongst ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Non-GST Numbering</Text>}
+          </TouchableOpacity>
+        </View>
+
+        {/* SECTION 3: SERVICE INVOICE NUMBERING */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Service Invoice Numbering</Text>
           <Text style={styles.subtitle}>Customize how your service invoice numbers are generated. This is a separate sequence from GST invoices.</Text>
@@ -448,79 +521,6 @@ export default function InvoiceSettingsScreen() {
 
           <TouchableOpacity style={styles.submitBtn} onPress={handleSaveServiceNumbering} disabled={savingService}>
             {savingService ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Service Numbering</Text>}
-          </TouchableOpacity>
-        </View>
-
-        {/* SECTION 3: NON-GST INVOICE NUMBERING */}
-        <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Non-GST Invoice Numbering</Text>
-          <Text style={styles.subtitle}>Customize how your Non-GST invoice numbers are generated. This is a separate sequence from GST invoices.</Text>
-
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={styles.label}>Prefix</Text>
-              <TextInput 
-                style={styles.input} 
-                value={nongstForm.prefix} 
-                onChangeText={v => setNongstForm(f => ({ ...f, prefix: v }))} 
-                placeholder="e.g. NONGST-" 
-                placeholderTextColor={Colors.textMuted} 
-                autoCapitalize="characters" 
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Suffix (optional)</Text>
-              <TextInput 
-                style={styles.input} 
-                value={nongstForm.suffix} 
-                onChangeText={v => setNongstForm(f => ({ ...f, suffix: v }))} 
-                placeholder="Added after the number." 
-                placeholderTextColor={Colors.textMuted} 
-                autoCapitalize="characters" 
-              />
-            </View>
-          </View>
-
-          <Text style={[styles.label, { marginTop: 12 }]}>Number Length</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-            {[1, 2, 3, 4, 5, 6].map(len => {
-              const isActive = nongstForm.padding === len;
-              return (
-                <TouchableOpacity 
-                  key={len} 
-                  style={[styles.pill, isActive && styles.pillActive]} 
-                  onPress={() => setNongstForm(f => ({ ...f, padding: len }))}
-                >
-                  <Text style={[styles.pillText, isActive && styles.pillTextActive]}>
-                    {len} {len === 1 ? 'digit' : 'digits'} (e.g. {String(1).padStart(len, '0')})
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <Text style={styles.label}>Next Non-GST Invoice Number</Text>
-          <TextInput 
-            style={[styles.input, { marginBottom: 16 }]} 
-            value={nongstForm.next_number} 
-            onChangeText={v => setNongstForm(f => ({ ...f, next_number: v.replace(/[^0-9]/g, '') }))} 
-            placeholder="Starting sequence number" 
-            placeholderTextColor={Colors.textMuted} 
-            keyboardType="number-pad" 
-          />
-
-          <View style={styles.previewBox}>
-            <Ionicons name="eye-outline" size={16} color={Colors.primary} />
-            <Text style={styles.previewLabel}>Next Non-GST invoice will be: </Text>
-            <Text style={styles.previewValue}>{nongstPreviewText}</Text>
-          </View>
-
-          <View style={styles.warningBox}>
-            <Text style={styles.warningText}>⚠️ Changes apply to future invoices only. Existing invoice numbers will not be affected.</Text>
-          </View>
-
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSaveNongstNumbering} disabled={savingNongst}>
-            {savingNongst ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Non-GST Numbering</Text>}
           </TouchableOpacity>
         </View>
 

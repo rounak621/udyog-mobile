@@ -945,13 +945,13 @@ export default function CreateInvoiceScreen() {
               <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">Share on WhatsApp</Text>
             </TouchableOpacity>
 
-            {/* Save PDF */}
+            {/* View & Download */}
             <TouchableOpacity
               style={{ backgroundColor: '#F97316', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 10 }}
               onPress={() => shareInvoicePDF('download')}
             >
               <Ionicons name="download-outline" size={20} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">Save PDF</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flexShrink: 1 }} textBreakStrategy="simple">View & Download</Text>
             </TouchableOpacity>
 
             {/* View Invoice — opens PDF preview in-app */}

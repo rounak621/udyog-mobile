@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,12 +64,20 @@ export default function HelpScreen() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.row, styles.rowLast]} onPress={() => Linking.openURL('https://wa.me/917977422531')}>
+            <TouchableOpacity style={[styles.row, styles.rowLast]} onPress={() => Alert.alert(
+              'Contact Support',
+              'How would you like to reach us?',
+              [
+                { text: 'Call', onPress: () => Linking.openURL('tel:+917977422531') },
+                { text: 'WhatsApp', onPress: () => Linking.openURL('https://wa.me/917977422531') },
+                { text: 'Cancel', style: 'cancel' },
+              ]
+            )}>
               <View style={styles.rowIcon}>
                 <Ionicons name="logo-whatsapp" size={18} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.rowLabel}>WhatsApp Support</Text>
+                <Text style={styles.rowLabel}>Call & WhatsApp Support</Text>
                 <Text style={styles.rowSub}>+91 79774 22531</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />

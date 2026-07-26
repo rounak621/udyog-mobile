@@ -146,17 +146,6 @@ export default function CreateItemScreen() {
             <Ionicons name="trash-outline" size={22} color={Colors.danger} />
           </TouchableOpacity>
         )}
-
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-          {saving ? (
-            <ActivityIndicator color={Colors.primary} size="small" />
-          ) : (
-            <>
-              <Ionicons name="save-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
-              <Text style={styles.saveBtnText}>Save</Text>
-            </>
-          )}
-        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -307,8 +296,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   headerSub: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  saveBtnText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+
   content: { padding: 16, gap: 16, paddingBottom: 40 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, gap: 14 },
   fieldContainer: { gap: 6 },
