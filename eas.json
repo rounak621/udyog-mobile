@@ -11,7 +11,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.udyogbook.in/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://api.udyogbook.in/api/v1"
       }
     },
     "preview": {
@@ -20,7 +20,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://staging-api.udyogbook.in/api/v1"
+        "EXPO_PUBLIC_API_URL": "https://api.udyogbook.in/api/v1"
       }
     },
     "production": {
