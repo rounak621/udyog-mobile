@@ -104,12 +104,12 @@ export default function MoreScreen() {
           <View style={styles.card}>
             <MenuItem icon="calendar-outline" label="Switch to Rental Business" onPress={switchToRental} />
             <MenuItem icon="business-outline" label="Business Settings" onPress={() => router.push('/settings/business')} />
-            <MenuItem icon="bar-chart-outline" label="Reports" onPress={() => router.push('/reports')} />
-            <MenuItem icon="people-outline" label="Manage CA" onPress={() => router.push('/settings/ca-management')} />
             <MenuItem icon="document-text-outline" label="Invoice Settings" onPress={() => router.push('/settings/invoice')} />
-            <MenuItem icon="receipt-outline" label="Purchase Bills" onPress={() => router.push('/purchase-bills')} />
             <MenuItem icon="cube-outline" label="Items" onPress={() => router.push('/items')} />
             <MenuItem icon="layers-outline" label="Inventory" onPress={() => router.push('/inventory')} />
+            <MenuItem icon="receipt-outline" label="Purchase Bills" onPress={() => router.push('/purchase-bills')} />
+            <MenuItem icon="bar-chart-outline" label="Reports" onPress={() => router.push('/reports')} />
+            <MenuItem icon="people-outline" label="Manage CA" onPress={() => router.push('/settings/ca-management')} />
           </View>
         </View>
 

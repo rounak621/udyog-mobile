@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, Image, Modal, FlatList
+  Alert, KeyboardAvoidingView, Platform, Image, Modal, FlatList, Linking
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -431,6 +431,13 @@ export default function BusinessSettingsScreen() {
                 </TouchableOpacity>
               )}
             </View>
+            <TouchableOpacity
+              style={styles.signatureLinkBtn}
+              onPress={() => Linking.openURL('https://udyogbook.in/tools/digital-signature')}
+            >
+              <Ionicons name="open-outline" size={15} color={Colors.primary} />
+              <Text style={styles.signatureLinkText}>Create a digital signature online</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -513,6 +520,8 @@ const styles = StyleSheet.create({
   deleteBtnText: { color: '#b91c1c', fontWeight: '600', fontSize: 13 },
   uploadPlaceholder: { height: 90, borderWidth: 1, borderColor: '#cbd5e1', borderStyle: 'dashed', borderRadius: Radius.sm, backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center', gap: 6 },
   placeholderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: '500' },
+  signatureLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingVertical: 4 },
+  signatureLinkText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
 
   // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },

@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Platform, Modal, FlatList
+  Alert, Platform, Modal, FlatList, KeyboardAvoidingView
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';

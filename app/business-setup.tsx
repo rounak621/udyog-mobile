@@ -28,7 +28,7 @@ export default function BusinessSetupScreen() {
   const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { setHasBusiness } = useBusiness();
+  const { setHasBusiness, refreshBusinesses } = useBusiness();
 
   const handleSignOut = () => {
     Alert.alert(
@@ -168,9 +168,10 @@ export default function BusinessSetupScreen() {
         business_type: 'individual'
       };
 
-      await api.post('/businesses/', payload);
+      const res = await api.post('/businesses/', payload);
       
-      // Update shared state to prevent AuthGuard redirect loop
+      // Refresh businesses in context to populate active business
+      await refreshBusinesses();
       setHasBusiness(true);
       
       // Navigate to tabs
