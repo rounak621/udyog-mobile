@@ -294,7 +294,6 @@ export default function InventoryScreen() {
         visible={selectedItem !== null}
         animationType="slide"
         transparent={true}
-        statusBarTranslucent={true}
         onRequestClose={() => setSelectedItem(null)}
       >
         <KeyboardAvoidingView
@@ -398,25 +397,25 @@ export default function InventoryScreen() {
                   numberOfLines={2}
                 />
               </View>
-
-              {/* Action Button */}
-              <TouchableOpacity
-                style={[
-                  styles.submitBtn,
-                  adjustmentType === 'IN' ? styles.submitBtnIn : styles.submitBtnOut
-                ]}
-                onPress={handleConfirmAdjustment}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitBtnText}>
-                    {adjustmentType === 'IN' ? 'Add' : 'Remove'} {qty || 0} {selectedItem?.unit?.toUpperCase()}
-                  </Text>
-                )}
-              </TouchableOpacity>
             </ScrollView>
+
+            {/* Action Button (Fixed Footer) */}
+            <TouchableOpacity
+              style={[
+                styles.submitBtn,
+                adjustmentType === 'IN' ? styles.submitBtnIn : styles.submitBtnOut
+              ]}
+              onPress={handleConfirmAdjustment}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>
+                  {adjustmentType === 'IN' ? 'Add' : 'Remove'} {qty || 0} {selectedItem?.unit?.toUpperCase()}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
