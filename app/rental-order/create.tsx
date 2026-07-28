@@ -830,6 +830,7 @@ export default function OrderCreateScreen() {
       <Modal visible={showCustomerModal} transparent animationType="slide">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>

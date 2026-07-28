@@ -2,7 +2,8 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Linking, Modal, TextInput
+  TouchableOpacity, ActivityIndicator, Alert, Linking, Modal, TextInput,
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -531,7 +532,11 @@ export default function InvoiceDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowPaymentModal(false)}
       >
-        <View style={styles.payOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={styles.payOverlay}
+        >
           <View style={styles.paySheet}>
             <View style={styles.paySheetHandle} />
             <View style={styles.payHeader}>
@@ -608,7 +613,7 @@ export default function InvoiceDetailScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal
@@ -617,7 +622,11 @@ export default function InvoiceDetailScreen() {
         animationType="fade"
         onRequestClose={() => { setShowRevertModal(false); setRevertReason(''); }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Revert Payment</Text>
             <Text style={styles.modalSub}>
@@ -653,7 +662,7 @@ export default function InvoiceDetailScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>

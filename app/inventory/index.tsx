@@ -26,7 +26,7 @@ export default function InventoryScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const WrapperComponent = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
+
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -297,8 +297,9 @@ export default function InventoryScreen() {
         statusBarTranslucent={true}
         onRequestClose={() => setSelectedItem(null)}
       >
-        <WrapperComponent
-          {...(Platform.OS === 'ios' ? { behavior: 'padding' } : {})}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
           style={styles.modalOverlay}
         >
           <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom }]}>
@@ -417,7 +418,7 @@ export default function InventoryScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </WrapperComponent>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

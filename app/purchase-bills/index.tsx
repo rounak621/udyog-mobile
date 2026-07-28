@@ -104,7 +104,7 @@ export default function PurchaseBillsScreen() {
     const sLower = search.toLowerCase().trim();
     const supplierName = bill.supplier?.name || (bill as any).supplier_name || (bill as any).vendor_name || '';
     const invoiceNum = bill.supplier_invoice_number || (bill as any).invoice_number || (bill as any).bill_number || '';
-    const supplierPhone = bill.supplier?.phone || '';
+    const supplierPhone = (bill.supplier as any)?.phone || '';
     const supplierGstin = bill.supplier?.gstin || '';
 
     const matchSearch = !sLower ||

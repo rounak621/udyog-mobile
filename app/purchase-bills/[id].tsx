@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput
+  TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput,
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -440,7 +441,11 @@ export default function PurchaseBillDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowPaymentModal(false)}
       >
-        <View style={styles.payOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={styles.payOverlay}
+        >
           <View style={styles.paySheet}>
             <View style={styles.paySheetHandle} />
             <View style={styles.payHeader}>
@@ -517,7 +522,7 @@ export default function PurchaseBillDetailScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Revert Modal */}
@@ -527,7 +532,11 @@ export default function PurchaseBillDetailScreen() {
         animationType="fade"
         onRequestClose={() => { setShowRevertModal(false); setRevertReason(''); }}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Revert Payment</Text>
             <Text style={styles.modalSub}>
@@ -563,7 +572,7 @@ export default function PurchaseBillDetailScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
