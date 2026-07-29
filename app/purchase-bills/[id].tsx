@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, Keyboard
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -65,6 +65,21 @@ export default function PurchaseBillDetailScreen() {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setAndroidKeyboardOffset(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setAndroidKeyboardOffset(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Revert Modal state
   const [showRevertModal, setShowRevertModal] = useState(false);
@@ -442,11 +457,11 @@ export default function PurchaseBillDetailScreen() {
         onRequestClose={() => setShowPaymentModal(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
           style={styles.payOverlay}
         >
-          <View style={[styles.paySheet, { paddingBottom: 20 + insets.bottom }]}>
+          <View style={[styles.paySheet, { paddingBottom: 20 + insets.bottom, marginBottom: Platform.OS === 'android' ? androidKeyboardOffset : 0 }]}>
             <View style={styles.paySheetHandle} />
             <View style={styles.payHeader}>
               <Text style={styles.payTitle}>Record Payment</Text>
