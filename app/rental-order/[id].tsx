@@ -1,9 +1,9 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   Alert, Modal, TextInput, ScrollView, Switch,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, Keyboard
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -88,6 +88,23 @@ export default function OrderDetailScreen() {
   // Payment Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
+  const [payNotes, setPayNotes] = useState('');
+  const [payMode, setPayMode] = useState('CASH');
+  const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setAndroidKeyboardOffset(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setAndroidKeyboardOffset(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [paymentNotes, setPaymentNotes] = useState('');
   const [showPayDatePicker, setShowPayDatePicker] = useState(false);
@@ -788,11 +805,11 @@ export default function OrderDetailScreen() {
       {/* Payment Modal (Bottom Sheet style) */}
       <Modal visible={showPaymentModal} transparent animationType="slide">
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
           style={styles.modalOverlay}
         >
-          <View style={[styles.modalContent, { paddingBottom: 20 + insets.bottom }]}>
+          <View style={[styles.modalContent, { paddingBottom: 20 + insets.bottom, marginBottom: Platform.OS === 'android' ? androidKeyboardOffset : 0 }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Receive Payment</Text>
               <TouchableOpacity onPress={() => setShowPaymentModal(false)}>

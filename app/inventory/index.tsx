@@ -1,10 +1,10 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform
+  ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, Keyboard
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -40,6 +40,21 @@ export default function InventoryScreen() {
   const [reason, setReason] = useState('MANUAL');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setAndroidKeyboardOffset(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setAndroidKeyboardOffset(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const loadInventory = useCallback(async () => {
     try {
@@ -297,11 +312,11 @@ export default function InventoryScreen() {
         onRequestClose={() => setSelectedItem(null)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
           style={styles.modalOverlay}
         >
-          <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom }]}>
+          <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom, marginBottom: Platform.OS === 'android' ? androidKeyboardOffset : 0 }]}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <View style={{ flex: 1, marginRight: 8 }}>
