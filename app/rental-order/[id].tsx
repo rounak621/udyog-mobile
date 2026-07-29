@@ -789,10 +789,10 @@ export default function OrderDetailScreen() {
       <Modal visible={showPaymentModal} transparent animationType="slide">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          keyboardVerticalOffset={0}
           style={styles.modalOverlay}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: 20 + insets.bottom }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Receive Payment</Text>
               <TouchableOpacity onPress={() => setShowPaymentModal(false)}>

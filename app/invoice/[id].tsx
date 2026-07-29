@@ -534,10 +534,10 @@ export default function InvoiceDetailScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          keyboardVerticalOffset={0}
           style={styles.payOverlay}
         >
-          <View style={styles.paySheet}>
+          <View style={[styles.paySheet, { paddingBottom: 20 + insets.bottom }]}>
             <View style={styles.paySheetHandle} />
             <View style={styles.payHeader}>
               <Text style={styles.payTitle}>Record Payment</Text>
