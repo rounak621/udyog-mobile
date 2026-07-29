@@ -24,7 +24,42 @@ interface LineItem {
   discount_percent: string;
   unit: string;
   isCustom?: boolean;
+  isEstimatedGst?: boolean;
 }
+
+const STANDARD_GST_RATES = [0, 5, 12, 18, 28];
+
+const parseGstRateValue = (val: any): number | null => {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  const cleaned = String(val).replace(/[^0-9.]/g, '').trim();
+  if (!cleaned) return null;
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? null : parsed;
+};
+
+const resolveGstRate = (rawVal: any, catalogVal: any, billEstimatedRate: string): { rateStr: string; isEstimated: boolean } => {
+  const itemRate = parseGstRateValue(rawVal);
+  const catRate = parseGstRateValue(catalogVal);
+  const targetRate = itemRate !== null ? itemRate : catRate;
+
+  if (targetRate !== null) {
+    const rounded = Math.round(targetRate);
+    if (STANDARD_GST_RATES.includes(rounded)) {
+      return { rateStr: String(rounded), isEstimated: false };
+    }
+    const doubled = Math.round(targetRate * 2);
+    if (STANDARD_GST_RATES.includes(doubled)) {
+      return { rateStr: String(doubled), isEstimated: false };
+    }
+    const nearest = STANDARD_GST_RATES.reduce((prev, curr) =>
+      Math.abs(curr - targetRate) < Math.abs(prev - targetRate) ? curr : prev
+    );
+    return { rateStr: String(nearest), isEstimated: true };
+  }
+
+  return { rateStr: billEstimatedRate, isEstimated: true };
+};
 
 export default function CreatePurchaseBillScreen() {
   const { getToken } = useAuth();
@@ -125,10 +160,9 @@ export default function CreatePurchaseBillScreen() {
       if (data.taxable_value && data.taxable_value > 0) {
         const totalTax = (data.cgst_amount || 0) + (data.sgst_amount || 0) + (data.igst_amount || 0);
         if (totalTax > 0) {
-          const gstRate = Math.round((totalTax / data.taxable_value) * 100);
-          const standardRates = [0, 5, 12, 18, 28];
-          const nearest = standardRates.reduce((prev, curr) => 
-            Math.abs(curr - gstRate) < Math.abs(prev - gstRate) ? curr : prev
+          const rawRatio = (totalTax / data.taxable_value) * 100;
+          const nearest = STANDARD_GST_RATES.reduce((prev, curr) => 
+            Math.abs(curr - rawRatio) < Math.abs(prev - rawRatio) ? curr : prev
           );
           calculatedGstPercent = String(nearest);
         }
@@ -140,16 +174,19 @@ export default function CreatePurchaseBillScreen() {
             (i: any) => i.id === item.item_id || i.name?.toLowerCase().trim() === item.description?.toLowerCase().trim()
           );
 
+          const { rateStr, isEstimated } = resolveGstRate(item.gst_percent, catalogMatch?.gst_rate, calculatedGstPercent);
+
           return {
             id: Math.random().toString(),
             item_id: catalogMatch?.id || item.item_id || null,
             name: item.description || catalogMatch?.name || 'Scanned Item',
             qty: String(item.quantity || 1),
             rate: String(item.unit_price || catalogMatch?.price || 0),
-            gst_rate: String(Math.round(Number(item.gst_percent || catalogMatch?.gst_rate || calculatedGstPercent || 0))),
+            gst_rate: rateStr,
             discount_percent: String(item.discount_percent || 0),
             unit: (item.unit || catalogMatch?.unit || 'PCS').toUpperCase(),
             isCustom: !catalogMatch,
+            isEstimatedGst: isEstimated,
           };
         });
         setLineItems(mapped);
@@ -164,7 +201,8 @@ export default function CreatePurchaseBillScreen() {
           gst_rate: calculatedGstPercent,
           discount_percent: '0',
           unit: 'PCS',
-          isCustom: true
+          isCustom: true,
+          isEstimatedGst: true,
         }]);
       }
 
@@ -306,7 +344,16 @@ export default function CreatePurchaseBillScreen() {
   };
 
   const updateLineItem = useCallback((id: string, field: keyof LineItem, value: any) => {
-    setLineItems(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
+    setLineItems(prev => prev.map(l => {
+      if (l.id === id) {
+        const updated = { ...l, [field]: value };
+        if (field === 'gst_rate') {
+          updated.isEstimatedGst = false;
+        }
+        return updated;
+      }
+      return l;
+    }));
   }, []);
 
   // Calculations
@@ -627,7 +674,15 @@ export default function CreatePurchaseBillScreen() {
                 
                 {/* GST chips */}
                 <View style={{ marginTop: 8 }}>
-                  <Text style={{ fontSize: 11, color: Colors.textSecondary, marginBottom: 6 }}>GST Rate</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 11, color: Colors.textSecondary }}>GST Rate</Text>
+                    {item.isEstimatedGst && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFFBEB', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: '#FDE68A' }}>
+                        <Ionicons name="alert-circle" size={12} color="#D97706" />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: '#B45309' }}>Please verify GST %</Text>
+                      </View>
+                    )}
+                  </View>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {['0', '5', '12', '18', '28'].map(rate => (
                       <TouchableOpacity
