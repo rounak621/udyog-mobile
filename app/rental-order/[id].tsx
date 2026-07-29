@@ -877,15 +877,15 @@ export default function OrderDetailScreen() {
                   placeholderTextColor={Colors.textMuted}
                 />
               </View>
-
-              <TouchableOpacity style={styles.submitReturnBtn} onPress={handleSavePayment} disabled={submitting}>
-                {submitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={styles.submitReturnBtnText}>Record Payment</Text>
-                )}
-              </TouchableOpacity>
             </ScrollView>
+
+            <TouchableOpacity style={styles.submitReturnBtn} onPress={handleSavePayment} disabled={submitting}>
+              {submitting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.submitReturnBtnText}>Record Payment</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
