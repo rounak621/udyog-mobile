@@ -547,62 +547,64 @@ export default function InvoiceDetailScreen() {
             </View>
             <Text style={styles.paySubtitle}>Configure payment details</Text>
 
-            <View style={{ gap: 12, marginBottom: 20 }}>
-              <View>
-                <Text style={styles.inputLabel}>Amount (₹) *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  keyboardType="numeric"
-                  value={paymentAmount}
-                  onChangeText={setPaymentAmount}
-                  placeholder="Enter amount"
-                  placeholderTextColor={Colors.textMuted}
-                />
-              </View>
+            <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 12 }}>
+                <View>
+                  <Text style={styles.inputLabel}>Amount (₹) *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    keyboardType="numeric"
+                    value={paymentAmount}
+                    onChangeText={setPaymentAmount}
+                    placeholder="Enter amount"
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                </View>
 
-              <View>
-                <Text style={styles.inputLabel}>Notes (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="Add payment notes..."
-                  placeholderTextColor={Colors.textMuted}
-                />
-              </View>
+                <View>
+                  <Text style={styles.inputLabel}>Notes (Optional)</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Add payment notes..."
+                    placeholderTextColor={Colors.textMuted}
+                  />
+                </View>
 
-              <Text style={styles.inputLabel}>Payment Mode</Text>
-              <View style={{ gap: 8 }}>
-                {([
-                  { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
-                  { value: 'BANK', label: 'Bank Transfer', icon: 'business-outline' },
-                  { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
-                  { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
-                ] as const).map(opt => {
-                  const selected = paymentMode === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => setPaymentMode(opt.value)}
-                      style={[styles.payOption, selected && styles.payOptionSelected]}
-                    >
-                      <View style={[styles.payIconWrap, selected && styles.payIconWrapSelected]}>
-                        <Ionicons name={opt.icon as any} size={20} color={selected ? '#fff' : '#F97316'} />
-                      </View>
-                      <Text style={[styles.payOptionLabel, selected && styles.payOptionLabelSelected]}>
-                        {opt.label}
-                      </Text>
-                      <View style={[styles.payRadio, selected && styles.payRadioSelected]}>
-                        {selected ? <View style={styles.payRadioDot} /> : null}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                <Text style={styles.inputLabel}>Payment Mode</Text>
+                <View style={{ gap: 8 }}>
+                  {([
+                    { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
+                    { value: 'BANK', label: 'Bank Transfer', icon: 'business-outline' },
+                    { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
+                    { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
+                  ] as const).map(opt => {
+                    const selected = paymentMode === opt.value;
+                    return (
+                      <TouchableOpacity
+                        key={opt.value}
+                        onPress={() => setPaymentMode(opt.value)}
+                        style={[styles.payOption, selected && styles.payOptionSelected]}
+                      >
+                        <View style={[styles.payIconWrap, selected && styles.payIconWrapSelected]}>
+                          <Ionicons name={opt.icon as any} size={20} color={selected ? '#fff' : '#F97316'} />
+                        </View>
+                        <Text style={[styles.payOptionLabel, selected && styles.payOptionLabelSelected]}>
+                          {opt.label}
+                        </Text>
+                        <View style={[styles.payRadio, selected && styles.payRadioSelected]}>
+                          {selected ? <View style={styles.payRadioDot} /> : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
+            </ScrollView>
 
             <TouchableOpacity
-              style={[styles.payConfirmBtn, confirmingPayment && { opacity: 0.7 }]}
+              style={[styles.payConfirmBtn, { marginTop: 12 }, confirmingPayment && { opacity: 0.7 }]}
               onPress={handleConfirmPayment}
               disabled={confirmingPayment}
             >
@@ -759,7 +761,7 @@ const styles = StyleSheet.create({
   pdfHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 10, backgroundColor: '#0F172A' },
   pdfHeaderTitle: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 },
   payOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  paySheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 28 },
+  paySheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, maxHeight: '85%' },
   paySheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', marginBottom: 12 },
   payHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   payTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },

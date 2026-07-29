@@ -85,16 +85,15 @@ export default function Gstr1Screen() {
       const startDate = `${year}-${String(monthIndex).padStart(2, '0')}-01`;
       const endDate = `${year}-${String(monthIndex).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-      const [invRes, gstrRes] = await Promise.all([
-        api.get(`/invoices/?business_id=${bId}&start_date=${startDate}&end_date=${endDate}`),
+      const [summaryRes, gstrRes] = await Promise.all([
+        api.get(`/exports/gstr1-summary?business_id=${bId}&month=${monthStr}`),
         api.get(`/exports/gstr1-json?business_id=${bId}&month=${monthStr}`)
       ]);
 
-      const rawInvoices = Array.isArray(invRes.data) ? invRes.data : invRes.data?.items || [];
-      // Filter out non-gst invoices if necessary, matching backend
-      const gstOnlyInvoices = rawInvoices.filter((inv: any) => !(inv.invoice_number || '').startsWith('NONGST-'));
+      const rawSummary = summaryRes.data?.rows || summaryRes.data || [];
+      const summaryInvoices = Array.isArray(rawSummary) ? rawSummary : [];
       
-      setInvoices(gstOnlyInvoices);
+      setInvoices(summaryInvoices);
       setPayload(gstrRes.data.gstr1_payload || gstrRes.data);
       setWarnings(gstrRes.data.validation_warnings || []);
       setError(null);
@@ -268,9 +267,9 @@ export default function Gstr1Screen() {
                     {invoices.map((inv, idx) => (
                       <View key={inv.id || idx} style={styles.tableRow}>
                         <Text style={[styles.tableCellVal, { width: 90, fontWeight: '700' }]}>{inv.invoice_number}</Text>
-                        <Text style={[styles.tableCellVal, { width: 90 }]}>{inv.invoice_date || '—'}</Text>
+                        <Text style={[styles.tableCellVal, { width: 90 }]}>{inv.invoice_date || (inv as any).date || '—'}</Text>
                         <Text style={[styles.tableCellVal, { width: 140 }]} numberOfLines={1}>{inv.customer_name || inv.customer?.name || 'Walk-in'}</Text>
-                        <Text style={[styles.tableCellVal, { width: 120, fontFamily: 'monospace', fontSize: 10 }]}>{inv.customer_gstin || inv.customer?.gstin || inv.customer?.gst_number || '—'}</Text>
+                        <Text style={[styles.tableCellVal, { width: 120, fontFamily: 'monospace', fontSize: 10 }]}>{(inv as any).gstin || inv.customer_gstin || inv.customer?.gstin || inv.customer?.gst_number || '—'}</Text>
                         <Text style={[styles.tableCellVal, { width: 90, textAlign: 'right' }]}>{fmt(inv.taxable_amount)}</Text>
                         <Text style={[styles.tableCellVal, { width: 90, textAlign: 'right' }]}>{fmt(inv.cgst_amount || 0)}</Text>
                         <Text style={[styles.tableCellVal, { width: 90, textAlign: 'right' }]}>{fmt(inv.sgst_amount || 0)}</Text>

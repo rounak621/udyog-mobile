@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   bulkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fff7ed' },
   bulkBtnText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: Radius.sm, paddingHorizontal: 12, height: 44, borderWidth: 0.5, borderColor: Colors.border },
-  searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: 20 },
+  searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: '100%', paddingVertical: 0 },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10, marginTop: 16 },

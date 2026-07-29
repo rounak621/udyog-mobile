@@ -10,6 +10,7 @@ interface Business {
   state: string;
   subscription_plan?: string | null;
   subscription_status?: string | null;
+  dual_address_enabled?: boolean;
 }
 
 interface BusinessContextType {

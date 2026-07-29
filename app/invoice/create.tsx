@@ -190,6 +190,7 @@ export default function CreateInvoiceScreen() {
       const match = parties.find(p => String(p.id) === String(preselectCustomerId));
       if (match) {
         setSelectedParty(match);
+        setConsignmentAddress(match.consignment_address || match.address || '');
         const customerState = match.state || '';
         const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
         setIsInterState(!!interState);
