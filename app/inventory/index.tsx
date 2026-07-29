@@ -298,7 +298,7 @@ export default function InventoryScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          keyboardVerticalOffset={0}
           style={styles.modalOverlay}
         >
           <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom }]}>
