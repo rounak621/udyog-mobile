@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
 
   filterSection: { backgroundColor: Colors.card, marginTop: 12, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F8FAFC', marginHorizontal: 12, borderRadius: Radius.sm, paddingHorizontal: 12, height: 40, borderWidth: 0.5, borderColor: Colors.border },
-  searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: 20 },
+  searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: '100%', paddingVertical: 0 },
   pillsContainer: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, marginTop: 10 },
   pill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#fff' },
   pillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
