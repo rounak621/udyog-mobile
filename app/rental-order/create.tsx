@@ -569,20 +569,18 @@ export default function OrderCreateScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Shipping / Consignee Address (conditional on dual_address_enabled) */}
-        {!!business?.dual_address_enabled && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>SHIPPING ADDRESS (OPTIONAL)</Text>
-            <TextInput
-              style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
-              multiline
-              placeholder="Enter consignee / shipping address..."
-              placeholderTextColor={Colors.textMuted}
-              value={consignmentAddress}
-              onChangeText={setConsignmentAddress}
-            />
-          </View>
-        )}
+        {/* Shipping / Consignee Address */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>SHIPPING ADDRESS (OPTIONAL)</Text>
+          <TextInput
+            style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
+            multiline
+            placeholder="Enter consignee / shipping address..."
+            placeholderTextColor={Colors.textMuted}
+            value={consignmentAddress}
+            onChangeText={setConsignmentAddress}
+          />
+        </View>
 
         {/* Rental Dates Section */}
         <View style={styles.section}>
