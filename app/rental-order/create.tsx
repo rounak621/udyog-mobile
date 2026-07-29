@@ -22,6 +22,8 @@ interface Customer {
   name: string;
   phone?: string;
   gstin?: string;
+  address?: string;
+  consignment_address?: string;
 }
 
 interface RentalProduct {
@@ -114,6 +116,7 @@ export default function OrderCreateScreen() {
   const [securityDeposit, setSecurityDeposit] = useState('');
   const [lateFee, setLateFee] = useState('');
   const [notes, setNotes] = useState('');
+  const [consignmentAddress, setConsignmentAddress] = useState('');
 
   // Items List (at least one row)
   const [items, setItems] = useState<OrderItem[]>([
@@ -189,6 +192,7 @@ export default function OrderCreateScreen() {
         );
         if (match) {
           setSelectedCustomer(match);
+          setConsignmentAddress(match.consignment_address || match.address || '');
         }
       }
       if (draft.start_date) {
@@ -435,6 +439,7 @@ export default function OrderCreateScreen() {
         security_deposit: parseFloat(securityDeposit) || 0,
         late_fee_per_day: parseFloat(lateFee) || 0,
         notes: notes.trim() || null,
+        consignment_address: consignmentAddress.trim() || null,
         items: validItems
       };
 
@@ -563,6 +568,21 @@ export default function OrderCreateScreen() {
             <Ionicons name="chevron-down" size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
+
+        {/* Shipping / Consignee Address (conditional on dual_address_enabled) */}
+        {!!business?.dual_address_enabled && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>SHIPPING ADDRESS (OPTIONAL)</Text>
+            <TextInput
+              style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
+              multiline
+              placeholder="Enter consignee / shipping address..."
+              placeholderTextColor={Colors.textMuted}
+              value={consignmentAddress}
+              onChangeText={setConsignmentAddress}
+            />
+          </View>
+        )}
 
         {/* Rental Dates Section */}
         <View style={styles.section}>
@@ -862,6 +882,7 @@ export default function OrderCreateScreen() {
                   ]}
                   onPress={() => {
                     setSelectedCustomer(item);
+                    setConsignmentAddress(item.consignment_address || item.address || '');
                     setShowCustomerModal(false);
                   }}
                 >
