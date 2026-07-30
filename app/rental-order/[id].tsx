@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   Alert, Modal, TextInput, ScrollView, Switch,
@@ -91,6 +91,25 @@ export default function OrderDetailScreen() {
   const [payNotes, setPayNotes] = useState('');
   const [payMode, setPayMode] = useState('CASH');
   const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
+
+  const paymentScrollViewRef = useRef<ScrollView>(null);
+  const amountInputRef = useRef<TextInput>(null);
+
+  const scrollToAmountInput = () => {
+    setTimeout(() => {
+      if (amountInputRef.current && paymentScrollViewRef.current) {
+        amountInputRef.current.measureLayout(
+          paymentScrollViewRef.current as any,
+          (x, y) => {
+            paymentScrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+          },
+          () => {
+            paymentScrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          }
+        );
+      }
+    }, 100);
+  };
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -817,7 +836,7 @@ export default function OrderDetailScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+            <ScrollView ref={paymentScrollViewRef} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
               {/* Outstanding Amount amber box */}
               <View style={styles.outstandingBox}>
                 <Text style={styles.outstandingLabel}>Outstanding Amount</Text>
@@ -830,6 +849,8 @@ export default function OrderDetailScreen() {
               <View style={styles.fieldContainer}>
                 <Text style={styles.modalLabel}>Payment Amount (₹)</Text>
                 <TextInput
+                  ref={amountInputRef}
+                  onFocus={scrollToAmountInput}
                   style={styles.modalInput}
                   placeholder="Leave empty for full outstanding"
                   value={paymentAmount}
