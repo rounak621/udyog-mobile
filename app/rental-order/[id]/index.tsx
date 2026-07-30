@@ -1,9 +1,9 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   Alert, Modal, TextInput, ScrollView, Switch,
-  KeyboardAvoidingView, Platform, Keyboard
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -11,10 +11,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { savePdfToAndroidOrShare } from '../../services/safHelper';
-import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
-import { useBusiness } from '../../context/BusinessContext';
+import { savePdfToAndroidOrShare } from '../../../services/safHelper';
+import { Colors, Spacing, Radius } from '../../../constants/theme';
+import { api, setAuthToken } from '../../../services/api';
+import { useBusiness } from '../../../context/BusinessContext';
 
 interface RentalOrderItem {
   id: string;
@@ -85,48 +85,7 @@ export default function OrderDetailScreen() {
   const [markAsPaid, setMarkAsPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
 
-  // Payment Modal states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [payNotes, setPayNotes] = useState('');
-  const [payMode, setPayMode] = useState('CASH');
-  const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
 
-  const paymentScrollViewRef = useRef<ScrollView>(null);
-  const amountInputRef = useRef<TextInput>(null);
-
-  const scrollToAmountInput = () => {
-    setTimeout(() => {
-      if (amountInputRef.current && paymentScrollViewRef.current) {
-        amountInputRef.current.measureLayout(
-          paymentScrollViewRef.current as any,
-          (x, y) => {
-            paymentScrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
-          },
-          () => {
-            paymentScrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          }
-        );
-      }
-    }, 100);
-  };
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
-      setAndroidKeyboardOffset(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setAndroidKeyboardOffset(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
-  const [paymentNotes, setPaymentNotes] = useState('');
-  const [showPayDatePicker, setShowPayDatePicker] = useState(false);
 
   const [payments, setPayments] = useState<any[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
@@ -259,31 +218,7 @@ export default function OrderDetailScreen() {
     }
   };
 
-  const handleSavePayment = async () => {
-    if (!order || !business?.id) return;
-    try {
-      setSubmitting(true);
-      const token = await getToken();
-      setAuthToken(token);
 
-      const amount = paymentAmount.trim() ? parseFloat(paymentAmount) : undefined;
-
-      await api.post(`/rental-orders/${order.id}/mark-paid?business_id=${business.id}`, {
-        payment_method: paymentMethod,
-        paid_amount: amount,
-        payment_date: paymentDate.toISOString().split('T')[0],
-        notes: paymentNotes.trim() || null
-      });
-
-      Alert.alert('Success', 'Payment recorded successfully.');
-      setShowPaymentModal(false);
-      loadOrderDetails();
-    } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to record payment.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleWaiveFee = async () => {
     if (!order || !business?.id) return;
@@ -665,13 +600,7 @@ export default function OrderDetailScreen() {
           {order.payment_status !== 'PAID' && order.status !== 'CANCELLED' && (
             <TouchableOpacity
               style={[styles.actionButtonSecondary, { marginTop: 10 }]}
-              onPress={() => {
-                setPaymentAmount('');
-                setPaymentDate(new Date());
-                setPaymentMethod('CASH');
-                setPaymentNotes('');
-                setShowPaymentModal(true);
-              }}
+              onPress={() => router.push(`/rental-order/${id}/record-payment`)}
             >
               <Ionicons name="cash-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.actionButtonSecondaryText}>Mark Paid</Text>
@@ -821,112 +750,7 @@ export default function OrderDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Payment Modal (Bottom Sheet style) */}
-      <Modal visible={showPaymentModal} transparent animationType="slide">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
-          style={styles.modalOverlay}
-        >
-          <View style={[styles.modalContent, { paddingBottom: 20 + insets.bottom, marginBottom: Platform.OS === 'android' ? androidKeyboardOffset : 0 }]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Receive Payment</Text>
-              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
 
-            <ScrollView ref={paymentScrollViewRef} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
-              {/* Outstanding Amount amber box */}
-              <View style={styles.outstandingBox}>
-                <Text style={styles.outstandingLabel}>Outstanding Amount</Text>
-                <Text style={styles.outstandingValue}>
-                  ₹{(Math.max(0, parseFloat(order.total_amount) - parseFloat(order.paid_amount))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </Text>
-              </View>
-
-              {/* Amount to receive */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.modalLabel}>Payment Amount (₹)</Text>
-                <TextInput
-                  ref={amountInputRef}
-                  onFocus={scrollToAmountInput}
-                  style={styles.modalInput}
-                  placeholder="Leave empty for full outstanding"
-                  value={paymentAmount}
-                  onChangeText={setPaymentAmount}
-                  keyboardType="numeric"
-                  placeholderTextColor={Colors.textMuted}
-                />
-              </View>
-
-              {/* Date */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.modalLabel}>Payment Date</Text>
-                <TouchableOpacity style={styles.dateSelector} onPress={() => setShowPayDatePicker(true)}>
-                  <Text style={styles.dateSelectorText}>
-                    {paymentDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
-                </TouchableOpacity>
-                {showPayDatePicker && (
-                  <DateTimePicker
-                    value={paymentDate}
-                    mode="date"
-                    display="default"
-                    onChange={(event, date) => {
-                      setShowPayDatePicker(false);
-                      if (date) setPaymentDate(date);
-                    }}
-                  />
-                )}
-              </View>
-
-              {/* Payment Method */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.modalLabel}>Payment Method</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                  {['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'].map((method) => {
-                    const isSelected = paymentMethod === method;
-                    return (
-                      <TouchableOpacity
-                        key={method}
-                        style={[styles.gstChip, isSelected ? styles.gstChipActive : null]}
-                        onPress={() => setPaymentMethod(method)}
-                      >
-                        <Text style={[styles.gstChipText, isSelected ? styles.gstChipTextActive : null]}>
-                          {method.replace('_', ' ')}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Notes */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.modalLabel}>Payment Notes</Text>
-                <TextInput
-                  style={[styles.modalInput, { height: 50, textAlignVertical: 'top' }]}
-                  placeholder="e.g. Received by Rounak · UPI ref: 123456"
-                  value={paymentNotes}
-                  onChangeText={setPaymentNotes}
-                  multiline
-                  placeholderTextColor={Colors.textMuted}
-                />
-              </View>
-            </ScrollView>
-
-            <TouchableOpacity style={styles.submitReturnBtn} onPress={handleSavePayment} disabled={submitting}>
-              {submitting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.submitReturnBtnText}>Record Payment</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }

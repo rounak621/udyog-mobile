@@ -1,20 +1,20 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, Linking, Modal, TextInput,
-  KeyboardAvoidingView, Platform, Keyboard
+  KeyboardAvoidingView, Platform
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
-import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken, API_BASE_URL } from '../../services/api';
+import { getPdfViewerHtml } from '../../../utils/pdfViewerHtml';
+import { Colors, Spacing, Radius } from '../../../constants/theme';
+import { api, setAuthToken, API_BASE_URL } from '../../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { savePdfToAndroidOrShare } from '../../services/safHelper';
+import { savePdfToAndroidOrShare } from '../../../services/safHelper';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -40,47 +40,6 @@ export default function InvoiceDetailScreen() {
     : '';
   const pdfViewerHtml = previewPdfUrl ? getPdfViewerHtml(previewPdfUrl) : '';
 
-  // Payment recording states
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<'CASH' | 'BANK' | 'UPI' | 'CHEQUE'>('CASH');
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [notes, setNotes] = useState('');
-  const [confirmingPayment, setConfirmingPayment] = useState(false);
-  const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
-
-  const paymentScrollViewRef = useRef<ScrollView>(null);
-  const amountInputRef = useRef<TextInput>(null);
-
-  const scrollToAmountInput = () => {
-    setTimeout(() => {
-      if (amountInputRef.current && paymentScrollViewRef.current) {
-        amountInputRef.current.measureLayout(
-          paymentScrollViewRef.current as any,
-          (x, y) => {
-            paymentScrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
-          },
-          () => {
-            paymentScrollViewRef.current?.scrollTo({ y: 0, animated: true });
-          }
-        );
-      }
-    }, 100);
-  };
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
-      setAndroidKeyboardOffset(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setAndroidKeyboardOffset(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
   // Payment revert states
   const [showRevertModal, setShowRevertModal] = useState(false);
   const [revertPaymentId, setRevertPaymentId] = useState<string | null>(null);
@@ -100,9 +59,11 @@ export default function InvoiceDetailScreen() {
     }
   };
 
-  useEffect(() => {
-    loadInvoice();
-  }, [id]);
+  useFocusEffect(
+    useCallback(() => {
+      loadInvoice();
+    }, [id])
+  );
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -179,51 +140,7 @@ export default function InvoiceDetailScreen() {
   const isPartial = ps === 'PARTIAL';
   const balanceDue = invoice ? Math.max(0, Number(invoice.total_amount) - Number(invoice.paid_amount || 0)) : 0;
 
-  const openPaymentModal = () => {
-    setPaymentMode('CASH');
-    setPaymentAmount(String(balanceDue));
-    setNotes('');
-    setShowPaymentModal(true);
-  };
 
-  const handleConfirmPayment = async () => {
-    const amt = parseFloat(paymentAmount);
-    if (isNaN(amt) || amt <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
-      return;
-    }
-    if (amt > balanceDue) {
-      Alert.alert('Error', `Amount cannot exceed remaining balance of ${fmt(balanceDue)}`);
-      return;
-    }
-
-    try {
-      setConfirmingPayment(true);
-      const token = await getToken();
-      setAuthToken(token);
-      await api.post(`/payments/receive?business_id=${invoice.business_id}`, {
-        party_id: invoice.customer_id,
-        amount: amt,
-        payment_date: new Date().toISOString().split('T')[0],
-        payment_mode: paymentMode,
-        notes: notes.trim() || null,
-        allocations: [
-          {
-            invoice_id: Number(invoice.id),
-            amount: amt
-          }
-        ]
-      });
-      setShowPaymentModal(false);
-      setPaymentAmount('');
-      setNotes('');
-      await loadInvoice();
-    } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.detail || 'Failed to record payment');
-    } finally {
-      setConfirmingPayment(false);
-    }
-  };
 
   const handleRevertPayment = (paymentId: string) => {
     setRevertPaymentId(paymentId);
@@ -551,7 +468,7 @@ export default function InvoiceDetailScreen() {
         </View>
 
         {!isPaid && (
-          <TouchableOpacity style={styles.paidBtn} onPress={openPaymentModal}>
+          <TouchableOpacity style={styles.paidBtn} onPress={() => router.push(`/invoice/${id}/record-payment`)}>
             <Ionicons name="cash-outline" size={18} color="#fff" />
             <Text style={styles.paidBtnText}>Record Payment</Text>
           </TouchableOpacity>
@@ -560,99 +477,6 @@ export default function InvoiceDetailScreen() {
 
       </ScrollView>
 
-      <Modal
-        visible={showPaymentModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPaymentModal(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
-          style={styles.payOverlay}
-        >
-          <View style={[styles.paySheet, { paddingBottom: 20 + insets.bottom, marginBottom: Platform.OS === 'android' ? androidKeyboardOffset : 0 }]}>
-            <View style={styles.paySheetHandle} />
-            <View style={styles.payHeader}>
-              <Text style={styles.payTitle}>Record Payment</Text>
-              <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
-                <Ionicons name="close" size={24} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.paySubtitle}>Configure payment details</Text>
-
-            <ScrollView ref={paymentScrollViewRef} style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-              <View style={{ gap: 12 }}>
-                <View>
-                  <Text style={styles.inputLabel}>Amount (₹) *</Text>
-                  <TextInput
-                    ref={amountInputRef}
-                    onFocus={scrollToAmountInput}
-                    style={styles.textInput}
-                    keyboardType="numeric"
-                    value={paymentAmount}
-                    onChangeText={setPaymentAmount}
-                    placeholder="Enter amount"
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-
-                <View>
-                  <Text style={styles.inputLabel}>Notes (Optional)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder="Add payment notes..."
-                    placeholderTextColor={Colors.textMuted}
-                  />
-                </View>
-
-                <Text style={styles.inputLabel}>Payment Mode</Text>
-                <View style={{ gap: 8 }}>
-                  {([
-                    { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
-                    { value: 'BANK', label: 'Bank Transfer', icon: 'business-outline' },
-                    { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
-                    { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
-                  ] as const).map(opt => {
-                    const selected = paymentMode === opt.value;
-                    return (
-                      <TouchableOpacity
-                        key={opt.value}
-                        onPress={() => setPaymentMode(opt.value)}
-                        style={[styles.payOption, selected && styles.payOptionSelected]}
-                      >
-                        <View style={[styles.payIconWrap, selected && styles.payIconWrapSelected]}>
-                          <Ionicons name={opt.icon as any} size={20} color={selected ? '#fff' : '#F97316'} />
-                        </View>
-                        <Text style={[styles.payOptionLabel, selected && styles.payOptionLabelSelected]}>
-                          {opt.label}
-                        </Text>
-                        <View style={[styles.payRadio, selected && styles.payRadioSelected]}>
-                          {selected ? <View style={styles.payRadioDot} /> : null}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </ScrollView>
-
-            <TouchableOpacity
-              style={[styles.payConfirmBtn, { marginTop: 12 }, confirmingPayment && { opacity: 0.7 }]}
-              onPress={handleConfirmPayment}
-              disabled={confirmingPayment}
-            >
-              {confirmingPayment ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.payConfirmText}>Confirm Payment</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       <Modal
         visible={showRevertModal}
@@ -796,25 +620,8 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 13, fontWeight: '700' },
   pdfHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 10, backgroundColor: '#0F172A' },
   pdfHeaderTitle: { flex: 1, color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 },
-  payOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  paySheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, maxHeight: '85%' },
-  paySheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', marginBottom: 12 },
-  payHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  payTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  paySubtitle: { fontSize: 13, color: '#64748B', marginTop: 4, marginBottom: 16 },
   inputLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
   textInput: { height: 40, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, paddingHorizontal: 12, fontSize: 13, color: Colors.text, backgroundColor: '#f8fafc' },
-  payOption: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#fff' },
-  payOptionSelected: { borderColor: '#F97316', backgroundColor: '#FFF7ED' },
-  payIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
-  payIconWrapSelected: { backgroundColor: '#F97316' },
-  payOptionLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: '#0F172A' },
-  payOptionLabelSelected: { color: '#C2410C' },
-  payRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
-  payRadioSelected: { borderColor: '#F97316' },
-  payRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#F97316' },
-  payConfirmBtn: { backgroundColor: '#F97316', borderRadius: 14, padding: 16, alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  payConfirmText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 },
   modalContent: { backgroundColor: '#fff', borderRadius: Radius.md, padding: 20, width: '100%', maxWidth: 340, borderWidth: 0.5, borderColor: Colors.border },
   modalTitle: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 8 },
