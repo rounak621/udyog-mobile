@@ -99,11 +99,11 @@ export default function PurchaseReportScreen() {
 
       setBills(list.map((bill: any) => ({
         id: bill.id,
-        bill_number: bill.bill_number || '—',
+        bill_number: bill.supplier_invoice_number || bill.bill_number || '—',
         bill_date: bill.bill_date || bill.created_at || '—',
-        vendor_name: bill.vendor_name || bill.supplier_name || bill.supplier?.name || 'Unknown Supplier',
-        taxable_amount: Number(bill.taxable_amount || 0),
-        total_tax: Number(bill.total_tax || 0),
+        vendor_name: bill.supplier?.name || bill.vendor_name || bill.supplier_name || 'Unknown Supplier',
+        taxable_amount: Number(bill.subtotal || bill.taxable_amount || 0),
+        total_tax: Number(bill.tax_amount || (Number(bill.cgst_amount || 0) + Number(bill.sgst_amount || 0) + Number(bill.igst_amount || 0)) || 0),
         total_amount: Number(bill.total_amount || 0),
         payment_status: bill.payment_status || 'UNPAID'
       })));
