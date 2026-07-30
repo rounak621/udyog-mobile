@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
@@ -66,6 +66,25 @@ export default function PurchaseBillDetailScreen() {
   const [referenceNumber, setReferenceNumber] = useState('');
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
+
+  const paymentScrollViewRef = useRef<ScrollView>(null);
+  const amountInputRef = useRef<TextInput>(null);
+
+  const scrollToAmountInput = () => {
+    setTimeout(() => {
+      if (amountInputRef.current && paymentScrollViewRef.current) {
+        amountInputRef.current.measureLayout(
+          paymentScrollViewRef.current as any,
+          (x, y) => {
+            paymentScrollViewRef.current?.scrollTo({ y: Math.max(0, y - 20), animated: true });
+          },
+          () => {
+            paymentScrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          }
+        );
+      }
+    }, 100);
+  };
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -471,11 +490,13 @@ export default function PurchaseBillDetailScreen() {
             </View>
             <Text style={styles.paySubtitle}>Configure payment details</Text>
 
-            <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView ref={paymentScrollViewRef} style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <View style={{ gap: 12 }}>
                 <View>
                   <Text style={styles.inputLabel}>Amount (₹) *</Text>
                   <TextInput
+                    ref={amountInputRef}
+                    onFocus={scrollToAmountInput}
                     style={styles.textInput}
                     keyboardType="numeric"
                     value={paymentAmount}
