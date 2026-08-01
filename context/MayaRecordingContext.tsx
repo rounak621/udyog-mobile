@@ -82,6 +82,18 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<MayaSession | null>(null);
   const recordingStartTimestampRef = useRef<number | null>(null);
 
+  // Refs to track async start/stop state and handle brief tap/hold race conditions
+  const isStartingRef = useRef(false);
+  const stopPendingRef = useRef(false);
+  const pendingStopParamsRef = useRef<{
+    businessId?: string;
+    history?: ChatMessage[];
+    getToken?: () => Promise<string | null>;
+    onResponse?: (response: any) => void;
+    onTranscript?: (transcript: string) => void;
+    onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void;
+  } | null>(null);
+
   const registerSession = (session: MayaSession) => {
     sessionRef.current = session;
   };
@@ -109,12 +121,15 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         console.log('[MayaRecordingContext] Recording was already unloaded (caught gracefully)');
       } else if (err.message?.includes('no valid audio data')) {
         console.log('[MayaRecordingContext] Recording too short / no valid audio data (caught gracefully)');
-        throw err;
       } else {
         console.warn('[MayaRecordingContext] Error safe unloading recording:', err.message || err);
       }
     }
-    return recording.getURI();
+    try {
+      return recording.getURI();
+    } catch (e) {
+      return null;
+    }
   };
 
   const startRecording = async () => {
@@ -128,6 +143,11 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         );
         return;
       }
+
+      // Reset start/stop tracking flags
+      stopPendingRef.current = false;
+      pendingStopParamsRef.current = null;
+      isStartingRef.current = true;
 
       if (recordingRef.current) {
         const prevRecording = recordingRef.current;
@@ -149,10 +169,35 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       const { recording: newRecording } = await Audio.Recording.createAsync(
         VOICE_OPTIMIZED_PRESET
       );
+
+      // Handle race condition: stopRecording was called while startRecording was executing
+      if (stopPendingRef.current) {
+        console.log('[MayaRecordingContext] stopRecording called during initialization. Cleaning up recording.');
+        isStartingRef.current = false;
+
+        try {
+          await safeUnloadRecording(newRecording);
+        } catch (cleanupErr) {
+          console.log('Error cleaning up new recording instance:', cleanupErr);
+        }
+
+        const params = pendingStopParamsRef.current || {};
+        stopPendingRef.current = false;
+        pendingStopParamsRef.current = null;
+
+        await executeStopRecording(newRecording, params);
+        return;
+      }
+
       recordingRef.current = newRecording;
       setIsRecording(true);
+      isStartingRef.current = false;
     } catch (err) {
       console.error('Failed to start recording', err);
+      setIsRecording(false);
+      isStartingRef.current = false;
+      stopPendingRef.current = false;
+      pendingStopParamsRef.current = null;
       Alert.alert('Error', 'Failed to initialize recording.');
     }
   };
@@ -165,27 +210,48 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
     onTranscript?: (transcript: string) => void,
     onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void
   ) => {
+    // If the recording is still starting, queue the stop request
+    if (isStartingRef.current) {
+      console.log('[MayaRecordingContext] stopRecording called while starting. Queueing stop.');
+      stopPendingRef.current = true;
+      pendingStopParamsRef.current = { businessId, history, getToken, onResponse, onTranscript, onError };
+      return;
+    }
+
     const rec = recordingRef.current;
     if (!rec) {
       setIsRecording(false);
       return;
     }
 
-    // Nullify immediately to prevent concurrent duplicate calls/double unloads
+    // Reset recordingRef immediately to avoid double execution/stop issues
     recordingRef.current = null;
     setIsRecording(false);
 
+    await executeStopRecording(rec, { businessId, history, getToken, onResponse, onTranscript, onError });
+  };
+
+  const executeStopRecording = async (
+    rec: Audio.Recording,
+    params: {
+      businessId?: string;
+      history?: ChatMessage[];
+      getToken?: () => Promise<string | null>;
+      onResponse?: (response: any) => void;
+      onTranscript?: (transcript: string) => void;
+      onError?: (errorType: 'permission' | 'network' | 'backend' | 'empty' | 'general', message: string) => void;
+    }
+  ) => {
     // Resolve upload parameters: use explicit args if provided, otherwise fall back to registered session
-    let resolvedBusinessId = businessId;
-    let resolvedHistory = history;
-    let resolvedGetToken = getToken;
-    let resolvedOnResponse = onResponse;
-    let resolvedOnTranscript = onTranscript;
-    let resolvedOnError = onError;
+    let resolvedBusinessId = params.businessId;
+    let resolvedHistory = params.history;
+    let resolvedGetToken = params.getToken;
+    let resolvedOnResponse = params.onResponse;
+    let resolvedOnTranscript = params.onTranscript;
+    let resolvedOnError = params.onError;
 
     if (!resolvedBusinessId && sessionRef.current) {
       resolvedBusinessId = sessionRef.current.businessId;
-      // Read the live ref value so we always get current conversation history
       resolvedHistory = sessionRef.current.conversationHistory.current;
       resolvedGetToken = sessionRef.current.getToken;
       resolvedOnResponse = sessionRef.current.onResponse;
@@ -193,8 +259,23 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       resolvedOnError = sessionRef.current.onError;
     }
 
-    // Only treat as a true cancel if there's genuinely no session available AND no explicit parameters
-    if (!resolvedBusinessId || !resolvedHistory || !resolvedGetToken || !resolvedOnResponse || !resolvedOnError) {
+    const duration = recordingStartTimestampRef.current ? (Date.now() - recordingStartTimestampRef.current) : 0;
+    if (duration < 1000) {
+      try {
+        await safeUnloadRecording(rec);
+      } catch (e) { /* ignore */ }
+      setIsProcessing(false);
+      const msg = 'Recording too short — please hold and speak.';
+      if (resolvedOnError) {
+        resolvedOnError('empty', msg);
+      } else {
+        Alert.alert('Error', msg);
+      }
+      return;
+    }
+
+    // Cancel if no session available and no parameters
+    if (!resolvedBusinessId || !resolvedHistory || !resolvedGetToken || !resolvedOnResponse) {
       try {
         await safeUnloadRecording(rec);
       } catch (e) {
@@ -203,21 +284,8 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Prevent accidental brief taps from uploading (minimum hold duration)
-    // 700ms total elapsed from touch start (roughly 300ms hold + 400ms delay)
-    const duration = recordingStartTimestampRef.current ? (Date.now() - recordingStartTimestampRef.current) : 0;
-    if (duration < 700) {
-      try {
-        await safeUnloadRecording(rec);
-      } catch (e) { /* ignore */ }
-      setIsProcessing(false);
-      resolvedOnError('empty', 'Recording too short, please hold and speak.');
-      return;
-    }
-
     setIsProcessing(true);
 
-    // ── Timing markers for latency diagnosis ──
     const t0 = Date.now();
     console.log('[Maya-Latency] Phase 0: Starting recording teardown');
 
@@ -228,11 +296,16 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
       if (!uri) {
         setIsProcessing(false);
-        resolvedOnError('empty', 'Recording was empty or could not be saved.');
+        const msg = 'Recording was empty or could not be saved.';
+        if (resolvedOnError) {
+          resolvedOnError('empty', msg);
+        } else {
+          Alert.alert('Error', msg);
+        }
         return;
       }
 
-      // Measure file size using the new File class (getInfoAsync is deprecated)
+      // Measure file size
       let fileSizeKB = 'unknown';
       let fileSizeVal = 0;
       try {
@@ -284,7 +357,6 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
         throw new Error("Empty transcript returned from transcription endpoint.");
       }
 
-      // Update frontend immediately with the real transcript
       if (resolvedOnTranscript) {
         resolvedOnTranscript(transcript);
       }
@@ -307,7 +379,11 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       if (chatResponse.data) {
         resolvedOnResponse(chatResponse.data);
       } else {
-        resolvedOnError('backend', 'Backend returned empty response.');
+        if (resolvedOnError) {
+          resolvedOnError('backend', 'Backend returned empty response.');
+        } else {
+          Alert.alert('Error', 'Backend returned empty response.');
+        }
       }
     } catch (err: any) {
       const tErr = Date.now();
@@ -315,17 +391,21 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
       
       const isTranscriptionError = !resolvedHistory || err.config?.url?.includes('/transcribe');
       
-      if (isTranscriptionError) {
-        resolvedOnError('backend', "Couldn't understand your voice, please try again.");
-      } else {
-        const backendMessage = err.response?.data?.detail;
-        if (backendMessage) {
-          resolvedOnError('backend', backendMessage);
-        } else if (err.request) {
-          resolvedOnError('network', 'Could not connect to Maya. Please check your internet connection.');
+      if (resolvedOnError) {
+        if (isTranscriptionError) {
+          resolvedOnError('backend', "Couldn't understand your voice, please try again.");
         } else {
-          resolvedOnError('general', err.message || 'Something went wrong.');
+          const backendMessage = err.response?.data?.detail;
+          if (backendMessage) {
+            resolvedOnError('backend', backendMessage);
+          } else if (err.request) {
+            resolvedOnError('network', 'Could not connect to Maya. Please check your internet connection.');
+          } else {
+            resolvedOnError('general', err.message || 'Something went wrong.');
+          }
         }
+      } else {
+        Alert.alert('Error', err.message || 'Something went wrong.');
       }
     } finally {
       setIsProcessing(false);
