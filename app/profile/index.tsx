@@ -161,7 +161,7 @@ export default function ProfileScreen() {
 
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]}
         enableOnAndroid
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"
@@ -501,7 +501,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
-    paddingBottom: 60,
     gap: Spacing.lg,
   },
   avatarCard: {

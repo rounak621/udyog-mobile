@@ -137,7 +137,7 @@ export default function CAManagementScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollList}
+        contentContainerStyle={[styles.scrollList, { paddingBottom: 80 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center' },
   backBtn: { padding: 4, marginRight: 8 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
-  scrollList: { paddingTop: 16, paddingHorizontal: 16, paddingBottom: 80 },
+  scrollList: { paddingTop: 16, paddingHorizontal: 16 },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', marginVertical: 60 },
   bannerCard: { backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.md, padding: 14, gap: 6 },
   bannerTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },

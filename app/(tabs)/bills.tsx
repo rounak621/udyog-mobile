@@ -38,7 +38,7 @@ export default function BillsScreen() {
   const [skip, setSkip] = useState(0);
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const LIMIT = 50;
+  const LIMIT = 20;
 
   useEffect(() => {
     if (initialFilter === 'Outstanding') {
@@ -129,7 +129,7 @@ export default function BillsScreen() {
 
   const loadMore = () => {
     if (loading || loadingMore) return;
-    if (skip + LIMIT < total) {
+    if (invoices.length < total) {
       loadInvoices(skip + LIMIT);
     }
   };
@@ -232,7 +232,7 @@ export default function BillsScreen() {
             </TouchableOpacity>
           );
         }}
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

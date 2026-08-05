@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -45,6 +46,7 @@ export default function BusinessSettingsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
@@ -321,7 +323,7 @@ export default function BusinessSettingsScreen() {
         </TouchableOpacity>
       </View>
       
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
         
         {/* SECTION 1: CORE IDENTITY */}
         <View style={styles.card}>
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
   topbarTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8 },
   saveBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  content: { padding: 12, gap: 12, paddingBottom: 40 },
+  content: { padding: 12, gap: 12 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.text, marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5, borderBottomWidth: 0.5, borderBottomColor: Colors.border, paddingBottom: 6 },
   label: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },

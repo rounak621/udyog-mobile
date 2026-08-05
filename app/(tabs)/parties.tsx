@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator
+  ActivityIndicator, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -30,28 +30,53 @@ export default function PartiesScreen() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'customer' | 'supplier'>('all');
 
-  const loadParties = async () => {
+  const PAGE_SIZE = 20;
+  const [skip, setSkip] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadParties = async (currentSkip = 0, isRefreshing = false) => {
+    if (currentSkip === 0) {
+      if (!isRefreshing) setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       const token = await getToken();
       setAuthToken(token);
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
-      const res = await api.get(`/customers/?business_id=${bId}`);
+      const res = await api.get(`/customers/?business_id=${bId}&limit=${PAGE_SIZE}&skip=${currentSkip}`);
       const partyData = res.data;
       const rawParties = Array.isArray(partyData) ? partyData : Array.isArray(partyData?.customers) ? partyData.customers : Array.isArray(partyData?.items) ? partyData.items : [];
+      const totalCount = typeof partyData?.total === 'number' ? partyData.total : rawParties.length;
       const sortedParties = [...rawParties].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      setParties(sortedParties);
+      if (currentSkip === 0) {
+        setParties(sortedParties);
+      } else {
+        setParties(prev => [...prev, ...sortedParties]);
+      }
+      setTotal(totalCount);
+      setSkip(currentSkip);
+      setHasMore(currentSkip + PAGE_SIZE < totalCount);
     } catch (err) {
       console.log('Parties error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || loading) return;
+    loadParties(skip + PAGE_SIZE);
   };
 
   useFocusEffect(
     useCallback(() => {
-      loadParties();
+      loadParties(0);
     }, [getToken])
   );
 
@@ -109,26 +134,32 @@ export default function PartiesScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id?.toString()}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(); }} colors={[Colors.primary]} />}
-      >
-        {loading ? (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
-          </View>
-        ) : filtered.length === 0 ? (
-          /* v1.0.1 */
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Ionicons name="people-outline" size={48} color="#cbd5e1" />
-            <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No parties</Text>
-            <TouchableOpacity style={{ backgroundColor: '#F97316', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10, marginTop: 16 }} onPress={() => router.push('/party/create')}>
-              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add First Party</Text>
-            </TouchableOpacity>
-          </View>
-        ) : filtered.map(party => {
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(0, true); }} colors={[Colors.primary]} />}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} color={Colors.primary} /> : null}
+        ListEmptyComponent={() => (
+          loading ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Ionicons name="people-outline" size={48} color="#cbd5e1" />
+              <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No parties</Text>
+              <TouchableOpacity style={{ backgroundColor: '#F97316', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10, marginTop: 16 }} onPress={() => router.push('/party/create')}>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add First Party</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        )}
+        renderItem={({ item: party }) => {
             const pt = String(party.party_type || 'customer').toLowerCase();
             const typeLabel = pt === 'supplier' ? 'Supplier' : pt === 'both' ? 'Both' : 'Customer';
             const isSupplier = pt === 'supplier';
@@ -161,8 +192,8 @@ export default function PartiesScreen() {
                 </View>
               </TouchableOpacity>
             );
-          })}
-      </ScrollView>
+        }}
+      />
     </View>
   );
 }

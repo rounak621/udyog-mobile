@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform
+  ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -45,6 +45,12 @@ export default function ItemsScreen() {
   const [search, setSearch] = useState('');
   const [businessId, setBusinessId] = useState<string | null>(null);
 
+  const PAGE_SIZE = 20;
+  const [skip, setSkip] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
   // Bulk Add Modal state
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkHsn, setBulkHsn] = useState('');
@@ -59,28 +65,50 @@ export default function ItemsScreen() {
   ]);
   const [savingBulk, setSavingBulk] = useState(false);
 
-  const loadItems = useCallback(async () => {
+  const loadItems = useCallback(async (currentSkip = 0, isRefreshing = false) => {
+    if (currentSkip === 0) {
+      if (!isRefreshing) setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       const token = await getToken();
       setAuthToken(token);
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
       setBusinessId(bId);
-      const res = await api.get(`/items/?business_id=${bId}&include_inactive=false`);
-      setItems(Array.isArray(res.data) ? res.data : []);
+      const res = await api.get(`/items/?business_id=${bId}&include_inactive=false&limit=${PAGE_SIZE}&skip=${currentSkip}`);
+      const data = res.data;
+      const newItems = data.items || data;
+      const serverTotal = data.total || newItems.length;
+      
+      if (currentSkip === 0) {
+        setItems(newItems);
+      } else {
+        setItems(prev => [...prev, ...newItems]);
+      }
+      setTotal(serverTotal);
+      setSkip(currentSkip);
+      setHasMore(currentSkip + PAGE_SIZE < serverTotal);
     } catch (err) {
       console.log('Items loading error:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [getToken]);
 
   useFocusEffect(
     useCallback(() => {
-      loadItems();
+      loadItems(0);
     }, [loadItems])
   );
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || loading) return;
+    loadItems(skip + PAGE_SIZE);
+  };
 
   const handleAddRow = () => {
     setBulkRows(prev => [...prev, createEmptyRow()]);
@@ -135,7 +163,7 @@ export default function ItemsScreen() {
         setBulkGstRate('18');
         setBulkUnit('PCS');
         setBulkRows([createEmptyRow(), createEmptyRow(), createEmptyRow(), createEmptyRow(), createEmptyRow()]);
-        loadItems();
+        loadItems(0);
       } else {
         Alert.alert('Error', 'Failed to save items. Please try again.');
       }
@@ -183,46 +211,52 @@ export default function ItemsScreen() {
         ) : null}
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id?.toString()}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              loadItems();
+              loadItems(0, true);
             }}
             colors={[Colors.primary]}
           />
         }
-      >
-        {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
-          </View>
-        ) : filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="cube-outline" size={48} color="#cbd5e1" />
-            <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No items yet</Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-              <TouchableOpacity
-                style={styles.emptyBtn}
-                onPress={() => router.push('/items/create')}
-              >
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add Single Item</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.emptyBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.primary }]}
-                onPress={() => setShowBulkModal(true)}
-              >
-                <Text style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}>Bulk Add Items</Text>
-              </TouchableOpacity>
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} color={Colors.primary} /> : null}
+        ListEmptyComponent={() => (
+          loading ? (
+            <View style={styles.loader}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading...</Text>
             </View>
-          </View>
-        ) : (
-          filtered.map(item => (
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="cube-outline" size={48} color="#cbd5e1" />
+              <Text style={{ fontSize: 16, color: '#64748b', fontWeight: '500', marginTop: 12 }}>No items yet</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                <TouchableOpacity
+                  style={styles.emptyBtn}
+                  onPress={() => router.push('/items/create')}
+                >
+                  <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add Single Item</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.emptyBtn, { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.primary }]}
+                  onPress={() => setShowBulkModal(true)}
+                >
+                  <Text style={{ color: Colors.primary, fontSize: 13, fontWeight: '600' }}>Bulk Add Items</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
+        )}
+        renderItem={({ item }) => (
             <TouchableOpacity
               key={item.id}
               style={styles.card}
@@ -245,9 +279,8 @@ export default function ItemsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
-          ))
         )}
-      </ScrollView>
+      />
 
       {/* BULK ADD MODAL */}
       <Modal

@@ -452,7 +452,7 @@ export default function CreatePurchaseBillScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1, backgroundColor: Colors.background }}
-        contentContainerStyle={{ paddingBottom: 150 }}
+        contentContainerStyle={{ paddingBottom: 150 + insets.bottom }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"

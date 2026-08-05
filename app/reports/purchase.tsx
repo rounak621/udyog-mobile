@@ -420,7 +420,7 @@ export default function PurchaseReportScreen() {
 
       {/* Main List */}
       <ScrollView
-        contentContainerStyle={[styles.scrollList, (loading || bills.length === 0) && { flexGrow: 1 }]}
+        contentContainerStyle={[styles.scrollList, { paddingBottom: 140 + insets.bottom }, (loading || bills.length === 0) && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 9, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4 },
   statValue: { fontSize: 13, fontWeight: '700', color: Colors.text },
 
-  scrollList: { paddingTop: 8, paddingHorizontal: 12, paddingBottom: 140, gap: 10 },
+  scrollList: { paddingTop: 8, paddingHorizontal: 12, gap: 10 },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 

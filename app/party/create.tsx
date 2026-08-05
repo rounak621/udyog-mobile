@@ -193,7 +193,7 @@ export default function CreatePartyScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 120 + insets.bottom }]}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"
@@ -489,7 +489,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     gap: 16,
-    paddingBottom: 120,
   },
   typeRow: {
     flexDirection: 'row',

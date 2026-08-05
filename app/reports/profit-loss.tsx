@@ -96,7 +96,7 @@ export default function ProfitLossReportScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollList}
+        contentContainerStyle={[styles.scrollList, { paddingBottom: 100 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4, marginRight: 8 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
 
-  scrollList: { padding: 12, paddingBottom: 100 },
+  scrollList: { padding: 12 },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 200 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 200 },
 

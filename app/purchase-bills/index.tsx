@@ -37,7 +37,7 @@ export default function PurchaseBillsScreen() {
   const [skip, setSkip] = useState(0);
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const LIMIT = 50;
+  const LIMIT = 20;
 
   const loadBills = async (currentSkip = 0, isRefreshing = false) => {
     if (currentSkip === 0) {
@@ -59,21 +59,11 @@ export default function PurchaseBillsScreen() {
         return;
       }
       const res = await api.get(`/purchase-bills/?limit=${LIMIT}&skip=${currentSkip}&business_id=${bId}`);
-      const responseData = res.data;
+      const data = res.data;
+      const newItems = data.items || data;
+      const serverTotal = data.total;
 
-      const newItems = Array.isArray(responseData)
-        ? responseData
-        : Array.isArray(responseData?.items)
-        ? responseData.items
-        : [];
-      
-      const totalCount = typeof responseData?.total === 'number'
-        ? responseData.total
-        : Array.isArray(responseData)
-        ? responseData.length
-        : 0;
-
-      setTotal(totalCount);
+      setTotal(serverTotal);
       setSkip(currentSkip);
 
       if (currentSkip === 0) {
@@ -129,7 +119,7 @@ export default function PurchaseBillsScreen() {
 
   const loadMore = () => {
     if (loading || loadingMore) return;
-    if (skip + LIMIT < total) {
+    if (bills.length < total) {
       loadBills(skip + LIMIT);
     }
   };
@@ -234,7 +224,7 @@ export default function PurchaseBillsScreen() {
             </TouchableOpacity>
           );
         }}
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }]}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

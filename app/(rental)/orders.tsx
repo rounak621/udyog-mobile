@@ -3,7 +3,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet, TextInput,
-  TouchableOpacity, RefreshControl, ActivityIndicator, Alert
+  TouchableOpacity, RefreshControl, ActivityIndicator, Alert, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -35,37 +35,64 @@ export default function RentalOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const loadOrders = useCallback(async () => {
+  const PAGE_SIZE = 20;
+  const [skip, setSkip] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadOrders = useCallback(async (currentSkip = 0, isRefreshing = false) => {
     if (!business?.id) {
       setLoading(false);
       setRefreshing(false);
       return;
+    }
+    if (currentSkip === 0) {
+      if (!isRefreshing) setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
     try {
       const token = await getToken();
       setAuthToken(token);
       const bId = business.id;
 
-      const res = await api.get(`/rental-orders/?business_id=${bId}&status=ACTIVE`);
-      setOrders(res.data);
+      const res = await api.get(`/rental-orders/?business_id=${bId}&status=ACTIVE&limit=${PAGE_SIZE}&skip=${currentSkip}`);
+      const data = res.data;
+      const newItems = data.items || data;
+      const serverTotal = data.total || newItems.length;
+
+      if (currentSkip === 0) {
+        setOrders(newItems);
+      } else {
+        setOrders(prev => [...prev, ...newItems]);
+      }
+      setTotal(serverTotal);
+      setSkip(currentSkip);
+      setHasMore(currentSkip + PAGE_SIZE < serverTotal);
     } catch (err) {
       console.log('Error loading rental orders:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [business?.id, getToken]);
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      loadOrders();
+      loadOrders(0);
     }, [loadOrders])
   );
 
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || loading) return;
+    loadOrders(skip + PAGE_SIZE);
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
-    loadOrders();
+    loadOrders(0, true);
   };
 
   const getDaysLeftOrOverdue = (endDateStr: string) => {
@@ -146,20 +173,24 @@ export default function RentalOrdersScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
+      <FlatList
+        data={filteredOrders}
+        keyExtractor={ord => ord.id?.toString()}
+        contentContainerStyle={{ paddingBottom: 20 + insets.bottom, flexGrow: filteredOrders.length === 0 ? 1 : undefined }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
-      >
-        {filteredOrders.length === 0 ? (
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} color={Colors.primary} /> : null}
+        ListEmptyComponent={() => (
           <View style={styles.emptyCard}>
             <Ionicons name="receipt-outline" size={40} color={Colors.textMuted} />
             <Text style={styles.emptyText}>
               {searchQuery ? 'No matching orders found' : 'No active rental orders'}
             </Text>
           </View>
-        ) : (
-          filteredOrders.map((ord) => {
+        )}
+        renderItem={({ item: ord }) => {
             const { text: durationText, isOverdue } = getDaysLeftOrOverdue(ord.end_date);
             const paymentStatus = ord.payment_status || 'UNPAID';
 
@@ -234,9 +265,8 @@ export default function RentalOrdersScreen() {
                 </View>
               </TouchableOpacity>
             );
-          })
-        )}
-      </ScrollView>
+        }}
+      />
     </View>
   );
 }

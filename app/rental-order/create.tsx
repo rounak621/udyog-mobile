@@ -540,7 +540,7 @@ export default function OrderCreateScreen() {
       <KeyboardAwareScrollView
         ref={scrollViewRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 14, paddingBottom: 60 }}
+        contentContainerStyle={{ padding: 14, paddingBottom: 60 + insets.bottom }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"

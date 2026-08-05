@@ -184,7 +184,7 @@ export default function BulkAddProductScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 14, paddingBottom: 60 }}
+        contentContainerStyle={{ padding: 14, paddingBottom: 60 + insets.bottom }}
         enableOnAndroid={true}
         extraScrollHeight={40}
         keyboardShouldPersistTaps="handled"

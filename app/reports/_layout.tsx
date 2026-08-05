@@ -3,10 +3,12 @@ import { View, StyleSheet, TouchableOpacity, Text, BackHandler } from 'react-nat
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect } from 'react';
 import { Colors } from '../../constants/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ReportsLayout() {
   const pathname = usePathname();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const onBack = () => {
@@ -29,7 +31,7 @@ export default function ReportsLayout() {
       <View style={{ flex: 1 }}>
         <Slot />
       </View>
-      <View style={styles.tabbar}>
+      <View style={[styles.tabbar, { height: 60 + insets.bottom, paddingBottom: 8 + insets.bottom }]}>
         {tabs.map(t => {
           const isActive = pathname === t.route;
           return (
@@ -57,11 +59,9 @@ export default function ReportsLayout() {
 const styles = StyleSheet.create({
   tabbar: {
     flexDirection: 'row',
-    height: 60,
     backgroundColor: Colors.card,
     borderTopWidth: 0.5,
     borderTopColor: Colors.border,
-    paddingBottom: 8,
     paddingTop: 8,
     position: 'absolute',
     bottom: 0,

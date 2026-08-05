@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, RefreshControl,
-  ActivityIndicator, BackHandler, Alert
+  ActivityIndicator, BackHandler, Alert, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -57,8 +57,18 @@ export default function DayBookReportScreen() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
+  const PAGE_SIZE = 20;
+  const [skip, setSkip] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadData = useCallback(async (currentSkip = 0, isRefreshing = false) => {
+    if (currentSkip === 0) {
+      if (!isRefreshing) setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       const token = await getToken();
       setAuthToken(token);
@@ -82,31 +92,52 @@ export default function DayBookReportScreen() {
           business_id: bId,
           from_date: start,
           to_date: end,
-          sort_order: 'desc'
+          sort_order: 'desc',
+          limit: PAGE_SIZE,
+          skip: currentSkip
         }
       });
 
-      const list = Array.isArray(res.data) ? res.data : [];
-      setTransactions(list.map((t: any) => ({
+      const data = res.data;
+      const newItems = data.items || data;
+      const serverTotal = data.total || newItems.length;
+
+      const list = Array.isArray(newItems) ? newItems : [];
+      const parsedItems = list.map((t: any) => ({
         date: t.date || '—',
         type: t.type || '—',
         reference_no: t.reference_no || '—',
         party_name: t.party_name || 'Walk-in Customer',
         debit: Number(t.debit || 0),
         credit: Number(t.credit || 0)
-      })));
+      }));
+
+      if (currentSkip === 0) {
+        setTransactions(parsedItems);
+      } else {
+        setTransactions(prev => [...prev, ...parsedItems]);
+      }
+      setTotal(serverTotal);
+      setSkip(currentSkip);
+      setHasMore(currentSkip + PAGE_SIZE < serverTotal);
 
     } catch (err) {
       console.log('Error loading day-book:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setLoadingMore(false);
     }
   }, [getToken, filterType, selectedMonthIdx, startDate, endDate]);
 
   useEffect(() => {
-    loadData();
-  }, [filterType, selectedMonthIdx]);
+    loadData(0);
+  }, [filterType, selectedMonthIdx, startDate, endDate]);
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || loading) return;
+    loadData(skip + PAGE_SIZE);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -226,34 +257,40 @@ export default function DayBookReportScreen() {
       </View>
 
       {/* Transaction List */}
-      <ScrollView
-        contentContainerStyle={[styles.scrollList, (loading || filtered.length === 0) && { flexGrow: 1 }]}
+      <FlatList
+        data={filtered}
+        keyExtractor={(item, index) => index.toString()}
+        contentContainerStyle={[styles.scrollList, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              loadData();
+              loadData(0, true);
             }}
             colors={[Colors.primary]}
           />
         }
-      >
-        {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 13 }}>Fetching ledger...</Text>
-          </View>
-        ) : filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="book-outline" size={48} color="#cbd5e1" />
-            <Text style={{ fontSize: 14, color: '#64748b', fontWeight: '500', marginTop: 12 }}>
-              No ledger entries found
-            </Text>
-          </View>
-        ) : (
-          filtered.map((t, idx) => {
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ paddingVertical: 16 }} color={Colors.primary} /> : null}
+        ListEmptyComponent={() => (
+          loading ? (
+            <View style={styles.loader}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 13 }}>Fetching ledger...</Text>
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Ionicons name="book-outline" size={48} color="#cbd5e1" />
+              <Text style={{ fontSize: 14, color: '#64748b', fontWeight: '500', marginTop: 12 }}>
+                No ledger entries found
+              </Text>
+            </View>
+          )
+        )}
+        renderItem={({ item: t, index: idx }) => {
             const isSale = t.type.toUpperCase().includes('SALES') || t.type.toUpperCase().includes('INVOICE');
             const isPur = t.type.toUpperCase().includes('PURCHASE') || t.type.toUpperCase().includes('BILL');
             const isRent = t.type.toUpperCase().includes('RENTAL');
@@ -271,7 +308,7 @@ export default function DayBookReportScreen() {
             }
 
             return (
-              <View key={idx} style={styles.trCard}>
+              <View style={styles.trCard}>
                 <View style={{ flex: 2, gap: 2 }}>
                   <Text style={styles.trDate}>{t.date}</Text>
                   <Text style={styles.trRef} numberOfLines={1}>{t.reference_no}</Text>
@@ -292,9 +329,8 @@ export default function DayBookReportScreen() {
                 </Text>
               </View>
             );
-          })
-        )}
-      </ScrollView>
+        }}
+      />
 
       {/* Sticky Totals Bar */}
       {filtered.length > 0 && !loading && (

@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const THEMES = [
   { label: 'Corporate Standard (Black & White)', value: 'corporate_tax_invoice' },
@@ -31,6 +32,7 @@ export default function InvoiceSettingsScreen() {
   const [savingNongst, setSavingNongst] = useState(false);
   const [savingPref, setSavingPref] = useState(false);
   const [businessId, setBusinessId] = useState<number | null>(null);
+  const insets = useSafeAreaInsets();
 
   // GST/General Numbering Form State
   const [numForm, setNumForm] = useState({
@@ -264,7 +266,7 @@ export default function InvoiceSettingsScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
         enableOnAndroid={true}
         enableAutomaticScroll={true}
         extraScrollHeight={180}
@@ -645,7 +647,7 @@ export default function InvoiceSettingsScreen() {
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingTop: 52, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   topbarTitle: { flex: 1, fontSize: 17, fontWeight: '600', color: Colors.text },
-  content: { padding: 12, gap: 12, paddingBottom: 40 },
+  content: { padding: 12, gap: 12 },
   card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 16, borderWidth: 0.5, borderColor: Colors.border },
   sectionLabel: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 4 },
   subtitle: { fontSize: 13, color: Colors.textSecondary, marginBottom: 16, lineHeight: 18 },

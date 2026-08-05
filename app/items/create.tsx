@@ -155,7 +155,7 @@ export default function CreateItemScreen() {
       ) : (
         <KeyboardAwareScrollView
           style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
           enableOnAndroid={true}
           extraScrollHeight={20}
           keyboardShouldPersistTaps="handled"
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   headerSub: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
 
-  content: { padding: 16, gap: 16, paddingBottom: 40 },
+  content: { padding: 16, gap: 16 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, gap: 14 },
   fieldContainer: { gap: 6 },
   label: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.8, textTransform: 'uppercase' },
