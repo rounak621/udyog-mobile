@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   warningText: { fontSize: 10.5, color: '#92400e', lineHeight: 14 },
   statsStrip: { flexDirection: 'row', gap: 8 },
   statCard: { flex: 1, backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 8, alignItems: 'center' },
-  statLabel: { fontSize: 9, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4 },
+  statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4, includeFontPadding: false },
   statValue: { fontSize: 12.5, fontWeight: '700', color: Colors.text },
   detailCard: { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 0.5, borderColor: Colors.border, padding: 12, gap: 10 },
   cardHeaderTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },

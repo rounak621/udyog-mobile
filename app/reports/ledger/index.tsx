@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 40 },
   statsStrip: { flexDirection: 'row', gap: 6 },
   statCard: { flex: 1, backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 8, alignItems: 'center' },
-  statLabel: { fontSize: 9, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4 },
+  statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4, includeFontPadding: false },
   statValue: { fontSize: 12, fontWeight: '700', color: Colors.text },
   detailCard: { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 0.5, borderColor: Colors.border, padding: 12, gap: 12 },
   cardHeaderTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 4 },
@@ -242,5 +242,5 @@ const styles = StyleSheet.create({
   partyName: { fontSize: 13, fontWeight: '700', color: Colors.text },
   partySub: { fontSize: 10.5, color: Colors.textSecondary, marginTop: 2 },
   partyAmt: { fontSize: 13, fontWeight: '700' },
-  partyLabel: { fontSize: 8.5, color: Colors.textMuted, marginTop: 1 }
+  partyLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 1, includeFontPadding: false }
 });

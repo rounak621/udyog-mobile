@@ -392,13 +392,13 @@ const styles = StyleSheet.create({
   trRef: { fontSize: 10, color: Colors.textMuted },
   trParty: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   typeBadge: { alignSelf: 'flex-start', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1, marginTop: 3 },
-  typeBadgeText: { fontSize: 8, fontWeight: '700', textTransform: 'uppercase' },
+  typeBadgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', includeFontPadding: false },
   trAmount: { fontSize: 12, textAlign: 'right' },
 
   totalsBar: { position: 'absolute', bottom: 60, left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalsTitle: { fontSize: 12, fontWeight: '700', color: '#fff' },
   totalsRow: { flexDirection: 'row', gap: 16 },
   totalsCell: { alignItems: 'flex-end' },
-  totalsCellLabel: { fontSize: 8, color: '#94a3b8' },
+  totalsCellLabel: { fontSize: 10, color: '#94a3b8', includeFontPadding: false },
   totalsCellVal: { fontSize: 12, fontWeight: '700', marginTop: 1 }
 });

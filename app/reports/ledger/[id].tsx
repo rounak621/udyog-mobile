@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 40 },
   statsStrip: { flexDirection: 'row', gap: 6 },
   statCard: { flex: 1, backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 8, alignItems: 'center' },
-  statLabel: { fontSize: 9, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4 },
+  statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4, includeFontPadding: false },
   statValue: { fontSize: 12, fontWeight: '700' },
   detailCard: { backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 0.5, borderColor: Colors.border, padding: 12, gap: 12 },
   cardHeaderTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 4 },
@@ -281,12 +281,12 @@ const styles = StyleSheet.create({
   stmtNarration: { flex: 1, fontSize: 12.5, color: Colors.text, lineHeight: 17 },
   amount: { fontSize: 12.5, fontWeight: '700', textAlign: 'right', width: 80 },
   rowBot: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
-  runningBalLabel: { fontSize: 9.5, color: Colors.textMuted },
+  runningBalLabel: { fontSize: 10, color: Colors.textMuted, includeFontPadding: false },
   runningBalVal: { fontSize: 10.5, fontWeight: '600', color: Colors.textSecondary },
   typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, borderWidth: 0.5 },
   badgeSale: { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' },
   badgePurchase: { backgroundColor: '#f0f9ff', borderColor: '#bae6fd' },
   badgePayment: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
-  typeBadgeText: { fontSize: 8.5, fontWeight: '700', textTransform: 'uppercase' },
-  linkIndicator: { fontSize: 9, color: Colors.primary, fontWeight: '600' }
+  typeBadgeText: { fontSize: 9.5, fontWeight: '700', textTransform: 'uppercase', includeFontPadding: false },
+  linkIndicator: { fontSize: 10, color: Colors.primary, fontWeight: '600', includeFontPadding: false }
 });

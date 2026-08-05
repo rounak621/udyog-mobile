@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
 
   statsStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 12, marginTop: 10 },
   statCard: { flex: 1, minWidth: '22%', backgroundColor: Colors.card, borderWidth: 0.5, borderColor: Colors.border, borderRadius: Radius.sm, padding: 10, alignItems: 'center' },
-  statLabel: { fontSize: 9, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4 },
+  statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4, includeFontPadding: false },
   statValue: { fontSize: 13, fontWeight: '700', color: Colors.text },
 
   scrollList: { paddingTop: 8, paddingHorizontal: 12, gap: 10 },
@@ -574,13 +574,13 @@ const styles = StyleSheet.create({
   
   threeCellRow: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: Colors.border, paddingTop: 8, marginTop: 2 },
   cell: { flex: 1, alignItems: 'center' },
-  cellLabel: { fontSize: 9, color: Colors.textMuted, marginBottom: 2 },
+  cellLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 2, includeFontPadding: false, flexShrink: 1 },
   cellVal: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   totalsBar: { position: 'absolute', bottom: 60, left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalsTitle: { fontSize: 12, fontWeight: '700', color: '#fff' },
   totalsRow: { flexDirection: 'row', gap: 12 },
   totalsCell: { alignItems: 'flex-end' },
-  totalsCellLabel: { fontSize: 8, color: '#94a3b8' },
+  totalsCellLabel: { fontSize: 10, color: '#94a3b8', includeFontPadding: false },
   totalsCellVal: { fontSize: 11, fontWeight: '700', color: '#fff', marginTop: 1 }
 });
