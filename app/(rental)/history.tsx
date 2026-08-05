@@ -53,7 +53,9 @@ export default function RentalHistoryScreen() {
         api.get(`/rental-orders/?business_id=${bId}&status=CANCELLED`)
       ]);
 
-      const merged = [...completedRes.data, ...cancelledRes.data];
+      const compData = Array.isArray(completedRes.data) ? completedRes.data : completedRes.data?.items || [];
+      const cancData = Array.isArray(cancelledRes.data) ? cancelledRes.data : cancelledRes.data?.items || [];
+      const merged = [...compData, ...cancData];
 
       const getDateVal = (ord: RentalOrderList) => {
         if (ord.actual_return_date) return new Date(ord.actual_return_date).getTime();

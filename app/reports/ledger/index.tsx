@@ -43,7 +43,7 @@ export default function LedgerIndexScreen() {
       // 2. Load all invoice and purchase bills in parallel for aggregation
       const [invRes, purRes] = await Promise.all([
         api.get(`/invoices/?business_id=${bId}&skip=0&limit=1000`),
-        api.get(`/purchase-bills/?business_id=${bId}&skip=0&limit=1000`)
+        api.get(`/purchase-bills/?business_id=${bId}&skip=0&limit=500`)
       ]);
 
       const allInvoices = Array.isArray(invRes.data) ? invRes.data : invRes.data?.items || [];

@@ -116,7 +116,7 @@ export default function CreateInvoiceScreen() {
       let partiesList: any[] = [];
       if (custRes.status === 'fulfilled') {
         const data = custRes.value.data;
-        partiesList = Array.isArray(data) ? data : data.customers || [];
+        partiesList = Array.isArray(data) ? data : data.items || data.customers || [];
         setParties(partiesList);
       }
       if (itemRes.status === 'fulfilled') {

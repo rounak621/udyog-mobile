@@ -120,7 +120,8 @@ export default function RentalOverviewScreen() {
         setAssetSummary(assetRes.value.data);
       }
       if (ordersRes.status === 'fulfilled') {
-        setActiveOrders(ordersRes.value.data);
+        const oData = ordersRes.value.data;
+        setActiveOrders(Array.isArray(oData) ? oData : oData?.items || []);
       }
     } catch (err) {
       console.log('Error loading rental overview data:', err);

@@ -167,7 +167,7 @@ export default function OrderCreateScreen() {
           api.get(`/rental-products/?business_id=${business.id}`)
         ]);
 
-        setCustomers(Array.isArray(custRes.data) ? custRes.data : []);
+        setCustomers(Array.isArray(custRes.data) ? custRes.data : custRes.data?.items || []);
         setProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
       } catch (err) {
         console.log('Error loading order creation master data:', err);

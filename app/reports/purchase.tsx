@@ -86,7 +86,7 @@ export default function PurchaseReportScreen() {
         params: {
           business_id: bId,
           skip: 0,
-          limit: 1000,
+          limit: 500,
           start_date: start,
           end_date: end
         }
@@ -573,14 +573,14 @@ const styles = StyleSheet.create({
   custName: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
   
   threeCellRow: { flexDirection: 'row', borderTopWidth: 0.5, borderTopColor: Colors.border, paddingTop: 8, marginTop: 2 },
-  cell: { flex: 1, alignItems: 'center' },
-  cellLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 2, includeFontPadding: false, flexShrink: 1 },
-  cellVal: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  cell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  cellLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 2, includeFontPadding: false, textAlign: 'center', width: '100%' },
+  cellVal: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', width: '100%' },
 
-  totalsBar: { position: 'absolute', bottom: 60, left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  totalsTitle: { fontSize: 12, fontWeight: '700', color: '#fff' },
-  totalsRow: { flexDirection: 'row', gap: 12 },
-  totalsCell: { alignItems: 'flex-end' },
-  totalsCellLabel: { fontSize: 10, color: '#94a3b8', includeFontPadding: false },
-  totalsCellVal: { fontSize: 11, fontWeight: '700', color: '#fff', marginTop: 1 }
+  totalsBar: { position: 'absolute', bottom: 60, left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalsTitle: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  totalsRow: { flexDirection: 'row', flex: 1, justifyContent: 'flex-end', gap: 8 },
+  totalsCell: { alignItems: 'flex-end', flex: 1, maxWidth: 100 },
+  totalsCellLabel: { fontSize: 10, color: '#94a3b8', includeFontPadding: false, textAlign: 'right', width: '100%' },
+  totalsCellVal: { fontSize: 11, fontWeight: '700', color: '#fff', marginTop: 1, textAlign: 'right', width: '100%' }
 });
