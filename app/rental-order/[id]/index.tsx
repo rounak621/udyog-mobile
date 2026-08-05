@@ -395,7 +395,7 @@ export default function OrderDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 + insets.bottom }} showsVerticalScrollIndicator={false}>
         {/* Customer & Timeline Card */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Customer & Timeline</Text>

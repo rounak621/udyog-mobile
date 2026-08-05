@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
@@ -122,6 +123,7 @@ function ProgressRing({ progress, size = 56, strokeWidth = 4, color = '#F97316' 
 export default function SubscriptionScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [business, setBusiness] = useState<any>(null);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,7 +238,7 @@ export default function SubscriptionScreen() {
         <Text style={styles.topbarTitle}>My Plan</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Gradient Status Card */}
         <View style={styles.statusCard}>
           <View style={styles.statusRow}>

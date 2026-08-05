@@ -227,7 +227,7 @@ export default function PurchaseBillDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         {/* Status Header */}
         <View style={styles.headerCard}>
           <Text style={styles.supplierName}>{bill.supplier?.name || 'Unknown Supplier'}</Text>
