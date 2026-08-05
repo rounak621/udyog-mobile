@@ -12,7 +12,7 @@ export default function ReportsLayout() {
 
   useEffect(() => {
     const onBack = () => {
-      router.replace('/(tabs)/more');
+      router.replace('/reports');
       return true;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBack);

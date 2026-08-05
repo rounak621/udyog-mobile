@@ -56,7 +56,7 @@ export default function ProfitLossReportScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.replace('/(tabs)/more');
+        router.replace('/reports');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -88,7 +88,7 @@ export default function ProfitLossReportScreen() {
       {/* Top Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)/more')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.replace('/reports')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profit & Loss</Text>

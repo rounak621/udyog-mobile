@@ -7,7 +7,9 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@clerk/clerk-expo';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken, API_BASE_URL } from '../../services/api';
+import * as FileSystem from 'expo-file-system/legacy';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -35,6 +37,42 @@ export default function PartyDetailScreen() {
   const [ledgerLines, setLedgerLines] = useState<any[]>([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [ledgerLoaded, setLedgerLoaded] = useState(false);
+  const [downloadingKhata, setDownloadingKhata] = useState(false);
+
+  const handleDownloadKhata = async () => {
+    if (!party || downloadingKhata) return;
+    setDownloadingKhata(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+
+      const safeName = (party.name || 'Party').replace(/[^a-zA-Z0-9]/g, '_');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const fileName = `${safeName}_Khata_${dateStr}.pdf`;
+
+      const pdfUrl = `${API_BASE_URL}/customers/${id}/ledger/pdf?business_id=${bId}`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (downloadResult.status === 200) {
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Khata ${party.name}`);
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (err) {
+      console.log('Khata PDF download error:', err);
+      Alert.alert('Error', 'Could not download Khata PDF');
+    } finally {
+      setDownloadingKhata(false);
+    }
+  };
 
   const loadLedger = useCallback(async () => {
     if (ledgerLoading) return;
@@ -204,6 +242,13 @@ export default function PartyDetailScreen() {
         </TouchableOpacity>
         <Text style={styles.topbarTitle} numberOfLines={1}>{party.name}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+          <TouchableOpacity onPress={handleDownloadKhata} disabled={downloadingKhata} style={{ padding: 2 }}>
+            {downloadingKhata ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <Ionicons name="document-text-outline" size={22} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleEdit} style={{ padding: 2 }}>
             <Ionicons name="pencil-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
@@ -371,7 +416,23 @@ export default function PartyDetailScreen() {
         {/* Tab Contents */}
         {activeTab === 'khata' ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.sectionTitle}>Recent Transactions</Text>
+              <TouchableOpacity
+                onPress={handleDownloadKhata}
+                disabled={downloadingKhata}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' }}
+              >
+                {downloadingKhata ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="document-text-outline" size={15} color={Colors.primary} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>Khata PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
             {ledgerLoading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
             ) : ledgerLines.length === 0 ? (
