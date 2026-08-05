@@ -496,7 +496,7 @@ export default function SalesReportScreen() {
 
       {/* Sticky Totals Bar */}
       {invoices.length > 0 && !loading && (
-        <View style={styles.totalsBar}>
+        <View style={[styles.totalsBar, { bottom: 60 + insets.bottom }]}>
           <Text style={styles.totalsTitle}>Totals ({invoicesCount})</Text>
           <View style={styles.totalsRow}>
             <View style={styles.totalsCell}>
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
   cellLabel: { fontSize: 11, color: Colors.textMuted, marginBottom: 2, includeFontPadding: false, textAlign: 'center', width: '100%' },
   cellVal: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center', width: '100%' },
 
-  totalsBar: { position: 'absolute', bottom: 60, left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalsBar: { position: 'absolute', left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalsTitle: { fontSize: 11, fontWeight: '700', color: '#fff' },
   totalsRow: { flexDirection: 'row', flex: 1, justifyContent: 'flex-end', gap: 8 },
   totalsCell: { alignItems: 'flex-end', flex: 1, maxWidth: 100 },

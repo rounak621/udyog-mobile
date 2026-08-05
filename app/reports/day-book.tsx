@@ -334,7 +334,7 @@ export default function DayBookReportScreen() {
 
       {/* Sticky Totals Bar */}
       {filtered.length > 0 && !loading && (
-        <View style={styles.totalsBar}>
+        <View style={[styles.totalsBar, { bottom: 60 + insets.bottom }]}>
           <Text style={styles.totalsTitle}>Totals ({filtered.length})</Text>
           <View style={styles.totalsRow}>
             <View style={styles.totalsCell}>
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   typeBadgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase', includeFontPadding: false },
   trAmount: { fontSize: 12, textAlign: 'right' },
 
-  totalsBar: { position: 'absolute', bottom: 60, left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalsBar: { position: 'absolute', left: 0, right: 0, backgroundColor: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 0.5, borderTopColor: '#334155', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   totalsTitle: { fontSize: 11, fontWeight: '700', color: '#fff' },
   totalsRow: { flexDirection: 'row', flex: 1, justifyContent: 'flex-end', gap: 12 },
   totalsCell: { alignItems: 'flex-end', flex: 1 },

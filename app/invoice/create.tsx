@@ -419,10 +419,6 @@ export default function CreateInvoiceScreen() {
       } else {
         const res = await api.post(`/invoices/?business_id=${businessId}`, payload);
         const invoiceData = res.data?.invoice || res.data;
-        const warnings = res.data?.warnings || [];
-        if (warnings.length > 0) {
-          Alert.alert('Stock Warning', warnings.join('\n'));
-        }
         setCreatedInvoice(invoiceData);
         setShowSuccess(true);
         playSuccessSound();
