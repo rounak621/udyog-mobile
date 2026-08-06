@@ -65,7 +65,7 @@ export default function ItemsScreen() {
   ]);
   const [savingBulk, setSavingBulk] = useState(false);
 
-  const loadItems = useCallback(async (currentSkip = 0, isRefreshing = false) => {
+  const loadItems = useCallback(async (currentSkip = 0, isRefreshing = false, searchTerm = search) => {
     if (currentSkip === 0) {
       if (!isRefreshing) setLoading(true);
     } else {
@@ -77,7 +77,13 @@ export default function ItemsScreen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
       setBusinessId(bId);
-      const res = await api.get(`/items/?business_id=${bId}&include_inactive=false&limit=${PAGE_SIZE}&skip=${currentSkip}`);
+      
+      let url = `/items/?business_id=${bId}&include_inactive=false&limit=${PAGE_SIZE}&skip=${currentSkip}`;
+      if (searchTerm.trim()) {
+        url += `&search=${encodeURIComponent(searchTerm.trim())}`;
+      }
+      
+      const res = await api.get(url);
       const data = res.data;
       const newItems = data.items || data;
       const serverTotal = data.total || newItems.length;
@@ -97,17 +103,22 @@ export default function ItemsScreen() {
       setRefreshing(false);
       setLoadingMore(false);
     }
-  }, [getToken]);
+  }, [getToken, search]);
 
   useFocusEffect(
     useCallback(() => {
-      loadItems(0);
+      loadItems(0, false, search);
     }, [loadItems])
   );
 
+  const handleSearchChange = (text: string) => {
+    setSearch(text);
+    loadItems(0, false, text);
+  };
+
   const handleLoadMore = () => {
     if (loadingMore || !hasMore || loading) return;
-    loadItems(skip + PAGE_SIZE);
+    loadItems(skip + PAGE_SIZE, false, search);
   };
 
   const handleAddRow = () => {
@@ -148,25 +159,14 @@ export default function ItemsScreen() {
             unit: bulkUnit,
           });
           successCount++;
-        } catch {
+        } catch (e) {
           failCount++;
         }
       }
-
-      if (successCount > 0) {
-        Alert.alert(
-          'Bulk Add Complete',
-          `${successCount} item${successCount > 1 ? 's' : ''} saved successfully.${failCount > 0 ? ` (${failCount} failed)` : ''}`
-        );
-        setShowBulkModal(false);
-        setBulkHsn('');
-        setBulkGstRate('18');
-        setBulkUnit('PCS');
-        setBulkRows([createEmptyRow(), createEmptyRow(), createEmptyRow(), createEmptyRow(), createEmptyRow()]);
-        loadItems(0);
-      } else {
-        Alert.alert('Error', 'Failed to save items. Please try again.');
-      }
+      setShowBulkModal(false);
+      setBulkRows([createEmptyRow(), createEmptyRow(), createEmptyRow(), createEmptyRow(), createEmptyRow()]);
+      Alert.alert('Bulk Add Complete', `Successfully added ${successCount} item(s).${failCount > 0 ? ` ${failCount} failed.` : ''}`);
+      loadItems(0, false, search);
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Bulk add failed');
     } finally {
@@ -174,9 +174,7 @@ export default function ItemsScreen() {
     }
   };
 
-  const filtered = items.filter(item => {
-    return !search || item.name?.toLowerCase().includes(search.toLowerCase()) || item.hsn_code?.toLowerCase().includes(search.toLowerCase());
-  });
+  const filtered = items;
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -202,10 +200,10 @@ export default function ItemsScreen() {
           placeholder="Search items by name or HSN..."
           placeholderTextColor={Colors.textMuted}
           value={search}
-          onChangeText={setSearch}
+          onChangeText={handleSearchChange}
         />
         {search ? (
-          <TouchableOpacity onPress={() => setSearch('')}>
+          <TouchableOpacity onPress={() => handleSearchChange('')}>
             <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
           </TouchableOpacity>
         ) : null}
