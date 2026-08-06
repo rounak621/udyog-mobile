@@ -2,12 +2,13 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useState, useEffect, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput,
   KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 
@@ -227,7 +228,7 @@ export default function PurchaseBillDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Status Header */}
         <View style={styles.headerCard}>
           <Text style={styles.supplierName}>{bill.supplier?.name || 'Unknown Supplier'}</Text>
@@ -401,7 +402,7 @@ export default function PurchaseBillDetailScreen() {
             <Text style={styles.paidBtnText}>Record Payment</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </SafeScrollView>
 
 
 

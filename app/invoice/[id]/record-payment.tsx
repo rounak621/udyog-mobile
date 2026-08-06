@@ -1,13 +1,14 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, TextInput,
   KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 
@@ -106,8 +107,9 @@ export default function InvoiceRecordPaymentScreen() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
+        <SafeScrollView
+          baseBottomPadding={40}
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -195,7 +197,7 @@ export default function InvoiceRecordPaymentScreen() {
               <Text style={styles.confirmBtnText}>Confirm Payment</Text>
             )}
           </TouchableOpacity>
-        </ScrollView>
+        </SafeScrollView>
       </KeyboardAvoidingView>
     </View>
   );

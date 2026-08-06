@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
@@ -129,8 +130,8 @@ export default function RentalProductsScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 40 }}
+      <SafeScrollView
+        baseBottomPadding={40}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
       >
@@ -180,7 +181,7 @@ export default function RentalProductsScreen() {
             </TouchableOpacity>
           ))
         )}
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -44,6 +45,7 @@ export default function DayBookReportScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useBottomPadding(120);
   const recentMonths = getRecentMonths();
 
   const [loading, setLoading] = useState(true);
@@ -260,7 +262,7 @@ export default function DayBookReportScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item, index) => index.toString()}
-        contentContainerStyle={[styles.scrollList, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollList, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

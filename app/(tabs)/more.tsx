@@ -3,10 +3,11 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, Switch, Modal, ActivityIndicator
+  Alert, Switch, Modal, ActivityIndicator
 } from 'react-native';
 import { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAppMode } from '../../context/AppModeContext';
@@ -61,7 +62,7 @@ export default function MoreScreen() {
         <Text style={styles.title}>More</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={20} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
@@ -131,7 +132,7 @@ export default function MoreScreen() {
         </View>
 
         <Text style={styles.version}>Udyog v1.0.0 · Made in India 🇮🇳</Text>
-      </ScrollView>
+      </SafeScrollView>
 
       {/* Business Switcher Modal */}
       <BusinessSwitcherModal

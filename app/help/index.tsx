@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 
 const FAQS: { q: string; a: string }[] = [
@@ -49,7 +50,7 @@ export default function HelpScreen() {
         <Text style={styles.title}>Help & Support</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <SafeScrollView showsVerticalScrollIndicator={false} baseBottomPadding={32}>
         {/* Contact Us */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact Us</Text>
@@ -142,7 +143,7 @@ export default function HelpScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

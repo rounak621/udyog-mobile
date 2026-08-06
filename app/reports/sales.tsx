@@ -11,6 +11,7 @@ import * as Print from 'expo-print';
 import { saveCsvToAndroidOrShare, savePdfToAndroidOrShare } from '../../services/safHelper';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -419,8 +420,9 @@ export default function SalesReportScreen() {
       </View>
 
       {/* Main List */}
-      <ScrollView
-        contentContainerStyle={[styles.scrollList, { paddingBottom: 140 + insets.bottom }, (loading || invoices.length === 0) && { flexGrow: 1 }]}
+      <SafeScrollView
+        baseBottomPadding={140}
+        contentContainerStyle={styles.scrollList}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -492,7 +494,7 @@ export default function SalesReportScreen() {
             );
           })
         )}
-      </ScrollView>
+      </SafeScrollView>
 
       {/* Sticky Totals Bar */}
       {invoices.length > 0 && !loading && (

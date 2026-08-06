@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 
 export default function ProfileScreen() {
   const { user, isLoaded } = useUser();
@@ -148,6 +149,8 @@ export default function ProfileScreen() {
   const provider = user.externalAccounts?.[0]?.provider || '';
   const providerName = provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : '';
 
+  const bottomPadding = useBottomPadding(60);
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
@@ -161,7 +164,7 @@ export default function ProfileScreen() {
 
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 + insets.bottom }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         enableOnAndroid
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"

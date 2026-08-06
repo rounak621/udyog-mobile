@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -136,8 +137,9 @@ export default function CAManagementScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollList, { paddingBottom: 80 + insets.bottom }]}
+      <SafeScrollView
+        baseBottomPadding={80}
+        contentContainerStyle={styles.scrollList}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -252,7 +254,7 @@ export default function CAManagementScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

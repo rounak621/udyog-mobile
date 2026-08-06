@@ -4,17 +4,20 @@ import { useState } from 'react';
 import * as Linking from 'expo-linking';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Platform, ActivityIndicator, Alert, Image, StatusBar
+  StyleSheet, Platform, ActivityIndicator, Alert, Image
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 
 export default function LoginScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useBottomPadding(40);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -63,12 +66,12 @@ export default function LoginScreen() {
   return (
     <KeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: '#FDF8F3' }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: bottomPadding }}
       enableOnAndroid
       extraScrollHeight={20}
       keyboardShouldPersistTaps="handled"
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
+      <StatusBar style="dark" backgroundColor="#FDF8F3" />
 
       {/* Header */}
       <View style={[styles.header, { marginTop: insets.top + 12 }]}>

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as ImagePicker from 'expo-image-picker';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 
 interface LineItem {
   id: string;
@@ -427,6 +428,8 @@ export default function CreatePurchaseBillScreen() {
     return name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   };
 
+  const bottomPadding = useBottomPadding(150);
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
@@ -452,7 +455,7 @@ export default function CreatePurchaseBillScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1, backgroundColor: Colors.background }}
-        contentContainerStyle={{ paddingBottom: 150 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"

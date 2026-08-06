@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Audio } from 'expo-av';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 
 interface LineItem {
   id: string;
@@ -447,6 +448,8 @@ export default function CreateInvoiceScreen() {
     : '';
   const pdfViewerHtml = previewPdfUrl ? getPdfViewerHtml(previewPdfUrl) : '';
 
+  const bottomPadding = useBottomPadding(100);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
@@ -470,7 +473,7 @@ export default function CreateInvoiceScreen() {
       <KeyboardAwareScrollView
         ref={scrollViewRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 100 + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"

@@ -12,6 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../../services/safHelper';
+import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { useBusiness } from '../../../context/BusinessContext';
@@ -395,7 +396,7 @@ export default function OrderDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 + insets.bottom }} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={{ padding: 14 }} showsVerticalScrollIndicator={false}>
         {/* Customer & Timeline Card */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Customer & Timeline</Text>
@@ -614,7 +615,7 @@ export default function OrderDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
+      </SafeScrollView>
 
       {/* Return Modal (Bottom Sheet style) */}
       <Modal visible={showReturnModal} transparent animationType="slide">

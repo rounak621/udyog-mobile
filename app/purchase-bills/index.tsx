@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -28,6 +29,7 @@ export default function PurchaseBillsScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useBottomPadding(20);
   const [bills, setBills] = useState<PurchaseBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -224,7 +226,7 @@ export default function PurchaseBillsScreen() {
             </TouchableOpacity>
           );
         }}
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

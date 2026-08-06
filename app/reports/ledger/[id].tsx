@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -129,8 +130,8 @@ export default function LedgerDetailScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollList}
+      <SafeScrollView
+        baseBottomPadding={80}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -256,7 +257,7 @@ export default function LedgerDetailScreen() {
             </View>
           </View>
         )}
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

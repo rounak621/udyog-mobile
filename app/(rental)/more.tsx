@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { useAppMode } from '../../context/AppModeContext';
 
@@ -31,7 +32,7 @@ export default function RentalMoreScreen() {
         <Text style={styles.title}>More</Text>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={20} showsVerticalScrollIndicator={false}>
         {/* Switch Mode */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mode</Text>
@@ -57,7 +58,7 @@ export default function RentalMoreScreen() {
             <MenuItem icon="time-outline" label="Rental History" onPress={() => router.push('/(rental)/history')} />
           </View>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

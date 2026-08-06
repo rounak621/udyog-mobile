@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import Svg, { Circle } from 'react-native-svg';
@@ -238,7 +239,7 @@ export default function SubscriptionScreen() {
         <Text style={styles.topbarTitle}>My Plan</Text>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Gradient Status Card */}
         <View style={styles.statusCard}>
           <View style={styles.statusRow}>
@@ -486,7 +487,7 @@ export default function SubscriptionScreen() {
         </View>
 
         <Text style={styles.note}>Payments are processed securely via Razorpay on the web app.</Text>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

@@ -5,6 +5,7 @@ import {
   TouchableOpacity, ActivityIndicator, Linking, Alert
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 
@@ -60,7 +61,7 @@ export default function SubscriptionLockedScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Expired Status Notice */}
         <View style={styles.statusCard}>
           <View style={styles.statusIconRow}>
@@ -130,7 +131,7 @@ export default function SubscriptionLockedScreen() {
         </View>
 
         <Text style={styles.note}>Payments are processed securely via Razorpay on the web app.</Text>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

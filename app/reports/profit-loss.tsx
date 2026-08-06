@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -95,8 +96,9 @@ export default function ProfitLossReportScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollList, { paddingBottom: 100 + insets.bottom }]}
+      <SafeScrollView
+        baseBottomPadding={100}
+        contentContainerStyle={styles.scrollList}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -210,7 +212,7 @@ export default function ProfitLossReportScreen() {
             </Text>
           </View>
         )}
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

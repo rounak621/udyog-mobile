@@ -3,12 +3,14 @@ import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Modal, FlatList, StatusBar, KeyboardAvoidingView, Platform
+  Alert, Modal, FlatList, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useBottomPadding } from '../components/ui/SafeLayout';
 import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
@@ -92,9 +94,11 @@ export default function BusinessAddScreen() {
     }
   };
 
+  const bottomPadding = useBottomPadding(48);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FDF8F3' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
+      <StatusBar style="dark" backgroundColor="#FDF8F3" />
       
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -106,7 +110,7 @@ export default function BusinessAddScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, { paddingBottom: 48 + insets.bottom }]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         enableOnAndroid={true}
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"

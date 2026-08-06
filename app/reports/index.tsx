@@ -1,11 +1,12 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, BackHandler
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -103,7 +104,7 @@ export default function ReportsScreen() {
         <Text style={styles.topbarTitle}>Reports</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Summary cards */}
         {loading ? <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} /> : (
           <View style={styles.summaryRow}>
@@ -133,7 +134,7 @@ export default function ReportsScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

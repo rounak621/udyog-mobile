@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -513,6 +514,8 @@ export default function OrderCreateScreen() {
     );
   }
 
+  const bottomPadding = useBottomPadding(60);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
@@ -540,7 +543,7 @@ export default function OrderCreateScreen() {
       <KeyboardAwareScrollView
         ref={scrollViewRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 14, paddingBottom: 60 + insets.bottom }}
+        contentContainerStyle={{ padding: 14, paddingBottom: bottomPadding }}
         enableOnAndroid={true}
         extraScrollHeight={150}
         keyboardShouldPersistTaps="handled"

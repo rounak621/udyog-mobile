@@ -2,11 +2,12 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, Share
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -49,7 +50,7 @@ export default function ExportsScreen() {
         <Text style={styles.topbarTitle}>Export to Tally</Text>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={20} color={Colors.info} />
           <Text style={styles.infoText}>Import into Tally Prime: Gateway of Tally → Import Data. Import Parties & Items first (Masters), then Invoices & Purchases (Transactions).</Text>
@@ -89,7 +90,7 @@ export default function ExportsScreen() {
             </View>
           ))}
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

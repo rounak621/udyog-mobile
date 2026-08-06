@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -128,6 +129,8 @@ export default function CreateItemScreen() {
     );
   };
 
+  const bottomPadding = useBottomPadding(40);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
@@ -155,7 +158,7 @@ export default function CreateItemScreen() {
       ) : (
         <KeyboardAwareScrollView
           style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-          contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
+          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
           enableOnAndroid={true}
           extraScrollHeight={20}
           keyboardShouldPersistTaps="handled"

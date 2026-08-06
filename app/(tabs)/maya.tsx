@@ -4,6 +4,7 @@ import {
   Animated, ScrollView, TextInput, ActivityIndicator,
   KeyboardAvoidingView, Platform, Alert, Keyboard
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -34,6 +35,7 @@ interface MayaResponse {
 export default function MayaScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.fullName?.[0]?.toUpperCase() || 'U';
   const router = useRouter();
   const [manualInput, setManualInput] = useState('');
@@ -992,7 +994,7 @@ export default function MayaScreen() {
         )}
 
         {/* Input bar — text only, mic is on the tab bar */}
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { paddingBottom: (Platform.OS === 'ios' ? 24 : 12) + insets.bottom }]}>
           <View style={styles.textInputWrapper}>
             <TextInput
               style={styles.textInput}

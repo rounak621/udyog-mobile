@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
@@ -28,6 +29,7 @@ export default function RentalOrdersScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useBottomPadding(20);
   const { business } = useBusiness();
 
   const [orders, setOrders] = useState<RentalOrderList[]>([]);
@@ -176,7 +178,7 @@ export default function RentalOrdersScreen() {
       <FlatList
         data={filteredOrders}
         keyExtractor={ord => ord.id?.toString()}
-        contentContainerStyle={{ paddingBottom: 20 + insets.bottom, flexGrow: filteredOrders.length === 0 ? 1 : undefined }}
+        contentContainerStyle={{ paddingBottom: bottomPadding, flexGrow: filteredOrders.length === 0 ? 1 : undefined }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
         onEndReached={handleLoadMore}

@@ -6,6 +6,7 @@ import {
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@clerk/clerk-expo';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -274,7 +275,7 @@ export default function PartyDetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profile */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
@@ -538,7 +539,7 @@ export default function PartyDetailScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

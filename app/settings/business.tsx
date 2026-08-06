@@ -8,6 +8,7 @@ import {
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -323,7 +324,7 @@ export default function BusinessSettingsScreen() {
         </TouchableOpacity>
       </View>
       
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
+      <SafeScrollView baseBottomPadding={40} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         
         {/* SECTION 1: CORE IDENTITY */}
         <View style={styles.card}>
@@ -450,7 +451,7 @@ export default function BusinessSettingsScreen() {
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Save Changes</Text>}
         </TouchableOpacity>
-      </ScrollView>
+      </SafeScrollView>
 
       {/* State Picker Modal */}
       <Modal

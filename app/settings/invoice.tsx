@@ -7,10 +7,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const THEMES = [
   { label: 'Corporate Standard (Black & White)', value: 'corporate_tax_invoice' },
@@ -255,6 +256,8 @@ export default function InvoiceSettingsScreen() {
     );
   }
 
+  const bottomPadding = useBottomPadding(40);
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
@@ -266,7 +269,7 @@ export default function InvoiceSettingsScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         enableOnAndroid={true}
         enableAutomaticScroll={true}
         extraScrollHeight={180}

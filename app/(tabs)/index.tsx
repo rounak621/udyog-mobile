@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
@@ -168,8 +169,8 @@ export default function DashboardScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
+      <SafeScrollView
+        baseBottomPadding={100}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
       >
@@ -302,7 +303,7 @@ export default function DashboardScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </SafeScrollView>
 
       <TouchableOpacity style={[styles.createFab, { flexDirection: 'row', paddingHorizontal: 20, width: 'auto', borderRadius: 28 }]} onPress={() => router.push('/invoice/create')}>
         <Ionicons name="add" size={22} color="#fff" />

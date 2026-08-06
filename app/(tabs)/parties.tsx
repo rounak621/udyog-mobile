@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -24,6 +25,7 @@ export default function PartiesScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useBottomPadding(20);
   const [parties, setParties] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -137,7 +139,7 @@ export default function PartiesScreen() {
       <FlatList
         data={filtered}
         keyExtractor={item => item.id?.toString()}
-        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: 20 + insets.bottom }]}
+        contentContainerStyle={[styles.list, (loading || filtered.length === 0) && { flexGrow: 1 }, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadParties(0, true); }} colors={[Colors.primary]} />}
         onEndReached={handleLoadMore}

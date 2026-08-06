@@ -1,17 +1,19 @@
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar
+  View, Text, StyleSheet, TouchableOpacity
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../components/ui/SafeLayout';
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
+      <StatusBar style="dark" backgroundColor="#FDF8F3" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <SafeScrollView baseBottomPadding={24} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View>
           <View style={styles.header}>
             <View style={styles.logoIcon}>
@@ -98,7 +100,7 @@ export default function WelcomeScreen() {
             <Text style={styles.loginLinkText}>I already have an account</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

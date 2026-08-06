@@ -6,6 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api } from '../../services/api';
 
@@ -97,7 +98,8 @@ export default function NotificationsScreen() {
         <View style={{ width: 34 }} />
       </View>
 
-      <ScrollView
+      <SafeScrollView
+        baseBottomPadding={40}
         contentContainerStyle={[styles.listContainer, (loading || notifications.length === 0) && { flexGrow: 1 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
@@ -138,7 +140,7 @@ export default function NotificationsScreen() {
             );
           })
         )}
-      </ScrollView>
+      </SafeScrollView>
     </View>
   );
 }

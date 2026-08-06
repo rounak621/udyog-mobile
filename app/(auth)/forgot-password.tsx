@@ -3,16 +3,19 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert, StatusBar
+  StyleSheet, ActivityIndicator, Alert
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useBottomPadding } from '../../components/ui/SafeLayout';
 
 export default function ForgotPasswordScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const bottomPadding = useBottomPadding(40);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -76,12 +79,12 @@ export default function ForgotPasswordScreen() {
   return (
     <KeyboardAwareScrollView
       style={{ flex: 1, backgroundColor: '#FDF8F3' }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: bottomPadding }}
       enableOnAndroid
       extraScrollHeight={20}
       keyboardShouldPersistTaps="handled"
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#FDF8F3" />
+      <StatusBar style="dark" backgroundColor="#FDF8F3" />
 
       {/* Header */}
       <View style={[styles.header, { marginTop: insets.top + 12 }]}>
