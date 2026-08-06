@@ -1,4 +1,5 @@
 import { ClerkProvider, useAuth, useUser } from '@clerk/clerk-expo';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { Slot, Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -184,13 +185,15 @@ export default function RootLayout() {
   const [showIntro, setShowIntro] = useState(true);
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
   return (
-    <AppModeProvider>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-        <BusinessProvider>
-          <AuthGuard />
-        </BusinessProvider>
-      </ClerkProvider>
-      {showIntro && <IntroOverlay onFinish={() => setShowIntro(false)} />}
-    </AppModeProvider>
+    <SafeAreaProvider>
+      <AppModeProvider>
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <BusinessProvider>
+            <AuthGuard />
+          </BusinessProvider>
+        </ClerkProvider>
+        {showIntro && <IntroOverlay onFinish={() => setShowIntro(false)} />}
+      </AppModeProvider>
+    </SafeAreaProvider>
   );
 }
