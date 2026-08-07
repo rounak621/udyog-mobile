@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useBottomPadding } from '../../components/ui/SafeLayout';
+import { useBottomPadding, FixedBottomBar } from '../../components/ui/SafeLayout';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -179,7 +179,7 @@ export default function CreatePartyScreen() {
     }
   };
 
-  const bottomPadding = useBottomPadding(120);
+  const bottomPadding = useBottomPadding(20);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -406,11 +406,14 @@ export default function CreatePartyScreen() {
           </View>
         </View>
 
-        {/* Add Party Submit Button */}
+      </KeyboardAwareScrollView>
+
+      {/* Add Party Submit Button */}
+      <FixedBottomBar style={styles.footerBar}>
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
           {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{id ? 'Save Changes' : 'Add Party'}</Text>}
         </TouchableOpacity>
-      </KeyboardAwareScrollView>
+      </FixedBottomBar>
 
       {/* State Picker Modal */}
       <Modal
@@ -576,6 +579,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '700',
+  },
+  footerBar: {
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   modalOverlay: {
     flex: 1,

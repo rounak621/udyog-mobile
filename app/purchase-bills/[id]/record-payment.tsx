@@ -1,14 +1,13 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet,
+  View, Text, ScrollView, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, TextInput,
-  KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SafeScrollView } from '../../../components/ui/SafeLayout';
+import { FixedBottomBar } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 
@@ -101,14 +100,10 @@ export default function PurchaseBillRecordPaymentScreen() {
         <Text style={styles.topbarTitle}>Record Payment</Text>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <SafeScrollView
-          baseBottomPadding={40}
-          contentContainerStyle={styles.content}
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -183,21 +178,22 @@ export default function PurchaseBillRecordPaymentScreen() {
               })}
             </View>
           </View>
+        </ScrollView>
 
-          {/* Confirm Button */}
-          <TouchableOpacity
-            style={[styles.confirmBtn, submitting && { opacity: 0.7 }]}
-            onPress={handleConfirmPayment}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.confirmBtnText}>Confirm Payment</Text>
-            )}
-          </TouchableOpacity>
-        </SafeScrollView>
-      </KeyboardAvoidingView>
+      {/* Fixed Footer Bar */}
+      <FixedBottomBar style={styles.footerBar}>
+        <TouchableOpacity
+          style={[styles.confirmBtn, submitting && { opacity: 0.7 }]}
+          onPress={handleConfirmPayment}
+          disabled={submitting}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.confirmBtnText}>Confirm Payment</Text>
+          )}
+        </TouchableOpacity>
+      </FixedBottomBar>
     </View>
   );
 }
@@ -224,6 +220,13 @@ const styles = StyleSheet.create({
   payRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: '#CBD5E1', alignItems: 'center', justifyContent: 'center' },
   payRadioSelected: { borderColor: '#F97316' },
   payRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#F97316' },
-  confirmBtn: { backgroundColor: '#F97316', borderRadius: 14, padding: 16, alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4, marginTop: 8 },
+  footerBar: {
+    backgroundColor: Colors.background,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  confirmBtn: { backgroundColor: '#F97316', borderRadius: 14, padding: 16, alignItems: 'center', shadowColor: '#F97316', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   confirmBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

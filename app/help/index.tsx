@@ -69,8 +69,8 @@ export default function HelpScreen() {
               'Contact Support',
               'How would you like to reach us?',
               [
-                { text: 'Call', onPress: () => Linking.openURL('tel:+917977422531') },
-                { text: 'WhatsApp', onPress: () => Linking.openURL('https://wa.me/917977422531') },
+                { text: 'Call', onPress: () => Linking.openURL('tel:+917021922933') },
+                { text: 'WhatsApp', onPress: () => Linking.openURL('https://wa.me/917021922933') },
                 { text: 'Cancel', style: 'cancel' },
               ]
             )}>
@@ -79,7 +79,7 @@ export default function HelpScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowLabel}>Call & WhatsApp Support</Text>
-                <Text style={styles.rowSub}>+91 79774 22531</Text>
+                <Text style={styles.rowSub}>+91 70219 22933</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.textMuted} />
             </TouchableOpacity>

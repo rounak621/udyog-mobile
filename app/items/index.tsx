@@ -388,7 +388,7 @@ export default function ItemsScreen() {
               </TouchableOpacity>
             </ScrollView>
 
-            <View style={styles.modalFooter}>
+            <View style={[styles.modalFooter, { paddingBottom: 12 + insets.bottom }]}>
               <TouchableOpacity
                 style={styles.cancelBtn}
                 onPress={() => setShowBulkModal(false)}

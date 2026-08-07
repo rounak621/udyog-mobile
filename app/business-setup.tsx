@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useBottomPadding } from '../components/ui/SafeLayout';
+import { FixedBottomBar } from '../components/ui/SafeLayout';
 import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
@@ -206,8 +206,6 @@ export default function BusinessSetupScreen() {
     }
   };
 
-  const bottomPadding = useBottomPadding(48);
-
   return (
     <View style={{ flex: 1, backgroundColor: '#FDF8F3' }}>
       <StatusBar style="dark" backgroundColor="#FDF8F3" />
@@ -232,7 +230,7 @@ export default function BusinessSetupScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
         enableOnAndroid={true}
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"
@@ -447,8 +445,10 @@ export default function BusinessSetupScreen() {
             />
           </View>
         </View>
+      </KeyboardAwareScrollView>
 
-        {/* Complete Setup Action */}
+      {/* Fixed Footer Bar */}
+      <FixedBottomBar style={styles.footerBar}>
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
           {saving ? (
             <ActivityIndicator color="#fff" />
@@ -456,7 +456,7 @@ export default function BusinessSetupScreen() {
             <Text style={styles.submitBtnText}>Complete Setup →</Text>
           )}
         </TouchableOpacity>
-      </KeyboardAwareScrollView>
+      </FixedBottomBar>
 
       {/* State Picker Modal */}
       <Modal
@@ -649,6 +649,13 @@ const styles = StyleSheet.create({
   },
   switchThumbInactive: {
     alignSelf: 'flex-start',
+  },
+  footerBar: {
+    backgroundColor: '#FDF8F3',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   submitBtn: {
     backgroundColor: '#F97316',
