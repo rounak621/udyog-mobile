@@ -489,6 +489,7 @@ export default function BusinessSetupScreen() {
               />
             </View>
             <FlatList
+              style={{ flex: 1 }}
               data={INDIAN_STATES.filter(s => s.toLowerCase().includes(stateSearch.toLowerCase()))}
               keyExtractor={item => item}
               renderItem={({ item }) => (
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '80%',
+    height: '80%',
   },
   modalHeader: {
     flexDirection: 'row',

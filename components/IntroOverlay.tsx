@@ -50,7 +50,7 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
       <View style={styles.centeredSection}>
         <View style={styles.glowWrap}>
           <Animated.Image
-            source={require('../assets/icon.png')}
+            source={require('../assets/splash-icon.png')}
             style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
             resizeMode="contain"
           />

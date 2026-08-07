@@ -693,7 +693,7 @@ export default function CreateInvoiceScreen() {
                           {/* Add New Item */}
                           <TouchableOpacity
                             style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}
-                            onPress={() => { setShowItemDropdown(null); router.push('/item/create' as any); }}
+                            onPress={() => { setShowItemDropdown(null); router.push('/items/create' as any); }}
                           >
                             <Ionicons name="add-circle-outline" size={18} color="#F97316" />
                             <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">+ Add New Item</Text>

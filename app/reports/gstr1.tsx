@@ -2,7 +2,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert, Share, BackHandler, RefreshControl
+  TouchableOpacity, ActivityIndicator, Alert, BackHandler, RefreshControl
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,6 +10,8 @@ import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 interface Invoice {
   id: string;
@@ -128,12 +130,28 @@ export default function Gstr1Screen() {
       return;
     }
     try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
+        return;
+      }
+
+      const [m, y] = months[selectedMonthIdx].split(' ');
+      const monthIndex = MONTH_NAMES.indexOf(m) + 1;
+      const year = parseInt(y, 10);
+      const monthStr = `${year}-${String(monthIndex).padStart(2, '0')}`;
+
+      const fileUri = (FileSystem as any).cacheDirectory + `GSTR1_${monthStr}.json`;
       const jsonString = JSON.stringify(payload, null, 2);
-      await Share.share({
-        message: jsonString,
-        title: 'GSTR-1 Export JSON',
+      await (FileSystem as any).writeAsStringAsync(fileUri, jsonString);
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'application/json',
+        dialogTitle: `GSTR-1 ${monthStr}`,
+        UTI: 'public.json',
       });
     } catch (err) {
+      console.log('GSTR1 share error:', err);
       Alert.alert('Share Error', 'Failed to share GSTR-1 JSON.');
     }
   };
