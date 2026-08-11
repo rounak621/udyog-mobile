@@ -1,16 +1,15 @@
 import { useAuth, useUser } from '@clerk/clerk-expo';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Modal, FlatList, KeyboardAvoidingView, Platform
+  Alert, Modal, FlatList, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { FixedBottomBar } from '../components/ui/SafeLayout';
 import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
@@ -235,13 +234,31 @@ export default function BusinessSetupScreen() {
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ marginBottom: 20 }}>
-          <Text style={styles.title}>Set up your business</Text>
-          <Text style={styles.subtitle}>This details will appear on your tax invoices.</Text>
+        {/* Step Indicator */}
+        <View style={styles.stepIndicator}>
+          <View style={styles.stepDots}>
+            <View style={styles.stepPillActive} />
+            <View style={styles.stepDot} />
+            <View style={styles.stepDot} />
+          </View>
+          <Text style={styles.stepLabel}>STEP 1 OF 3</Text>
         </View>
 
-        {/* Form Container */}
+        {/* Heading */}
+        <View style={{ marginBottom: 24 }}>
+          <Text style={styles.title}>Set up your business</Text>
+          <Text style={styles.subtitle}>These details will appear on your tax invoices.</Text>
+        </View>
+
+        {/* ── Card 1: Business Info ── */}
         <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="storefront-outline" size={16} color="#F97316" />
+            </View>
+            <Text style={styles.cardLabel}>BUSINESS INFO</Text>
+          </View>
+
           {/* Business Name */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Business Name *</Text>
@@ -253,6 +270,46 @@ export default function BusinessSetupScreen() {
               value={name}
               onChangeText={onChangeName}
             />
+          </View>
+
+          {/* Phone */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Phone Number *</Text>
+            <TextInput
+              blurOnSubmit={false}
+              style={styles.input}
+              placeholder="10-digit mobile number"
+              placeholderTextColor="#94A3B8"
+              value={phone}
+              onChangeText={onChangePhone}
+              keyboardType="numeric"
+              maxLength={15}
+            />
+          </View>
+
+          {/* Business Email */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Business Email *</Text>
+            <TextInput
+              blurOnSubmit={false}
+              style={styles.input}
+              placeholder="business@email.com"
+              placeholderTextColor="#94A3B8"
+              value={email}
+              onChangeText={onChangeEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+
+        {/* ── Card 2: GST Details ── */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="receipt-outline" size={16} color="#F97316" />
+            </View>
+            <Text style={styles.cardLabel}>GST DETAILS</Text>
           </View>
 
           {/* GST Switch */}
@@ -369,6 +426,16 @@ export default function BusinessSetupScreen() {
               )}
             </View>
           )}
+        </View>
+
+        {/* ── Card 3: Address ── */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="location-outline" size={16} color="#F97316" />
+            </View>
+            <Text style={styles.cardLabel}>ADDRESS</Text>
+          </View>
 
           {/* State */}
           <View style={styles.fieldContainer}>
@@ -400,36 +467,6 @@ export default function BusinessSetupScreen() {
             />
           </View>
 
-          {/* Phone */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Phone Number *</Text>
-            <TextInput
-              blurOnSubmit={false}
-              style={styles.input}
-              placeholder="10-digit mobile number"
-              placeholderTextColor="#94A3B8"
-              value={phone}
-              onChangeText={onChangePhone}
-              keyboardType="numeric"
-              maxLength={15}
-            />
-          </View>
-
-          {/* Business Email */}
-          <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Business Email *</Text>
-            <TextInput
-              blurOnSubmit={false}
-              style={styles.input}
-              placeholder="business@email.com"
-              placeholderTextColor="#94A3B8"
-              value={email}
-              onChangeText={onChangeEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
           {/* Business Address */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Business Address *</Text>
@@ -448,7 +485,7 @@ export default function BusinessSetupScreen() {
       </KeyboardAwareScrollView>
 
       {/* Fixed Footer Bar */}
-      <FixedBottomBar style={styles.footerBar}>
+      <View style={[styles.footerBar, { paddingBottom: insets.bottom + 16 }]}>
         <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
           {saving ? (
             <ActivityIndicator color="#fff" />
@@ -456,7 +493,7 @@ export default function BusinessSetupScreen() {
             <Text style={styles.submitBtnText}>Complete Setup →</Text>
           )}
         </TouchableOpacity>
-      </FixedBottomBar>
+      </View>
 
       {/* State Picker Modal */}
       <Modal
@@ -555,6 +592,38 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
+
+  /* Step Indicator */
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  stepDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepPillActive: {
+    width: 24,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F97316',
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D1D5DB',
+  },
+  stepLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.8,
+  },
+
   title: {
     fontSize: 26,
     fontWeight: '800',
@@ -566,6 +635,8 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 6
   },
+
+  /* Cards */
   card: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -573,8 +644,29 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
     gap: 16,
-    marginBottom: 24,
+    marginBottom: 16,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  cardIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#F97316',
+    letterSpacing: 0.8,
+  },
+
   fieldContainer: {
     gap: 6,
   },
@@ -651,12 +743,14 @@ const styles = StyleSheet.create({
   switchThumbInactive: {
     alignSelf: 'flex-start',
   },
+
+  /* Footer */
   footerBar: {
     backgroundColor: '#FDF8F3',
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingTop: 12,
   },
   submitBtn: {
     backgroundColor: '#F97316',
@@ -674,6 +768,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+
+  /* Modal */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -727,6 +823,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#0F172A',
   },
+
+  /* GST styles */
   fetchGstBtn: {
     flexDirection: 'row',
     alignItems: 'center',
