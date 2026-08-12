@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet,
   TouchableOpacity, TextInput, ActivityIndicator,
-  Alert, Platform, Modal, FlatList, KeyboardAvoidingView
+  Alert, Modal, FlatList
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -458,11 +458,7 @@ export default function CreatePartyScreen() {
         transparent={true}
         onRequestClose={() => setShowStatePicker(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          style={styles.modalOverlay}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select State</Text>
@@ -500,7 +496,7 @@ export default function CreatePartyScreen() {
               keyboardShouldPersistTaps="handled"
             />
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );

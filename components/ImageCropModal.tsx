@@ -25,8 +25,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface ImageCropModalProps {
   visible: boolean;
   imageUri: string;
-  /** Width / height (e.g. 3 for logo = 3:1, 3.5 for signature = 3.5:1) */
-  aspectRatio: number;
+  /** Width / height ratio (optional, e.g. 3 for 3:1). Omit for freeform crop. */
+  aspectRatio?: number;
   onCancel: () => void;
   onCropComplete: (croppedUri: string) => void;
 }
@@ -126,20 +126,25 @@ export default function ImageCropModal({
     dispW.value = dW;
     dispH.value = dH;
 
-    // Initial crop: largest rectangle of target aspectRatio that fits the
-    // displayed image, scaled to 90 % for visual breathing room.
-    const displayedAR = dW / dH;
+    // Initial crop frame
     let initW: number;
     let initH: number;
-    if (aspectRatio > displayedAR) {
-      initW = dW;
-      initH = initW / aspectRatio;
+    if (aspectRatio && aspectRatio > 0) {
+      const displayedAR = dW / dH;
+      if (aspectRatio > displayedAR) {
+        initW = dW;
+        initH = initW / aspectRatio;
+      } else {
+        initH = dH;
+        initW = initH * aspectRatio;
+      }
+      initW *= 0.9;
+      initH *= 0.9;
     } else {
-      initH = dH;
-      initW = initH * aspectRatio;
+      // Freeform mode: fill 90% of displayed image bounds
+      initW = dW * 0.9;
+      initH = dH * 0.9;
     }
-    initW *= 0.9;
-    initH *= 0.9;
 
     cropX.value = oX + (dW - initW) / 2;
     cropY.value = oY + (dH - initH) / 2;
@@ -153,7 +158,7 @@ export default function ImageCropModal({
    * 3. Worklet helpers
    * ──────────────────────────────────────────── */
   const minW = MIN_CROP_W;
-  const minH = MIN_CROP_W / aspectRatio;
+  const minH = aspectRatio && aspectRatio > 0 ? MIN_CROP_W / aspectRatio : MIN_CROP_W;
 
   const clamp = (v: number, lo: number, hi: number): number => {
     'worklet';
@@ -212,79 +217,97 @@ export default function ImageCropModal({
         return;
       }
 
-      /* ── Corner resize (aspect-ratio locked) ──
-       * Strategy: use horizontal translation to compute new width,
-       * derive height from aspect ratio, then clamp both dimensions
-       * to stay inside the displayed image. The "anchor" is the
-       * opposite corner which stays fixed. */
-
-      if (m === 'br') {
-        // Anchor = top-left (sX, sY)
-        let nw = clamp(sW.value + tx, minW, iR - sX.value);
-        let nh = nw / aspectRatio;
-        if (nh > iB - sY.value) {
-          nh = iB - sY.value;
-          nw = nh * aspectRatio;
+      /* ── Corner resize ── */
+      if (aspectRatio && aspectRatio > 0) {
+        // Locked aspect ratio mode
+        if (m === 'br') {
+          let nw = clamp(sW.value + tx, minW, iR - sX.value);
+          let nh = nw / aspectRatio;
+          if (nh > iB - sY.value) {
+            nh = iB - sY.value;
+            nw = nh * aspectRatio;
+          }
+          if (nh < minH) {
+            nh = minH;
+            nw = nh * aspectRatio;
+          }
+          cropW.value = nw;
+          cropH.value = nh;
+        } else if (m === 'tl') {
+          const aR = sX.value + sW.value;
+          const aB = sY.value + sH.value;
+          let nw = clamp(sW.value - tx, minW, aR - iL);
+          let nh = nw / aspectRatio;
+          if (nh > aB - iT) {
+            nh = aB - iT;
+            nw = nh * aspectRatio;
+          }
+          if (nh < minH) {
+            nh = minH;
+            nw = nh * aspectRatio;
+          }
+          cropX.value = aR - nw;
+          cropY.value = aB - nh;
+          cropW.value = nw;
+          cropH.value = nh;
+        } else if (m === 'tr') {
+          const aB = sY.value + sH.value;
+          let nw = clamp(sW.value + tx, minW, iR - sX.value);
+          let nh = nw / aspectRatio;
+          if (nh > aB - iT) {
+            nh = aB - iT;
+            nw = nh * aspectRatio;
+          }
+          if (nh < minH) {
+            nh = minH;
+            nw = nh * aspectRatio;
+          }
+          cropY.value = aB - nh;
+          cropW.value = nw;
+          cropH.value = nh;
+        } else if (m === 'bl') {
+          const aR = sX.value + sW.value;
+          let nw = clamp(sW.value - tx, minW, aR - iL);
+          let nh = nw / aspectRatio;
+          if (nh > iB - sY.value) {
+            nh = iB - sY.value;
+            nw = nh * aspectRatio;
+          }
+          if (nh < minH) {
+            nh = minH;
+            nw = nh * aspectRatio;
+          }
+          cropX.value = aR - nw;
+          cropW.value = nw;
+          cropH.value = nh;
         }
-        if (nh < minH) {
-          nh = minH;
-          nw = nh * aspectRatio;
+      } else {
+        // Freeform mode: width & height resize independently
+        if (m === 'br') {
+          cropW.value = clamp(sW.value + tx, minW, iR - sX.value);
+          cropH.value = clamp(sH.value + ty, minH, iB - sY.value);
+        } else if (m === 'tl') {
+          const aR = sX.value + sW.value;
+          const aB = sY.value + sH.value;
+          const newX = clamp(sX.value + tx, iL, aR - minW);
+          const newY = clamp(sY.value + ty, iT, aB - minH);
+          cropX.value = newX;
+          cropY.value = newY;
+          cropW.value = aR - newX;
+          cropH.value = aB - newY;
+        } else if (m === 'tr') {
+          const aB = sY.value + sH.value;
+          const newY = clamp(sY.value + ty, iT, aB - minH);
+          cropY.value = newY;
+          cropW.value = clamp(sW.value + tx, minW, iR - sX.value);
+          cropH.value = aB - newY;
+        } else if (m === 'bl') {
+          const aR = sX.value + sW.value;
+          const newX = clamp(sX.value + tx, iL, aR - minW);
+          cropX.value = newX;
+          cropW.value = aR - newX;
+          cropH.value = clamp(sH.value + ty, minH, iB - sY.value);
         }
-        cropW.value = nw;
-        cropH.value = nh;
-        // cropX, cropY unchanged
-      } else if (m === 'tl') {
-        // Anchor = bottom-right
-        const aR = sX.value + sW.value;
-        const aB = sY.value + sH.value;
-        let nw = clamp(sW.value - tx, minW, aR - iL);
-        let nh = nw / aspectRatio;
-        if (nh > aB - iT) {
-          nh = aB - iT;
-          nw = nh * aspectRatio;
-        }
-        if (nh < minH) {
-          nh = minH;
-          nw = nh * aspectRatio;
-        }
-        cropX.value = aR - nw;
-        cropY.value = aB - nh;
-        cropW.value = nw;
-        cropH.value = nh;
-      } else if (m === 'tr') {
-        // Anchor = bottom-left (sX stays, sY+sH = anchor bottom)
-        const aB = sY.value + sH.value;
-        let nw = clamp(sW.value + tx, minW, iR - sX.value);
-        let nh = nw / aspectRatio;
-        if (nh > aB - iT) {
-          nh = aB - iT;
-          nw = nh * aspectRatio;
-        }
-        if (nh < minH) {
-          nh = minH;
-          nw = nh * aspectRatio;
-        }
-        cropY.value = aB - nh;
-        cropW.value = nw;
-        cropH.value = nh;
-        // cropX unchanged
-      } else if (m === 'bl') {
-        // Anchor = top-right
-        const aR = sX.value + sW.value;
-        let nw = clamp(sW.value - tx, minW, aR - iL);
-        let nh = nw / aspectRatio;
-        if (nh > iB - sY.value) {
-          nh = iB - sY.value;
-          nw = nh * aspectRatio;
-        }
-        if (nh < minH) {
-          nh = minH;
-          nw = nh * aspectRatio;
-        }
-        cropX.value = aR - nw;
-        cropW.value = nw;
-        cropH.value = nh;
-        // cropY unchanged
       }
     })
     .onEnd(() => {
@@ -401,9 +424,11 @@ export default function ImageCropModal({
    * 8. Render
    * ──────────────────────────────────────────── */
   const ratioLabel =
-    aspectRatio >= 1
-      ? `${aspectRatio}:1`
-      : `1:${(1 / aspectRatio).toFixed(1)}`;
+    aspectRatio && aspectRatio > 0
+      ? aspectRatio >= 1
+        ? `${aspectRatio}:1`
+        : `1:${(1 / aspectRatio).toFixed(1)}`
+      : 'Freeform';
 
   return (
     <Modal visible={visible} animationType="slide" statusBarTranslucent>

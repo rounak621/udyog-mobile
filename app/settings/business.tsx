@@ -526,7 +526,6 @@ export default function BusinessSettingsScreen() {
       <ImageCropModal
         visible={!!pendingImageUri}
         imageUri={pendingImageUri || ''}
-        aspectRatio={pendingCropType === 'logo' ? 3 : 3.5}
         onCancel={handleCropCancel}
         onCropComplete={handleCropComplete}
       />
@@ -551,8 +550,8 @@ const styles = StyleSheet.create({
   imageRow: { marginTop: 8 },
   imageContainer: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   previewImage: { width: 90, height: 90, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
-  logoPreview: { width: 120, height: 40, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
-  signaturePreview: { width: 120, height: 34, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
+  logoPreview: { width: 120, height: 60, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
+  signaturePreview: { width: 120, height: 60, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
   imageActions: { flex: 1, flexDirection: 'row', gap: 10 },
   pickerBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
   pickerBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 13 },
