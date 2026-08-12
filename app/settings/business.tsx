@@ -68,6 +68,8 @@ export default function BusinessSettingsScreen() {
   // Crop modal state
   const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
   const [pendingCropType, setPendingCropType] = useState<'logo' | 'signature' | null>(null);
+  const [pendingImageWidth, setPendingImageWidth] = useState<number | undefined>(undefined);
+  const [pendingImageHeight, setPendingImageHeight] = useState<number | undefined>(undefined);
 
   const [form, setForm] = useState({
     name: '',
@@ -196,8 +198,10 @@ export default function BusinessSettingsScreen() {
         { compress: 1.0, format: SaveFormat.PNG }
       );
 
-      // Open crop modal with normalized image
+      // Open crop modal with normalized image and dimensions
       setPendingImageUri(normalized.uri);
+      setPendingImageWidth(normalized.width);
+      setPendingImageHeight(normalized.height);
       setPendingCropType('logo');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
@@ -259,8 +263,10 @@ export default function BusinessSettingsScreen() {
         { compress: 1.0, format: SaveFormat.PNG }
       );
 
-      // Open crop modal with normalized image
+      // Open crop modal with normalized image and dimensions
       setPendingImageUri(normalized.uri);
+      setPendingImageWidth(normalized.width);
+      setPendingImageHeight(normalized.height);
       setPendingCropType('signature');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
@@ -312,6 +318,8 @@ export default function BusinessSettingsScreen() {
     const type = pendingCropType;
     setPendingImageUri(null);
     setPendingCropType(null);
+    setPendingImageWidth(undefined);
+    setPendingImageHeight(undefined);
     if (type) {
       uploadCroppedImage(croppedUri, type);
     }
@@ -320,6 +328,8 @@ export default function BusinessSettingsScreen() {
   const handleCropCancel = () => {
     setPendingImageUri(null);
     setPendingCropType(null);
+    setPendingImageWidth(undefined);
+    setPendingImageHeight(undefined);
   };
 
   const handleDeleteSignature = async () => {
@@ -541,6 +551,8 @@ export default function BusinessSettingsScreen() {
       <ImageCropModal
         visible={!!pendingImageUri}
         imageUri={pendingImageUri || ''}
+        knownWidth={pendingImageWidth}
+        knownHeight={pendingImageHeight}
         onCancel={handleCropCancel}
         onCropComplete={handleCropComplete}
       />

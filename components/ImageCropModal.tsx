@@ -25,6 +25,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface ImageCropModalProps {
   visible: boolean;
   imageUri: string;
+  knownWidth?: number;
+  knownHeight?: number;
   /** Width / height ratio (optional, e.g. 3 for 3:1). Omit for freeform crop. */
   aspectRatio?: number;
   onCancel: () => void;
@@ -42,6 +44,8 @@ const MIN_CROP_W = 60; // smallest crop width in screen points
 export default function ImageCropModal({
   visible,
   imageUri,
+  knownWidth,
+  knownHeight,
   aspectRatio,
   onCancel,
   onCropComplete,
@@ -82,6 +86,13 @@ export default function ImageCropModal({
     if (!visible || !imageUri) return;
     setReady(false);
     setProcessing(false);
+
+    if (knownWidth && knownHeight && knownWidth > 0 && knownHeight > 0) {
+      setImageNativeW(knownWidth);
+      setImageNativeH(knownHeight);
+      return;
+    }
+
     setImageNativeW(0);
     setImageNativeH(0);
     Image.getSize(
@@ -95,7 +106,7 @@ export default function ImageCropModal({
         setImageNativeH(0);
       },
     );
-  }, [visible, imageUri]);
+  }, [visible, imageUri, knownWidth, knownHeight]);
 
   /* ──────────────────────────────────────────────
    * 2. Calculate displayed-image bounds (aspect-fit)
