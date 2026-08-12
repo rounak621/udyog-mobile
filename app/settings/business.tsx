@@ -8,6 +8,7 @@ import {
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import ImageCropModal from '../../components/ImageCropModal';
 import { Colors, Spacing, Radius } from '../../constants/theme';
@@ -188,8 +189,15 @@ export default function BusinessSettingsScreen() {
         return;
       }
 
-      // Open crop modal instead of uploading directly
-      setPendingImageUri(selectedAsset.uri);
+      // Normalize orientation (bake EXIF rotation into raw pixels) before opening crop modal
+      const normalized = await manipulateAsync(
+        selectedAsset.uri,
+        [],
+        { compress: 1.0, format: SaveFormat.PNG }
+      );
+
+      // Open crop modal with normalized image
+      setPendingImageUri(normalized.uri);
       setPendingCropType('logo');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
@@ -244,8 +252,15 @@ export default function BusinessSettingsScreen() {
         return;
       }
 
-      // Open crop modal instead of uploading directly
-      setPendingImageUri(selectedAsset.uri);
+      // Normalize orientation (bake EXIF rotation into raw pixels) before opening crop modal
+      const normalized = await manipulateAsync(
+        selectedAsset.uri,
+        [],
+        { compress: 1.0, format: SaveFormat.PNG }
+      );
+
+      // Open crop modal with normalized image
+      setPendingImageUri(normalized.uri);
       setPendingCropType('signature');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
