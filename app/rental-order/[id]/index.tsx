@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
   actionButtonSecondaryText: { color: Colors.primary, fontSize: 13, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%', flex: 1 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottomWidth: 0.5, borderBottomColor: Colors.border, paddingBottom: 10 },
   modalTitle: { fontSize: 16, fontWeight: '700', color: Colors.text },
   modalLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, marginBottom: 4 },
