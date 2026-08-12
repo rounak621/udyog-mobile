@@ -260,9 +260,9 @@ export default function BusinessSettingsScreen() {
       const token = await getToken();
       setAuthToken(token);
 
-      const filename = croppedUri.split('/').pop() || (isLogo ? 'logo.jpg' : 'sig.jpg');
-      const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
-      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      const filename = croppedUri.split('/').pop() || (isLogo ? 'logo.png' : 'sig.png');
+      const ext = filename.split('.').pop()?.toLowerCase() || 'png';
+      const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png';
 
       const formData = new FormData();
       formData.append('file', {

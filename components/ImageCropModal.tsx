@@ -400,7 +400,7 @@ export default function ImageCropModal({
       const result = await manipulateAsync(
         imageUri,
         [{ crop: { originX, originY, width, height } }],
-        { compress: 0.8, format: SaveFormat.JPEG },
+        { compress: 1.0, format: SaveFormat.PNG },
       );
 
       onCropComplete(result.uri);
