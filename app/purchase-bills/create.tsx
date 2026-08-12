@@ -80,7 +80,7 @@ export default function CreatePurchaseBillScreen() {
   const [billDate, setBillDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', discount_percent: '0', unit: 'PCS', isCustom: false }
+    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', discount_percent: '', unit: 'PCS', isCustom: false }
   ]);
   const [saving, setSaving] = useState(false);
 
@@ -200,7 +200,7 @@ export default function CreatePurchaseBillScreen() {
           qty: '1',
           rate: String(data.taxable_value),
           gst_rate: calculatedGstPercent,
-          discount_percent: '0',
+          discount_percent: '',
           unit: 'PCS',
           isCustom: true,
           isEstimatedGst: true,
@@ -336,7 +336,7 @@ export default function CreatePurchaseBillScreen() {
 
   const addLineItem = () => setLineItems(prev => [
     ...prev,
-    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', discount_percent: '0', unit: 'PCS', isCustom: false }
+    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', discount_percent: '', unit: 'PCS', isCustom: false }
   ]);
 
   const removeLineItem = (id: string) => {
