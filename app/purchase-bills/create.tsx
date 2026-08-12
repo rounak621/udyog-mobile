@@ -657,6 +657,7 @@ export default function CreatePurchaseBillScreen() {
                     onChangeText={t => updateLineItem(item.id, 'qty', t)}
                     keyboardType="numeric"
                     placeholder="Qty"
+                    placeholderTextColor={Colors.textMuted}
                   />
                   <Text style={{ color: Colors.textMuted }}>×</Text>
                   <TextInput
@@ -665,6 +666,7 @@ export default function CreatePurchaseBillScreen() {
                     onChangeText={t => updateLineItem(item.id, 'rate', t)}
                     keyboardType="numeric"
                     placeholder="Rate (₹)"
+                    placeholderTextColor={Colors.textMuted}
                   />
                   <TextInput
                     style={[styles.qtyInput, { flex: 1.2 }]}
@@ -672,6 +674,7 @@ export default function CreatePurchaseBillScreen() {
                     onChangeText={t => updateLineItem(item.id, 'discount_percent', t)}
                     keyboardType="numeric"
                     placeholder="Disc %"
+                    placeholderTextColor={Colors.textMuted}
                   />
                 </View>
                 

@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   adjustBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '85%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '85%', flex: 1 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, borderBottomWidth: 0.5, borderBottomColor: '#E2E8F0', paddingBottom: 12 },
   modalTitle: { fontSize: 13, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.8 },
   modalItemName: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginTop: 4 },
