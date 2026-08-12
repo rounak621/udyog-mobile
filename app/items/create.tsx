@@ -9,7 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { useBottomPadding } from '../../components/ui/SafeLayout';
+import { useBottomPadding, FixedBottomBar } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -129,7 +129,7 @@ export default function CreateItemScreen() {
     );
   };
 
-  const bottomPadding = useBottomPadding(40);
+  const bottomPadding = useBottomPadding(20);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -143,11 +143,23 @@ export default function CreateItemScreen() {
           <Text style={styles.headerSub}>{id ? 'Update product details' : 'Draft · auto-saved'}</Text>
         </View>
         
-        {id && (
-          <TouchableOpacity onPress={handleDelete} style={{ padding: 4, marginRight: 12 }}>
-            <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {id && (
+            <TouchableOpacity onPress={handleDelete} style={{ padding: 4 }}>
+              <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.headerSaveBtn} onPress={handleSave} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-sharp" size={16} color="#fff" style={{ marginRight: 4 }} />
+                <Text style={styles.headerSaveBtnText}>Save</Text>
+              </>
+            )}
           </TouchableOpacity>
-        )}
+        </View>
       </View>
 
       {loading ? (
@@ -156,102 +168,123 @@ export default function CreateItemScreen() {
           <Text style={{ marginTop: 12, color: Colors.textMuted, fontSize: 14 }}>Loading details...</Text>
         </View>
       ) : (
-        <KeyboardAwareScrollView
-          style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
-          enableOnAndroid={true}
-          extraScrollHeight={20}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Form Fields Card */}
-          <View style={styles.card}>
-            {/* Item Name */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Item Name *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Paracetamol 500mg"
-                placeholderTextColor="#94A3B8"
-                value={name}
-                onChangeText={setName}
-              />
-            </View>
+        <>
+          <KeyboardAwareScrollView
+            style={{ flex: 1, backgroundColor: '#F8FAFC' }}
+            contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+            enableOnAndroid={true}
+            extraScrollHeight={30}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Card 1: Item Details */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIconWrap}>
+                  <Ionicons name="cube-outline" size={16} color="#F97316" />
+                </View>
+                <Text style={styles.cardLabel}>ITEM DETAILS</Text>
+              </View>
 
-            {/* HSN Code */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>HSN Code</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. 3004"
-                placeholderTextColor="#94A3B8"
-                value={hsnCode}
-                onChangeText={setHsnCode}
-                keyboardType="numeric"
-              />
-            </View>
+              {/* Item Name */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Item Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Paracetamol 500mg"
+                  placeholderTextColor="#94A3B8"
+                  value={name}
+                  onChangeText={setName}
+                />
+              </View>
 
-            {/* Rate (Selling Price) */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Price Per Unit (₹) *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="0.00"
-                placeholderTextColor="#94A3B8"
-                value={rate}
-                onChangeText={setRate}
-                keyboardType="numeric"
-              />
-            </View>
+              {/* HSN Code */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>HSN Code</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. 3004"
+                  placeholderTextColor="#94A3B8"
+                  value={hsnCode}
+                  onChangeText={setHsnCode}
+                  keyboardType="numeric"
+                />
+              </View>
 
-            {/* Unit Dropdown Selector */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>Unit *</Text>
-              <TouchableOpacity
-                style={styles.selectInput}
-                onPress={() => setShowUnitPicker(true)}
-              >
-                <Text style={{ fontSize: 14, color: unit ? '#0F172A' : '#94A3B8' }}>
-                  {unit}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            {/* GST chips */}
-            <View style={styles.fieldContainer}>
-              <Text style={styles.label}>GST Rate *</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                {GST_RATES.map(rateStr => (
-                  <TouchableOpacity
-                    key={rateStr}
-                    onPress={() => setGstRate(rateStr)}
-                    style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      backgroundColor: gstRate === rateStr ? Colors.primary : '#FFF7ED',
-                      borderWidth: 1,
-                      borderColor: gstRate === rateStr ? Colors.primary : '#FED7AA',
-                    }}
-                  >
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: gstRate === rateStr ? '#fff' : Colors.primary }}>
-                      {rateStr}%
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              {/* Unit Dropdown Selector */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Unit *</Text>
+                <TouchableOpacity
+                  style={styles.selectInput}
+                  onPress={() => setShowUnitPicker(true)}
+                >
+                  <Text style={{ fontSize: 14, color: unit ? '#0F172A' : '#94A3B8' }}>
+                    {unit}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#64748B" />
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
 
-          {/* Save Button */}
-          <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitBtnText}>{id ? 'Save Changes' : 'Add Item'}</Text>
-            )}
-          </TouchableOpacity>
-        </KeyboardAwareScrollView>
+            {/* Card 2: Pricing & Tax */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.cardIconWrap}>
+                  <Ionicons name="receipt-outline" size={16} color="#F97316" />
+                </View>
+                <Text style={styles.cardLabel}>PRICING & TAX</Text>
+              </View>
+
+              {/* Rate (Selling Price) */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>Price Per Unit (₹) *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="0.00"
+                  placeholderTextColor="#94A3B8"
+                  value={rate}
+                  onChangeText={setRate}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              {/* GST chips */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.label}>GST Rate *</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {GST_RATES.map(rateStr => (
+                    <TouchableOpacity
+                      key={rateStr}
+                      onPress={() => setGstRate(rateStr)}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        backgroundColor: gstRate === rateStr ? Colors.primary : '#FFF7ED',
+                        borderWidth: 1,
+                        borderColor: gstRate === rateStr ? Colors.primary : '#FED7AA',
+                      }}
+                    >
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: gstRate === rateStr ? '#fff' : Colors.primary }}>
+                        {rateStr}%
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          </KeyboardAwareScrollView>
+
+          {/* Fixed Bottom Save Button */}
+          <FixedBottomBar style={styles.footerBar}>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSave} disabled={saving}>
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>{id ? 'Save Changes' : 'Add Item'}</Text>
+              )}
+            </TouchableOpacity>
+          </FixedBottomBar>
+        </>
       )}
 
       {/* Unit Picker Modal */}
@@ -270,6 +303,7 @@ export default function CreateItemScreen() {
               </TouchableOpacity>
             </View>
             <FlatList
+              style={{ flex: 1 }}
               data={UNITS}
               keyExtractor={item => item}
               renderItem={({ item }) => (
@@ -298,18 +332,58 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   headerSub: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
+  headerSaveBtn: {
+    backgroundColor: '#F97316',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerSaveBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 
   content: { padding: 16, gap: 16 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, gap: 14 },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  cardIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#F97316',
+    letterSpacing: 0.8,
+  },
   fieldContainer: { gap: 6 },
   label: { fontSize: 10, fontWeight: '700', color: '#94A3B8', letterSpacing: 0.8, textTransform: 'uppercase' },
   input: { backgroundColor: '#F8FAFC', borderWidth: 0.5, borderColor: '#E2E8F0', borderRadius: 8, padding: 11, fontSize: 14, color: '#0F172A' },
   selectInput: { backgroundColor: '#F8FAFC', borderWidth: 0.5, borderColor: '#E2E8F0', borderRadius: 8, padding: 11, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   submitBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', elevation: 4, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
   submitBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  footerBar: {
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, maxHeight: '50%' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16, height: '50%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', flexShrink: 1 },
   modalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 0.5, borderBottomColor: '#E2E8F0' },

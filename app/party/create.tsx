@@ -192,32 +192,34 @@ export default function CreatePartyScreen() {
           <Text style={styles.headerTitle}>{id ? 'Edit Party' : 'New Party'}</Text>
           <Text style={styles.headerSub}>{id ? 'Update profile' : 'Draft · auto-saved'}</Text>
         </View>
+        <TouchableOpacity style={styles.headerSaveBtn} onPress={handleSave} disabled={saving}>
+          {saving ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Ionicons name="checkmark-sharp" size={16} color="#fff" style={{ marginRight: 4 }} />
+              <Text style={styles.headerSaveBtnText}>Save</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
 
       <KeyboardAwareScrollView
         style={{ flex: 1, backgroundColor: '#F8FAFC' }}
         contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         enableOnAndroid={true}
-        extraScrollHeight={150}
+        extraScrollHeight={60}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Type Selector Tabs */}
-        <View style={styles.typeRow}>
-          {['customer', 'supplier', 'both'].map(type => (
-            <TouchableOpacity
-              key={type}
-              style={[styles.typeBtn, partyType === type && styles.typeBtnActive]}
-              onPress={() => setPartyType(type as any)}
-            >
-              <Text style={[styles.typeBtnText, partyType === type && styles.typeBtnTextActive]}>
-                {type.charAt(0).toUpperCase() + type.slice(1)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Form Fields Card */}
+        {/* Card 1: Party Details */}
         <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="person-outline" size={16} color="#F97316" />
+            </View>
+            <Text style={styles.cardLabel}>PARTY DETAILS</Text>
+          </View>
+
           {/* Party Name */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>Party Name *</Text>
@@ -230,6 +232,24 @@ export default function CreatePartyScreen() {
               value={name}
               onChangeText={onChangeName}
             />
+          </View>
+
+          {/* Type Selector Tabs */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>Party Type *</Text>
+            <View style={styles.typeRow}>
+              {['customer', 'supplier', 'both'].map(type => (
+                <TouchableOpacity
+                  key={type}
+                  style={[styles.typeBtn, partyType === type && styles.typeBtnActive]}
+                  onPress={() => setPartyType(type as any)}
+                >
+                  <Text style={[styles.typeBtnText, partyType === type && styles.typeBtnTextActive]}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Phone */}
@@ -263,6 +283,16 @@ export default function CreatePartyScreen() {
               autoCapitalize="none"
             />
           </View>
+        </View>
+
+        {/* Card 2: Tax Details */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="receipt-outline" size={16} color="#F97316" />
+            </View>
+            <Text style={styles.cardLabel}>TAX DETAILS</Text>
+          </View>
 
           {/* GSTIN */}
           <View style={styles.fieldContainer}>
@@ -292,70 +322,76 @@ export default function CreatePartyScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {fetchingGst && (
+            <View style={styles.gstStatusContainer}>
+              <ActivityIndicator color="#F97316" size="small" />
+              <Text style={styles.gstStatusText}>Fetching GST details...</Text>
+            </View>
+          )}
+
+          {gstError && (
+            <View style={styles.gstErrorContainer}>
+              <Ionicons name="alert-circle" size={16} color="#DC2626" />
+              <Text style={styles.gstErrorText}>{gstError}</Text>
+            </View>
+          )}
+
+          {gstPreview && (
+            <View style={[styles.gstPreviewCard, !gstPreview.is_active && styles.gstPreviewCardInactive]}>
+              <Text style={styles.gstPreviewHeader}>GSTIN Details Preview</Text>
+              
+              {!gstPreview.is_active && (
+                <View style={styles.warningBanner}>
+                  <Ionicons name="warning" size={14} color="#B91C1C" style={{ marginRight: 6 }} />
+                  <Text style={styles.warningText}>Status is NOT Active ({gstPreview.status})</Text>
+                </View>
+              )}
+
+              <View style={styles.previewRow}>
+                <Text style={styles.previewLabel}>Trade Name:</Text>
+                <Text style={styles.previewValue}>{gstPreview.trade_name || '—'}</Text>
+              </View>
+              <View style={styles.previewRow}>
+                <Text style={styles.previewLabel}>Legal Name:</Text>
+                <Text style={styles.previewValue}>{gstPreview.legal_name || '—'}</Text>
+              </View>
+              <View style={styles.previewRow}>
+                <Text style={styles.previewLabel}>Address:</Text>
+                <Text style={styles.previewValue}>{gstPreview.address || '—'}</Text>
+              </View>
+              <View style={styles.previewRow}>
+                <Text style={styles.previewLabel}>State:</Text>
+                <Text style={styles.previewValue}>{gstPreview.state || '—'}</Text>
+              </View>
+              <View style={styles.previewRow}>
+                <Text style={styles.previewLabel}>Status:</Text>
+                <Text style={[styles.previewValue, gstPreview.is_active ? styles.statusActive : styles.statusInactive]}>
+                  {gstPreview.status || 'Unknown'}
+                </Text>
+              </View>
+
+              <View style={styles.previewActions}>
+                <TouchableOpacity style={styles.useThisBtn} onPress={useGstDetails}>
+                  <Text style={styles.useThisText}>Use This</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.discardBtn} onPress={discardGstDetails}>
+                  <Text style={styles.discardText}>Discard</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* GST Preview Card */}
-        {fetchingGst && (
-          <View style={styles.gstStatusContainer}>
-            <ActivityIndicator color="#F97316" size="small" />
-            <Text style={styles.gstStatusText}>Fetching GST details...</Text>
-          </View>
-        )}
-
-        {gstError && (
-          <View style={styles.gstErrorContainer}>
-            <Ionicons name="alert-circle" size={16} color="#DC2626" />
-            <Text style={styles.gstErrorText}>{gstError}</Text>
-          </View>
-        )}
-
-        {gstPreview && (
-          <View style={[styles.gstPreviewCard, !gstPreview.is_active && styles.gstPreviewCardInactive]}>
-            <Text style={styles.gstPreviewHeader}>GSTIN Details Preview</Text>
-            
-            {!gstPreview.is_active && (
-              <View style={styles.warningBanner}>
-                <Ionicons name="warning" size={14} color="#B91C1C" style={{ marginRight: 6 }} />
-                <Text style={styles.warningText}>Status is NOT Active ({gstPreview.status})</Text>
-              </View>
-            )}
-
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Trade Name:</Text>
-              <Text style={styles.previewValue}>{gstPreview.trade_name || '—'}</Text>
-            </View>
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Legal Name:</Text>
-              <Text style={styles.previewValue}>{gstPreview.legal_name || '—'}</Text>
-            </View>
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Address:</Text>
-              <Text style={styles.previewValue}>{gstPreview.address || '—'}</Text>
-            </View>
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>State:</Text>
-              <Text style={styles.previewValue}>{gstPreview.state || '—'}</Text>
-            </View>
-            <View style={styles.previewRow}>
-              <Text style={styles.previewLabel}>Status:</Text>
-              <Text style={[styles.previewValue, gstPreview.is_active ? styles.statusActive : styles.statusInactive]}>
-                {gstPreview.status || 'Unknown'}
-              </Text>
-            </View>
-
-            <View style={styles.previewActions}>
-              <TouchableOpacity style={styles.useThisBtn} onPress={useGstDetails}>
-                <Text style={styles.useThisText}>Use This</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.discardBtn} onPress={discardGstDetails}>
-                <Text style={styles.discardText}>Discard</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Address Card */}
+        {/* Card 3: Addresses */}
         <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIconWrap}>
+              <Ionicons name="location-outline" size={16} color="#F97316" />
+            </View>
+            <Text style={styles.cardLabel}>ADDRESSES</Text>
+          </View>
+
           {/* State Select Dropdown */}
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>State *</Text>
@@ -446,6 +482,7 @@ export default function CreatePartyScreen() {
               />
             </View>
             <FlatList
+              style={{ flex: 1 }}
               data={INDIAN_STATES.filter(s => s.toLowerCase().includes(stateSearch.toLowerCase()))}
               keyExtractor={item => item}
               renderItem={({ item }) => (
@@ -491,6 +528,19 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 1,
   },
+  headerSaveBtn: {
+    backgroundColor: '#F97316',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerSaveBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 
   content: {
     padding: 16,
@@ -534,6 +584,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     gap: 14,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  cardIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#F97316',
+    letterSpacing: 0.8,
   },
   fieldContainer: {
     gap: 6,
@@ -597,7 +667,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
-    maxHeight: '80%',
+    height: '60%',
   },
   modalHeader: {
     flexDirection: 'row',
