@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
+import ImageCropModal from '../../components/ImageCropModal';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -62,6 +63,10 @@ export default function BusinessSettingsScreen() {
   const [hasSignature, setHasSignature] = useState(false);
   const [signaturePath, setSignaturePath] = useState<string | null>(null);
   const [uploadingSignature, setUploadingSignature] = useState(false);
+
+  // Crop modal state
+  const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
+  const [pendingCropType, setPendingCropType] = useState<'logo' | 'signature' | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -163,7 +168,6 @@ export default function BusinessSettingsScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.8,
-        allowsEditing: true,
       });
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
@@ -184,31 +188,11 @@ export default function BusinessSettingsScreen() {
         return;
       }
 
-      setUploadingLogo(true);
-      const token = await getToken();
-      setAuthToken(token);
-
-      const formData = new FormData();
-      const type = ext === 'png' ? 'image/png' : 'image/jpeg';
-      formData.append('file', {
-        uri: selectedAsset.uri,
-        name: filename,
-        type,
-      } as any);
-
-      const res = await api.post(`/businesses/logo?business_id=${businessId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      setLogoPath(res.data.url);
-      setHasLogo(true);
-      Alert.alert('Success', 'Logo uploaded successfully');
+      // Open crop modal instead of uploading directly
+      setPendingImageUri(selectedAsset.uri);
+      setPendingCropType('logo');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to upload logo');
-    } finally {
-      setUploadingLogo(false);
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
     }
   };
 
@@ -240,7 +224,6 @@ export default function BusinessSettingsScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.8,
-        allowsEditing: true,
       });
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
@@ -261,32 +244,67 @@ export default function BusinessSettingsScreen() {
         return;
       }
 
-      setUploadingSignature(true);
+      // Open crop modal instead of uploading directly
+      setPendingImageUri(selectedAsset.uri);
+      setPendingCropType('signature');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
+    }
+  };
+
+  const uploadCroppedImage = async (croppedUri: string, type: 'logo' | 'signature') => {
+    const isLogo = type === 'logo';
+    const setUploading = isLogo ? setUploadingLogo : setUploadingSignature;
+    setUploading(true);
+    try {
       const token = await getToken();
       setAuthToken(token);
 
+      const filename = croppedUri.split('/').pop() || (isLogo ? 'logo.jpg' : 'sig.jpg');
+      const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
       const formData = new FormData();
-      const type = ext === 'png' ? 'image/png' : 'image/jpeg';
       formData.append('file', {
-        uri: selectedAsset.uri,
+        uri: croppedUri,
         name: filename,
-        type,
+        type: mimeType,
       } as any);
 
-      const res = await api.post(`/businesses/signature?business_id=${businessId}`, formData, {
+      const endpoint = isLogo ? 'logo' : 'signature';
+      const res = await api.post(`/businesses/${endpoint}?business_id=${businessId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      setSignaturePath(res.data.url);
-      setHasSignature(true);
-      Alert.alert('Success', 'Signature uploaded successfully');
+      if (isLogo) {
+        setLogoPath(res.data.url);
+        setHasLogo(true);
+      } else {
+        setSignaturePath(res.data.url);
+        setHasSignature(true);
+      }
+      Alert.alert('Success', `${isLogo ? 'Logo' : 'Signature'} uploaded successfully`);
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to upload signature');
+      Alert.alert('Error', err.response?.data?.detail || `Failed to upload ${type}`);
     } finally {
-      setUploadingSignature(false);
+      setUploading(false);
     }
+  };
+
+  const handleCropComplete = (croppedUri: string) => {
+    const type = pendingCropType;
+    setPendingImageUri(null);
+    setPendingCropType(null);
+    if (type) {
+      uploadCroppedImage(croppedUri, type);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setPendingImageUri(null);
+    setPendingCropType(null);
   };
 
   const handleDeleteSignature = async () => {
@@ -384,7 +402,7 @@ export default function BusinessSettingsScreen() {
             <View style={styles.imageRow}>
               {hasLogo && logoPath ? (
                 <View style={styles.imageContainer}>
-                  <Image source={{ uri: logoPath }} style={styles.previewImage} resizeMode="contain" />
+                  <Image source={{ uri: logoPath }} style={styles.logoPreview} resizeMode="contain" />
                   <View style={styles.imageActions}>
                     <TouchableOpacity style={styles.pickerBtn} onPress={handlePickLogo} disabled={uploadingLogo}>
                       <Text style={styles.pickerBtnText}>Change</Text>
@@ -415,7 +433,7 @@ export default function BusinessSettingsScreen() {
             <View style={styles.imageRow}>
               {hasSignature && signaturePath ? (
                 <View style={styles.imageContainer}>
-                  <Image source={{ uri: signaturePath }} style={styles.previewImage} resizeMode="contain" />
+                  <Image source={{ uri: signaturePath }} style={styles.signaturePreview} resizeMode="contain" />
                   <View style={styles.imageActions}>
                     <TouchableOpacity style={styles.pickerBtn} onPress={handlePickSignature} disabled={uploadingSignature}>
                       <Text style={styles.pickerBtnText}>Change</Text>
@@ -503,6 +521,15 @@ export default function BusinessSettingsScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Crop Modal */}
+      <ImageCropModal
+        visible={!!pendingImageUri}
+        imageUri={pendingImageUri || ''}
+        aspectRatio={pendingCropType === 'logo' ? 3 : 3.5}
+        onCancel={handleCropCancel}
+        onCropComplete={handleCropComplete}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -524,6 +551,8 @@ const styles = StyleSheet.create({
   imageRow: { marginTop: 8 },
   imageContainer: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   previewImage: { width: 90, height: 90, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
+  logoPreview: { width: 120, height: 40, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
+  signaturePreview: { width: 120, height: 34, borderRadius: Radius.sm, backgroundColor: '#f8fafc', borderWidth: 0.5, borderColor: Colors.border },
   imageActions: { flex: 1, flexDirection: 'row', gap: 10 },
   pickerBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.primary, borderRadius: Radius.sm, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
   pickerBtnText: { color: Colors.primary, fontWeight: '600', fontSize: 13 },

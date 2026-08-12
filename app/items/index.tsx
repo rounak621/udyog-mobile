@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, FlatList
+  ActivityIndicator, Modal, Alert, FlatList
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -290,11 +290,7 @@ export default function ItemsScreen() {
         transparent={true}
         onRequestClose={() => setShowBulkModal(false)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          style={styles.modalOverlay}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
@@ -335,7 +331,7 @@ export default function ItemsScreen() {
                 </View>
 
                 <Text style={styles.fieldLabel}>Unit</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.unitChipRow}>
                   {UNITS.map(u => (
                     <TouchableOpacity
                       key={u}
@@ -409,7 +405,7 @@ export default function ItemsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -448,6 +444,7 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 11, fontWeight: '600', color: Colors.text, marginTop: 6, marginBottom: 4 },
   modalInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: Colors.text },
   chipRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  unitChipRow: { flexDirection: 'row', gap: 6 },
   chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: '#fff', borderWidth: 1, borderColor: Colors.border },
   chipActive: { backgroundColor: '#fff7ed', borderColor: Colors.primary },
   chipText: { fontSize: 12, color: Colors.text },
