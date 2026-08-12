@@ -479,6 +479,7 @@ export default function CreatePartyScreen() {
             </View>
             <FlatList
               style={{ flex: 1 }}
+              contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }}
               data={INDIAN_STATES.filter(s => s.toLowerCase().includes(stateSearch.toLowerCase()))}
               keyExtractor={item => item}
               renderItem={({ item }) => (
@@ -663,7 +664,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
-    height: '60%',
+    height: '75%',
   },
   modalHeader: {
     flexDirection: 'row',

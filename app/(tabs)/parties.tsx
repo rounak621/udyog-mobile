@@ -84,7 +84,7 @@ export default function PartiesScreen() {
 
   const filtered = parties.filter(p => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.phone?.includes(search) || p.gstin?.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'all' || p.party_type === filter;
+    const matchFilter = filter === 'all' || p.party_type === filter || p.party_type === 'both';
     return matchSearch && matchFilter;
   });
 

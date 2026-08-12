@@ -4,10 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, Keyboard
+  ActivityIndicator, Modal, Alert
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 
@@ -40,21 +41,6 @@ export default function InventoryScreen() {
   const [reason, setReason] = useState('MANUAL');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [androidKeyboardOffset, setAndroidKeyboardOffset] = useState(0);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
-      setAndroidKeyboardOffset(e.endCoordinates.height);
-    });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setAndroidKeyboardOffset(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   const loadInventory = useCallback(async () => {
     try {
@@ -311,12 +297,8 @@ export default function InventoryScreen() {
         transparent={true}
         onRequestClose={() => setSelectedItem(null)}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
-          style={styles.modalOverlay}
-        >
-          <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom, marginBottom: Platform.OS === 'android' ? androidKeyboardOffset : 0 }]}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 + insets.bottom }]}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -331,7 +313,7 @@ export default function InventoryScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14 }}>
+            <KeyboardAwareScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 14 }} enableOnAndroid={true} extraScrollHeight={40}>
               {/* Segmented Toggle Control */}
               <View style={styles.toggleRow}>
                 <TouchableOpacity
@@ -412,7 +394,7 @@ export default function InventoryScreen() {
                   numberOfLines={2}
                 />
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Action Button (Fixed Footer) */}
             <TouchableOpacity
@@ -432,7 +414,7 @@ export default function InventoryScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );

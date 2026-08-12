@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -302,7 +303,7 @@ export default function ItemsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" enableOnAndroid={true} extraScrollHeight={40}>
               {/* COMMON FIELDS */}
               <View style={styles.commonBox}>
                 <Text style={styles.commonTitle}>Common for all items</Text>
@@ -382,7 +383,7 @@ export default function ItemsScreen() {
                 <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
                 <Text style={styles.addRowBtnText}>+ Add Row</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={[styles.modalFooter, { paddingBottom: 12 + insets.bottom }]}>
               <TouchableOpacity

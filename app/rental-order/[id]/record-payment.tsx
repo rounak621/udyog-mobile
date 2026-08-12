@@ -1,11 +1,12 @@
 import { useAuth } from '@clerk/clerk-expo';
 import { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, StyleSheet,
   TouchableOpacity, ActivityIndicator, Alert, TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { FixedBottomBar } from '../../../components/ui/SafeLayout';
@@ -94,11 +95,13 @@ export default function RentalOrderRecordPaymentScreen() {
       </View>
 
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          enableOnAndroid={true}
+          extraScrollHeight={40}
         >
           {/* Outstanding Amount */}
           <View style={styles.outstandingBox}>
@@ -177,7 +180,7 @@ export default function RentalOrderRecordPaymentScreen() {
               placeholderTextColor={Colors.textMuted}
             />
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
       {/* Fixed Footer Bar */}
       <FixedBottomBar style={styles.footerBar}>

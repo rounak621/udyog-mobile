@@ -3,10 +3,11 @@ import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ActivityIndicator,
   Alert, Modal, TextInput, ScrollView, Switch,
-  KeyboardAvoidingView, Platform
+  Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -619,11 +620,7 @@ export default function OrderDetailScreen() {
 
       {/* Return Modal (Bottom Sheet style) */}
       <Modal visible={showReturnModal} transparent animationType="slide">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          style={styles.modalOverlay}
-        >
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Record Return Flow</Text>
@@ -632,7 +629,7 @@ export default function OrderDetailScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled" enableOnAndroid={true} extraScrollHeight={40}>
               <Text style={{ fontSize: 13, color: Colors.textSecondary, marginBottom: 12 }}>
                 Distributes returned items across rented items. Remaining to be returned: <Text style={{ fontWeight: '700', color: Colors.primary }}>{remainingToReturn}</Text> units.
               </Text>
@@ -746,9 +743,9 @@ export default function OrderDetailScreen() {
                   <Text style={styles.submitReturnBtnText}>Record Return & Free Assets</Text>
                 )}
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
 
 

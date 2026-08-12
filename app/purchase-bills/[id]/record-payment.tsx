@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FixedBottomBar } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
@@ -101,11 +102,13 @@ export default function PurchaseBillRecordPaymentScreen() {
       </View>
 
 
-        <ScrollView
+        <KeyboardAwareScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          enableOnAndroid={true}
+          extraScrollHeight={40}
         >
           {/* Bill Summary Card */}
           <View style={styles.summaryCard}>
@@ -178,7 +181,7 @@ export default function PurchaseBillRecordPaymentScreen() {
               })}
             </View>
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
       {/* Fixed Footer Bar */}
       <FixedBottomBar style={styles.footerBar}>
