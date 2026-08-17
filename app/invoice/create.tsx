@@ -9,6 +9,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -757,7 +758,7 @@ export default function CreateInvoiceScreen() {
                   <View style={{ marginTop: 8 }}>
                     <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>GST Rate</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                      {['0', '5', '18', '40'].map(rate => (
+                      {GST_RATE_STRINGS.map(rate => (
                         <TouchableOpacity
                           key={rate}
                           onPress={() => updateItem(item.id, 'gst_rate', rate)}
