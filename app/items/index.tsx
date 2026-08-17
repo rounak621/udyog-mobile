@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 
 interface Item {
@@ -34,8 +35,6 @@ const createEmptyRow = (): BulkRow => ({
   name: '',
   rate: '',
 });
-
-const GST_RATES = ['0', '5', '12', '18', '28'];
 
 export default function ItemsScreen() {
   const { getToken } = useAuth();
@@ -320,7 +319,7 @@ export default function ItemsScreen() {
 
                 <Text style={styles.fieldLabel}>GST Rate (%)</Text>
                 <View style={styles.chipRow}>
-                  {GST_RATES.map(rate => (
+                  {GST_RATE_STRINGS.map(rate => (
                     <TouchableOpacity
                       key={rate}
                       style={[styles.chip, bulkGstRate === rate && styles.chipActive]}

@@ -10,9 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
-
-const GST_RATES = ['0', '5', '18', '40'];
 const RATE_TYPES = [
   { label: 'Day', value: 'DAILY' },
   { label: 'Week', value: 'WEEKLY' },
@@ -262,7 +261,7 @@ export default function BulkAddProductScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ gap: 6 }}
                   >
-                    {GST_RATES.map((rateStr) => (
+                    {GST_RATE_STRINGS.map((rateStr) => (
                       <TouchableOpacity
                         key={rateStr}
                         style={[
