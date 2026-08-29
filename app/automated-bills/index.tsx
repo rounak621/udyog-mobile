@@ -72,8 +72,11 @@ export default function AutomatedBillsListScreen() {
         api.get(`/customers/?business_id=${bId}`),
       ]);
 
+      const customersList = Array.isArray(customersRes.data)
+        ? customersRes.data
+        : customersRes.data?.items || customersRes.data?.customers || [];
       const cMap: Record<string, string> = {};
-      (customersRes.data || []).forEach((c: any) => {
+      customersList.forEach((c: any) => {
         cMap[String(c.id)] = c.name;
       });
       setCustomersMap(cMap);

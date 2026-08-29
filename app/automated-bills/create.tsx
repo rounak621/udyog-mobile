@@ -24,6 +24,7 @@ import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import {
   recurringBillsService,
@@ -138,9 +139,15 @@ export default function CreateRecurringBillScreen() {
         api.get(`/items/?business_id=${bId}`),
       ]);
 
-      const loadedParties = partiesRes.data || [];
+      const loadedParties = Array.isArray(partiesRes.data)
+        ? partiesRes.data
+        : partiesRes.data?.items || partiesRes.data?.customers || [];
       setParties(loadedParties);
-      setItemsCatalog(itemsRes.data?.items || itemsRes.data || []);
+      setItemsCatalog(
+        Array.isArray(itemsRes.data)
+          ? itemsRes.data
+          : itemsRes.data?.items || []
+      );
 
       if (params.customer_id) {
         const pre = loadedParties.find((p: any) => String(p.id) === String(params.customer_id));
@@ -768,7 +775,7 @@ export default function CreateRecurringBillScreen() {
                     <View>
                       <Text style={styles.miniLabel}>GST RATE (%)</Text>
                       <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                        {['0', '5', '12', '18', '28'].map(rateStr => {
+                        {GST_RATE_STRINGS.map(rateStr => {
                           const active = String(item.gst_rate) === rateStr;
                           return (
                             <TouchableOpacity
@@ -931,6 +938,7 @@ export default function CreateRecurringBillScreen() {
             <FlatList
               data={filteredParties}
               keyExtractor={item => String(item.id)}
+              contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.modalPartyItem} onPress={() => selectCustomer(item, businessState)}>
                   <View style={{ flex: 1 }}>

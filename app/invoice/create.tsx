@@ -898,6 +898,7 @@ export default function CreateInvoiceScreen() {
             <FlatList
               data={filteredParties}
               keyExtractor={item => String(item.id)}
+              contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.modalItem}
