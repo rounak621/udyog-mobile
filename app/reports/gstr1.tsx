@@ -10,6 +10,7 @@ import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { validateGSTIN } from '../../utils/validators';
+import { showApiError } from '../../utils/apiError';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -76,6 +77,8 @@ export default function Gstr1Screen() {
   const [error, setError] = useState<string | null>(null);
   const [showWarnings, setShowWarnings] = useState(true);
 
+  const [exporting, setExporting] = useState(false);
+
   // Validation & Blocking states
   const [invalidGstinParties, setInvalidGstinParties] = useState<InvalidGstinParty[]>([]);
   const [bypassGstinBlock, setBypassGstinBlock] = useState(false);
@@ -101,21 +104,14 @@ export default function Gstr1Screen() {
       const year = parseInt(y, 10);
       const monthStr = `${year}-${String(monthIndex).padStart(2, '0')}`;
 
-      const [summaryRes, gstrRes] = await Promise.all([
-        api.get(`/exports/gstr1-summary?business_id=${bId}&month=${monthStr}`),
-        api.get(`/exports/gstr1-json?business_id=${bId}&month=${monthStr}`)
-      ]);
-
+      const summaryRes = await api.get(`/exports/gstr1-summary?business_id=${bId}&month=${monthStr}`);
       const rawSummary = summaryRes.data?.rows || summaryRes.data || [];
       const summaryInvoices = Array.isArray(rawSummary) ? rawSummary : [];
-      
+
       setInvoices(summaryInvoices);
-      setPayload(gstrRes.data.gstr1_payload || gstrRes.data);
-      setWarnings(gstrRes.data.validation_warnings || []);
-      setInvalidGstinParties(gstrRes.data.invalid_gstin_parties || []);
       setError(null);
     } catch (err: any) {
-      console.log('GSTR1 error:', err);
+      console.log('GSTR1 summary load error:', err);
       setError('Failed to fetch GSTR-1 statement data.');
     } finally {
       setLoading(false);
@@ -171,25 +167,39 @@ export default function Gstr1Screen() {
     }
   };
 
-  const handleShare = async () => {
-    if (!payload) {
-      Alert.alert('No Data', 'GSTR-1 JSON payload is not loaded yet.');
-      return;
-    }
+  const fetchJsonAndShare = async (force = false) => {
+    setExporting(true);
     try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
-        return;
-      }
+      const token = await getToken();
+      setAuthToken(token);
+
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
 
       const [m, y] = months[selectedMonthIdx].split(' ');
       const monthIndex = MONTH_NAMES.indexOf(m) + 1;
       const year = parseInt(y, 10);
       const monthStr = `${year}-${String(monthIndex).padStart(2, '0')}`;
 
+      const url = `/exports/gstr1-json?business_id=${bId}&month=${monthStr}${force ? '&force=true' : ''}`;
+      const gstrRes = await api.get(url);
+
+      const payloadData = gstrRes.data?.gstr1_payload || gstrRes.data;
+      const warningList = gstrRes.data?.validation_warnings || [];
+      const invalidParties = gstrRes.data?.invalid_gstin_parties || [];
+
+      setPayload(payloadData);
+      setWarnings(warningList);
+      setInvalidGstinParties(invalidParties);
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing Unavailable', 'Sharing is not available on this device.');
+        return;
+      }
+
       const fileUri = (FileSystem as any).cacheDirectory + `GSTR1_${monthStr}.json`;
-      const jsonString = JSON.stringify(payload, null, 2);
+      const jsonString = JSON.stringify(payloadData, null, 2);
       await (FileSystem as any).writeAsStringAsync(fileUri, jsonString);
 
       await Sharing.shareAsync(fileUri, {
@@ -197,9 +207,36 @@ export default function Gstr1Screen() {
         dialogTitle: `GSTR-1 ${monthStr}`,
         UTI: 'public.json',
       });
-    } catch (err) {
-      console.log('GSTR1 share error:', err);
-      Alert.alert('Share Error', 'Failed to share GSTR-1 JSON.');
+    } catch (err: any) {
+      console.log('GSTR1 export error:', err);
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 422 && detail) {
+        const blockingMsg = typeof detail === 'string'
+          ? detail
+          : detail.message || 'GSTR-1 generation blocked due to validation issues.';
+        const blockingIssues = detail.blocking_issues || [];
+        if (blockingIssues.length > 0) {
+          const issuesStr = blockingIssues.map((i: any) => `• ${i.detail || i.message}`).join('\n');
+          Alert.alert(
+            'GSTR-1 Validation Issues',
+            `${blockingMsg}\n\n${issuesStr}`,
+            [
+              { text: 'OK', style: 'cancel' },
+              {
+                text: 'Export Anyway',
+                style: 'destructive',
+                onPress: () => fetchJsonAndShare(true),
+              },
+            ]
+          );
+        } else {
+          Alert.alert('Validation Error', blockingMsg);
+        }
+      } else {
+        showApiError(err, 'Failed to export GSTR-1 JSON.');
+      }
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -223,9 +260,15 @@ export default function Gstr1Screen() {
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>GSTR-1 Report</Text>
-          <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-            <Ionicons name="share-social-outline" size={20} color="#fff" />
-            <Text style={styles.shareTxt}>Export</Text>
+          <TouchableOpacity onPress={() => fetchJsonAndShare(false)} style={styles.shareBtn} disabled={exporting}>
+            {exporting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="share-social-outline" size={20} color="#fff" />
+                <Text style={styles.shareTxt}>Export</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -338,7 +381,7 @@ export default function Gstr1Screen() {
               ))}
             </View>
 
-            <TouchableOpacity onPress={() => setBypassGstinBlock(true)} style={{ marginTop: 8, padding: 8 }}>
+            <TouchableOpacity onPress={() => fetchJsonAndShare(true)} style={{ marginTop: 8, padding: 8 }} disabled={exporting}>
               <Text style={styles.bypassLinkTxt}>Download anyway (not recommended)</Text>
             </TouchableOpacity>
           </View>
