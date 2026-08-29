@@ -27,6 +27,7 @@ export default function AutomatedBillsListScreen() {
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
   const { business } = useBusiness();
+  const fabBottom = useBottomPadding(20);
   const bottomPadding = useBottomPadding(20);
 
   const [templates, setTemplates] = useState<RecurringBillTemplate[]>([]);
@@ -399,7 +400,7 @@ export default function AutomatedBillsListScreen() {
 
       {/* Safe FAB */}
       <TouchableOpacity
-        style={[styles.fab, !hasAccess && styles.fabDisabled]}
+        style={[styles.fab, { bottom: fabBottom }, !hasAccess && styles.fabDisabled]}
         onPress={handleCreatePress}
         activeOpacity={0.8}
       >
@@ -519,7 +520,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
   fab: {
     position: 'absolute',
-    bottom: 24,
     right: 16,
     backgroundColor: Colors.primary,
     borderRadius: 28,

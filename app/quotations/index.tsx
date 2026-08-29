@@ -31,6 +31,7 @@ export default function QuotationsListScreen() {
   const insets = useSafeAreaInsets();
   const { getToken } = useAuth();
   const { business } = useBusiness();
+  const fabBottom = useBottomPadding(20);
   const bottomPadding = useBottomPadding(20);
 
   const hasAccess = hasVistaarPlusAccess(business);
@@ -349,7 +350,7 @@ export default function QuotationsListScreen() {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={[styles.fab, !hasAccess && styles.fabDisabled]}
+        style={[styles.fab, { bottom: fabBottom }, !hasAccess && styles.fabDisabled]}
         onPress={handleCreatePress}
         activeOpacity={0.8}
       >
@@ -446,7 +447,6 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   fab: {
     position: 'absolute',
-    bottom: 24,
     right: 16,
     backgroundColor: Colors.primary,
     borderRadius: 28,
