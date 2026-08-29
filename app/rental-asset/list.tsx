@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
 
 interface RentalAsset {
@@ -51,6 +52,7 @@ export default function RentalAssetListScreen() {
       setAssets(res.data);
     } catch (err) {
       console.log('Error loading asset list:', err);
+      showApiError(err, 'Failed to load asset list');
     } finally {
       setLoading(false);
       setRefreshing(false);

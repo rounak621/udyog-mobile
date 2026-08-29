@@ -9,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AssignedCA {
@@ -45,6 +46,7 @@ export default function CAManagementScreen() {
       setCas(Array.isArray(casRes.data) ? casRes.data : []);
     } catch (err) {
       console.log('CA list fetch error:', err);
+      showApiError(err, 'Failed to load CA list');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,7 +82,7 @@ export default function CAManagementScreen() {
       if (status === 403) {
         Alert.alert('Limit Reached', detail || 'CA limit reached for your plan. Upgrade to Vistaar to add more CAs.');
       } else {
-        Alert.alert('Error', detail || 'Failed to assign CA. Please try again.');
+        showApiError(err, 'Failed to assign CA. Please try again.');
       }
     } finally {
       setAdding(false);
@@ -107,8 +109,8 @@ export default function CAManagementScreen() {
               Alert.alert('Success', 'CA removed successfully');
               loadData();
             } catch (err: any) {
-              const detail = err.response?.data?.detail;
-              Alert.alert('Error', detail || 'Failed to remove CA. Please try again.');
+              console.log('Remove CA error:', err);
+              showApiError(err, 'Failed to remove CA. Please try again.');
             }
           }
         }

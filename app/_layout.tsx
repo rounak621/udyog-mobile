@@ -15,6 +15,9 @@ import Constants from 'expo-constants';
 import { registerForPushNotificationsAsync, registerDeviceToken } from '../services/notifications';
 import { BusinessProvider, useBusiness } from '../context/BusinessContext';
 import { AppModeProvider, useAppMode } from '../context/AppModeContext';
+import ErrorBoundary from '../components/ErrorBoundary';
+import OfflineBanner from '../components/OfflineBanner';
+import { setCrashUser } from '../services/crashReporting';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -47,8 +50,10 @@ function AuthGuard() {
       setBusinessCheckDone(false);
       setHasBusiness(false);
       setRoleSetupDone(false);
+    } else if (user?.id) {
+      setCrashUser(user.id, user.primaryEmailAddress?.emailAddress);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, user?.id]);
 
   // Silent role setup in background (only once per user session)
   useEffect(() => {
@@ -186,16 +191,19 @@ export default function RootLayout() {
   const [showIntro, setShowIntro] = useState(true);
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
   return (
-    <SafeAreaProvider>
-      <SystemBars style="dark" />
-      <AppModeProvider>
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-          <BusinessProvider>
-            <AuthGuard />
-          </BusinessProvider>
-        </ClerkProvider>
-        {showIntro && <IntroOverlay onFinish={() => setShowIntro(false)} />}
-      </AppModeProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <SystemBars style="dark" />
+        <AppModeProvider>
+          <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+            <BusinessProvider>
+              <AuthGuard />
+            </BusinessProvider>
+          </ClerkProvider>
+          {showIntro && <IntroOverlay onFinish={() => setShowIntro(false)} />}
+        </AppModeProvider>
+        <OfflineBanner />
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

@@ -15,7 +15,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
 
 interface Customer {
@@ -54,8 +56,6 @@ interface OrderItem {
   isAvailable: boolean;
   availableQtyMsg: string;
 }
-
-const GST_RATES = ['0', '5', '18', '40'];
 
 export default function OrderCreateScreen() {
   const { getToken } = useAuth();
@@ -172,6 +172,7 @@ export default function OrderCreateScreen() {
         setProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
       } catch (err) {
         console.log('Error loading order creation master data:', err);
+        showApiError(err, 'Failed to load customer and product list');
       } finally {
         setLoadingData(false);
       }
@@ -782,7 +783,7 @@ export default function OrderCreateScreen() {
               <View style={[styles.fieldContainer, { marginTop: 10 }]}>
                 <Text style={styles.fieldLabel}>GST Rate *</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                  {GST_RATES.map((rateStr) => {
+                  {GST_RATE_STRINGS.map((rateStr) => {
                     const isSelected = row.gstRate === rateStr;
                     return (
                       <TouchableOpacity

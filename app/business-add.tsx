@@ -14,6 +14,7 @@ import { useBottomPadding } from '../components/ui/SafeLayout';
 import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
+import { validateGSTIN } from '../utils/validators';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -36,18 +37,29 @@ export default function BusinessAddScreen() {
   const [gstNumber, setGstNumber] = useState('');
   const [state, setState] = useState('');
   const [saving, setSaving] = useState(false);
+  const [gstValError, setGstValError] = useState<string | null>(null);
 
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
 
   const onChangeName = useCallback((text: string) => setName(text), []);
-  const onChangeGstNumber = useCallback((text: string) => setGstNumber(text), []);
+  const onChangeGstNumber = useCallback((text: string) => {
+    setGstNumber(text);
+    setGstValError(null);
+  }, []);
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Business name is required'); return; }
     if (name.trim().length < 3) { Alert.alert('Error', 'Business name must be at least 3 characters'); return; }
     if (gstEnabled && !gstNumber.trim()) { Alert.alert('Error', 'GSTIN is required when GST is enabled'); return; }
-    if (gstEnabled && gstNumber.trim().length !== 15) { Alert.alert('Error', 'GSTIN must be exactly 15 characters'); return; }
+    if (gstEnabled) {
+      const gstinRes = validateGSTIN(gstNumber);
+      if (!gstinRes.isValid) {
+        setGstValError(gstinRes.error || 'Invalid GSTIN');
+        Alert.alert('Error', gstinRes.error || 'Please enter a valid GSTIN');
+        return;
+      }
+    }
     if (!state.trim()) { Alert.alert('Error', 'State is required'); return; }
 
     setSaving(true);
@@ -167,9 +179,19 @@ export default function BusinessAddScreen() {
                 placeholderTextColor="#94A3B8"
                 value={gstNumber}
                 onChangeText={onChangeGstNumber}
+                onBlur={() => {
+                  const res = validateGSTIN(gstNumber);
+                  setGstValError(res.isValid ? null : res.error || 'Invalid GSTIN');
+                }}
                 maxLength={15}
                 autoCapitalize="characters"
               />
+              {gstValError && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 12, color: '#DC2626' }}>{gstValError}</Text>
+                </View>
+              )}
             </View>
           )}
 

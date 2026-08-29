@@ -10,9 +10,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
+import { validateHSN } from '../../utils/validators';
 
-const GST_RATES = ['0', '5', '18', '40'];
 const RATE_TYPES = [
   { label: 'Daily', value: 'DAILY' },
   { label: 'Weekly', value: 'WEEKLY' },
@@ -35,6 +36,7 @@ export default function CreateProductScreen() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hsnError, setHsnError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadBusinessAndProduct = async () => {
@@ -53,7 +55,7 @@ export default function CreateProductScreen() {
           setDescription(prod.description || '');
           setRate(String(prod.rate || ''));
           setRateType(prod.rate_type || 'DAILY');
-          setGstRate(String(Math.round(prod.gst_rate || 18)));
+          setGstRate(String(Math.round(prod.gst_rate || 0)));
           setHsnCode(prod.hsn_code || '');
         }
       } catch (err: any) {
@@ -69,6 +71,12 @@ export default function CreateProductScreen() {
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Required Field', 'Please enter a product name.');
+      return;
+    }
+    const hsnRes = validateHSN(hsnCode);
+    if (!hsnRes.isValid) {
+      setHsnError(hsnRes.error || 'Invalid HSN code');
+      Alert.alert('Validation Error', hsnRes.error || 'Invalid HSN code');
       return;
     }
     const parsedRate = parseFloat(rate);
@@ -246,7 +254,7 @@ export default function CreateProductScreen() {
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>GST Rate *</Text>
               <View style={styles.chipsContainer}>
-                {GST_RATES.map((rateStr) => (
+                {GST_RATE_STRINGS.map((rateStr) => (
                   <TouchableOpacity
                     key={rateStr}
                     onPress={() => setGstRate(rateStr)}
@@ -274,9 +282,22 @@ export default function CreateProductScreen() {
                 placeholder="e.g. 9973"
                 placeholderTextColor="#94A3B8"
                 value={hsnCode}
-                onChangeText={setHsnCode}
+                onChangeText={(t) => {
+                  setHsnCode(t);
+                  if (hsnError) setHsnError(null);
+                }}
+                onBlur={() => {
+                  const res = validateHSN(hsnCode);
+                  setHsnError(res.isValid ? null : res.error || 'Invalid HSN code');
+                }}
                 keyboardType="numeric"
               />
+              {hsnError && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" style={{ marginRight: 4 }} />
+                  <Text style={{ fontSize: 12, color: '#DC2626' }}>{hsnError}</Text>
+                </View>
+              )}
             </View>
           </View>
         </KeyboardAwareScrollView>

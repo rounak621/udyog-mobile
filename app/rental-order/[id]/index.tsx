@@ -16,6 +16,7 @@ import { savePdfToAndroidOrShare } from '../../../services/safHelper';
 import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
+import { showApiError } from '../../../utils/apiError';
 import { useBusiness } from '../../../context/BusinessContext';
 
 interface RentalOrderItem {
@@ -107,7 +108,7 @@ export default function OrderDetailScreen() {
       setPayments(paymentsRes.data.payments || []);
     } catch (err) {
       console.log('Error fetching rental order details:', err);
-      Alert.alert('Error', 'Failed to load order details.');
+      showApiError(err, 'Failed to load order details.');
     } finally {
       setLoading(false);
       setLoadingPayments(false);

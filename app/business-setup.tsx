@@ -13,6 +13,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
+import { validateGSTIN, validatePhone } from '../utils/validators';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -61,6 +62,10 @@ export default function BusinessSetupScreen() {
   const [email, setEmail] = useState(user?.emailAddresses?.[0]?.emailAddress || '');
   const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Form Validation States
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [gstValError, setGstValError] = useState<string | null>(null);
 
   // GST Verification state
   const [verifyingGst, setVerifyingGst] = useState(false);
@@ -137,10 +142,22 @@ export default function BusinessSetupScreen() {
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Business name is required'); return; }
     if (gstEnabled && !gstNumber.trim()) { Alert.alert('Error', 'GSTIN is required when GST is enabled'); return; }
-    if (gstEnabled && gstNumber.trim().length !== 15) { Alert.alert('Error', 'GSTIN must be exactly 15 characters'); return; }
+    if (gstEnabled) {
+      const gstinRes = validateGSTIN(gstNumber);
+      if (!gstinRes.isValid) {
+        setGstValError(gstinRes.error || 'Invalid GSTIN');
+        Alert.alert('Error', gstinRes.error || 'Please enter a valid GST number');
+        return;
+      }
+    }
     if (!state.trim()) { Alert.alert('Error', 'State is required'); return; }
     if (!city.trim()) { Alert.alert('Error', 'City is required'); return; }
-    if (!phone.trim()) { Alert.alert('Error', 'Phone number is required'); return; }
+    const phoneRes = validatePhone(phone, true);
+    if (!phoneRes.isValid) {
+      setPhoneError(phoneRes.error || 'Invalid Phone Number');
+      Alert.alert('Error', phoneRes.error || 'Phone number is required');
+      return;
+    }
     if (!email.trim()) { Alert.alert('Error', 'Email address is required'); return; }
     if (!address.trim()) { Alert.alert('Error', 'Business address is required'); return; }
 
@@ -281,10 +298,23 @@ export default function BusinessSetupScreen() {
               placeholder="10-digit mobile number"
               placeholderTextColor="#94A3B8"
               value={phone}
-              onChangeText={onChangePhone}
+              onChangeText={(t) => {
+                onChangePhone(t);
+                if (phoneError) setPhoneError(null);
+              }}
+              onBlur={() => {
+                const res = validatePhone(phone, true);
+                setPhoneError(res.isValid ? null : res.error || 'Invalid Phone Number');
+              }}
               keyboardType="numeric"
               maxLength={15}
             />
+            {phoneError && (
+              <View style={styles.gstErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <Text style={styles.gstErrorText}>{phoneError}</Text>
+              </View>
+            )}
           </View>
 
           {/* Business Email */}
@@ -346,14 +376,26 @@ export default function BusinessSetupScreen() {
                 onChangeText={(text) => {
                   const clean = text.replace(/\s/g, '').toUpperCase();
                   onChangeGstNumber(clean);
+                  if (gstValError) setGstValError(null);
                   if (clean.length !== 15) {
                     setGstPreview(null);
                     setGstError(null);
                   }
                 }}
+                onBlur={() => {
+                  const res = validateGSTIN(gstNumber);
+                  setGstValError(res.isValid ? null : res.error || 'Invalid GSTIN');
+                }}
                 maxLength={15}
                 autoCapitalize="characters"
               />
+
+              {gstValError && (
+                <View style={styles.gstErrorContainer}>
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                  <Text style={styles.gstErrorText}>{gstValError}</Text>
+                </View>
+              )}
 
               {gstNumber.length === 15 && !gstPreview && !verifyingGst && (
                 <TouchableOpacity style={styles.fetchGstBtn} onPress={handleVerifyGST}>

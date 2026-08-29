@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 
 const FILTERS = ['All', 'Unpaid', 'Paid', 'Partial'];
 
@@ -98,6 +99,7 @@ export default function BillsScreen() {
       }
     } catch (err: any) {
       console.log('Bills load error:', JSON.stringify(err?.response?.data), err?.message);
+      showApiError(err, 'Failed to load bills');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -157,9 +159,18 @@ export default function BillsScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>Bills</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/invoice/create')}>
-          <Ionicons name="add" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.quotationsLinkBtn}
+            onPress={() => router.push('/quotations')}
+          >
+            <Ionicons name="document-text-outline" size={15} color={Colors.primary} />
+            <Text style={styles.quotationsLinkText}>Quotations</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/invoice/create')}>
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchBox}>
@@ -262,6 +273,22 @@ export default function BillsScreen() {
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
+  quotationsLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 0.5,
+    borderColor: '#FED7AA',
+  },
+  quotationsLinkText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: Radius.sm, paddingHorizontal: 12, height: 44, borderWidth: 0.5, borderColor: Colors.border },
   searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: '100%', paddingVertical: 0 },

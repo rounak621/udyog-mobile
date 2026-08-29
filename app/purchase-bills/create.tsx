@@ -8,6 +8,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATES, GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -28,8 +29,6 @@ interface LineItem {
   isEstimatedGst?: boolean;
 }
 
-const STANDARD_GST_RATES = [0, 5, 12, 18, 28];
-
 const parseGstRateValue = (val: any): number | null => {
   if (val === null || val === undefined) return null;
   if (typeof val === 'number') return isNaN(val) ? null : val;
@@ -46,14 +45,14 @@ const resolveGstRate = (rawVal: any, catalogVal: any, billEstimatedRate: string)
 
   if (targetRate !== null) {
     const rounded = Math.round(targetRate);
-    if (STANDARD_GST_RATES.includes(rounded)) {
+    if ((GST_RATES as readonly number[]).includes(rounded)) {
       return { rateStr: String(rounded), isEstimated: false };
     }
     const doubled = Math.round(targetRate * 2);
-    if (STANDARD_GST_RATES.includes(doubled)) {
+    if ((GST_RATES as readonly number[]).includes(doubled)) {
       return { rateStr: String(doubled), isEstimated: false };
     }
-    const nearest = STANDARD_GST_RATES.reduce((prev, curr) =>
+    const nearest = GST_RATES.reduce((prev, curr) =>
       Math.abs(curr - targetRate) < Math.abs(prev - targetRate) ? curr : prev
     );
     return { rateStr: String(nearest), isEstimated: true };
@@ -162,7 +161,7 @@ export default function CreatePurchaseBillScreen() {
         const totalTax = (data.cgst_amount || 0) + (data.sgst_amount || 0) + (data.igst_amount || 0);
         if (totalTax > 0) {
           const rawRatio = (totalTax / data.taxable_value) * 100;
-          const nearest = STANDARD_GST_RATES.reduce((prev, curr) => 
+          const nearest = GST_RATES.reduce((prev, curr) =>
             Math.abs(curr - rawRatio) < Math.abs(prev - rawRatio) ? curr : prev
           );
           calculatedGstPercent = String(nearest);
@@ -690,7 +689,7 @@ export default function CreatePurchaseBillScreen() {
                     )}
                   </View>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {['0', '5', '12', '18', '28'].map(rate => (
+                    {GST_RATE_STRINGS.map(rate => (
                       <TouchableOpacity
                         key={rate}
                         onPress={() => updateLineItem(item.id, 'gst_rate', rate)}

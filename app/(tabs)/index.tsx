@@ -7,9 +7,10 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { SafeScrollView } from '../../components/ui/SafeLayout';
+import { SafeScrollView, useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
 import { useAppMode } from '../../context/AppModeContext';
 import BusinessSwitcherModal from '../../components/BusinessSwitcherModal';
@@ -36,6 +37,7 @@ export default function DashboardScreen() {
   const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const fabBottom = useBottomPadding(84); // 24dp margin above the 60dp tab bar + insets.bottom
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
   const { business } = useBusiness();
@@ -82,6 +84,7 @@ export default function DashboardScreen() {
       }
     } catch (err) {
       console.log('Dashboard load error:', err);
+      showApiError(err, 'Failed to load dashboard data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -170,7 +173,7 @@ export default function DashboardScreen() {
       </View>
 
       <SafeScrollView
-        baseBottomPadding={100}
+        baseBottomPadding={140}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />}
       >
@@ -305,7 +308,7 @@ export default function DashboardScreen() {
         )}
       </SafeScrollView>
 
-      <TouchableOpacity style={[styles.createFab, { flexDirection: 'row', paddingHorizontal: 20, width: 'auto', borderRadius: 28 }]} onPress={() => router.push('/invoice/create')}>
+      <TouchableOpacity style={[styles.createFab, { bottom: fabBottom, flexDirection: 'row', paddingHorizontal: 20, width: 'auto', borderRadius: 28 }]} onPress={() => router.push('/invoice/create')}>
         <Ionicons name="add" size={22} color="#fff" />
         <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700', marginLeft: 6 }}>New Invoice</Text>
       </TouchableOpacity>
@@ -382,7 +385,7 @@ const styles = StyleSheet.create({
   badgeTextPaid: { color: '#16A34A' },
   badgeTextUnpaid: { color: '#C2410C' },
   badgeTextPartial: { color: '#2563EB' },
-  createFab: { position: 'absolute', bottom: 24, right: 20, backgroundColor: '#F97316', borderRadius: 28, height: 50, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+  createFab: { position: 'absolute', right: 20, backgroundColor: '#F97316', borderRadius: 28, height: 50, alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
   avatarCircleSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
   avatarSmallText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
 });

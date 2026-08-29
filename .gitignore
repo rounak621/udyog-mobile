@@ -13,10 +13,13 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
+gradle.properties
+local.properties
 
 # Metro
 .metro-health-check*
@@ -43,5 +46,6 @@ yarn-error.*
 
 # Google Services config files
 google-services.json
+**/google-services.json
 GoogleService-Info.plist
-.env
+**/GoogleService-Info.plist

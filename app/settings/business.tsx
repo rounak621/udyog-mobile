@@ -14,6 +14,7 @@ import ImageCropModal from '../../components/ImageCropModal';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { validateGSTIN, validatePhone } from '../../utils/validators';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -26,19 +27,26 @@ const INDIAN_STATES = [
   'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
 ];
 
-const Field = ({ label, value, onChangeText, placeholder, keyboardType, autoCapitalize, maxLength }: any) => (
+const Field = ({ label, value, onChangeText, onBlur, placeholder, keyboardType, autoCapitalize, maxLength, error }: any) => (
   <View style={{ marginBottom: 14 }}>
     <Text style={styles.label}>{label}</Text>
     <TextInput
-      style={styles.input}
+      style={[styles.input, error ? { borderColor: '#DC2626' } : null]}
       value={value}
       onChangeText={onChangeText}
+      onBlur={onBlur}
       placeholder={placeholder}
       placeholderTextColor={Colors.textMuted}
       keyboardType={keyboardType || 'default'}
       autoCapitalize={autoCapitalize || 'words'}
       maxLength={maxLength}
     />
+    {error ? (
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+        <Ionicons name="alert-circle" size={14} color="#DC2626" style={{ marginRight: 4 }} />
+        <Text style={{ fontSize: 12, color: '#DC2626' }}>{error}</Text>
+      </View>
+    ) : null}
   </View>
 );
 
@@ -53,6 +61,10 @@ export default function BusinessSettingsScreen() {
 
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
+
+  // Form Validation States
+  const [gstinValErr, setGstinValErr] = useState<string | null>(null);
+  const [phoneValErr, setPhoneValErr] = useState<string | null>(null);
 
   const updateField = (field: string) => (v: string) => setForm(f => ({ ...f, [field]: v }));
 
@@ -130,6 +142,19 @@ export default function BusinessSettingsScreen() {
   }, []);
 
   const handleSave = async () => {
+    const gstinRes = validateGSTIN(form.gstin);
+    if (!gstinRes.isValid) {
+      setGstinValErr(gstinRes.error || 'Invalid GSTIN');
+      Alert.alert('Validation Error', gstinRes.error || 'Invalid GSTIN');
+      return;
+    }
+    const phoneRes = validatePhone(form.phone);
+    if (!phoneRes.isValid) {
+      setPhoneValErr(phoneRes.error || 'Invalid Phone Number');
+      Alert.alert('Validation Error', phoneRes.error || 'Invalid Phone Number');
+      return;
+    }
+
     setSaving(true);
     try {
       const token = await getToken();
@@ -374,14 +399,43 @@ export default function BusinessSettingsScreen() {
           <Text style={styles.sectionTitle}>Core Identity</Text>
           <Field label="Business Name *" value={form.name} onChangeText={updateField('name')} placeholder="Your business name" />
           <Field label="Legal Name" value={form.legal_name} onChangeText={updateField('legal_name')} placeholder="Your registered legal name" />
-          <Field label="GSTIN" value={form.gstin} onChangeText={updateField('gstin')} placeholder="22AAAAA0000A1Z5" autoCapitalize="characters" />
+          <Field
+            label="GSTIN"
+            value={form.gstin}
+            onChangeText={(v: string) => {
+              updateField('gstin')(v);
+              if (gstinValErr) setGstinValErr(null);
+            }}
+            onBlur={() => {
+              const res = validateGSTIN(form.gstin);
+              setGstinValErr(res.isValid ? null : res.error || 'Invalid GSTIN');
+            }}
+            placeholder="22AAAAA0000A1Z5"
+            autoCapitalize="characters"
+            error={gstinValErr}
+          />
           <Field label="Tagline" value={form.tagline} onChangeText={updateField('tagline')} placeholder="Business tagline or slogan" />
         </View>
 
         {/* SECTION 2: CONTACT & ADDRESS */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Contact & Address</Text>
-          <Field label="Phone" value={form.phone} onChangeText={updateField('phone')} placeholder="Mobile number" keyboardType="phone-pad" autoCapitalize="none" />
+          <Field
+            label="Phone"
+            value={form.phone}
+            onChangeText={(v: string) => {
+              updateField('phone')(v);
+              if (phoneValErr) setPhoneValErr(null);
+            }}
+            onBlur={() => {
+              const res = validatePhone(form.phone);
+              setPhoneValErr(res.isValid ? null : res.error || 'Invalid Phone');
+            }}
+            placeholder="Mobile number"
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+            error={phoneValErr}
+          />
           <Field label="Email" value={form.email} onChangeText={updateField('email')} placeholder="business@email.com" keyboardType="email-address" autoCapitalize="none" />
           <Field label="Address Line 1" value={form.address_line1} onChangeText={updateField('address_line1')} placeholder="Building, Street, Area" />
           <Field label="Address Line 2 (optional)" value={form.address_line2} onChangeText={updateField('address_line2')} placeholder="Suite, Landmark, etc." />
