@@ -249,7 +249,7 @@ export default function CreateQuotationScreen() {
           ...l,
           item_id: item.id,
           name: item.name || '',
-          rate: item.selling_price ? String(item.selling_price) : l.rate,
+          rate: String(item.rate || item.price || item.selling_price || ''),
           gst_rate: item.gst_rate !== null && item.gst_rate !== undefined ? String(item.gst_rate) : l.gst_rate,
           unit: item.unit || l.unit,
           hsn_code: item.hsn_code || l.hsn_code,
@@ -869,7 +869,7 @@ export default function CreateQuotationScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.catalogItemName}>{item.name}</Text>
                       <Text style={styles.catalogItemSub}>
-                        Rate: ₹{item.selling_price || 0} · GST: {item.gst_rate || 0}%
+                        Rate: ₹{item.rate || item.price || item.selling_price || 0} · GST: {item.gst_rate || 0}%
                       </Text>
                     </View>
                   </TouchableOpacity>

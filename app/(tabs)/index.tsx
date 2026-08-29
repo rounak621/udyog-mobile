@@ -37,7 +37,7 @@ export default function DashboardScreen() {
   const { user } = useUser();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const fabBottom = useBottomPadding(84); // 24dp margin above the 60dp tab bar + insets.bottom
+  const fabBottom = useBottomPadding(16);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
   const { business } = useBusiness();
@@ -309,7 +309,8 @@ export default function DashboardScreen() {
       </SafeScrollView>
 
       <TouchableOpacity style={[styles.createFab, { bottom: fabBottom }]} onPress={() => router.push('/invoice/create')}>
-        <Ionicons name="add" size={26} color="#fff" />
+        <Ionicons name="add" size={18} color="#fff" />
+        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', marginLeft: 4 }}>New Invoice</Text>
       </TouchableOpacity>
 
       <BusinessSwitcherModal
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
   badgeTextPaid: { color: '#16A34A' },
   badgeTextUnpaid: { color: '#C2410C' },
   badgeTextPartial: { color: '#2563EB' },
-  createFab: { position: 'absolute', right: 20, width: 52, height: 52, borderRadius: 26, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+  createFab: { position: 'absolute', right: 16, flexDirection: 'row', height: 42, paddingHorizontal: 14, borderRadius: 21, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   avatarCircleSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
   avatarSmallText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
 });
