@@ -12,6 +12,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { useBottomPadding, FixedBottomBar } from '../../components/ui/SafeLayout';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { validateGSTIN, validatePhone } from '../../utils/validators';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -49,6 +50,10 @@ export default function CreatePartyScreen() {
 
   const [showStatePicker, setShowStatePicker] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
+
+  // Form Validation States
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [gstValError, setGstValError] = useState<string | null>(null);
 
   // GST Verification States
   const [fetchingGst, setFetchingGst] = useState(false);
@@ -136,8 +141,16 @@ export default function CreatePartyScreen() {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    if (gstin.trim() && !/^[0-9A-Z]{15}$/.test(gstin.trim().toUpperCase())) {
-      Alert.alert('Error', 'Please enter a valid GST number (15 characters)');
+    const phoneRes = validatePhone(phone);
+    if (!phoneRes.isValid) {
+      setPhoneError(phoneRes.error || 'Invalid phone number');
+      Alert.alert('Validation Error', phoneRes.error || 'Invalid phone number');
+      return;
+    }
+    const gstinRes = validateGSTIN(gstin);
+    if (!gstinRes.isValid) {
+      setGstValError(gstinRes.error || 'Invalid GSTIN');
+      Alert.alert('Validation Error', gstinRes.error || 'Invalid GST number');
       return;
     }
 
@@ -262,10 +275,23 @@ export default function CreatePartyScreen() {
               placeholder="Mobile number"
               placeholderTextColor="#94A3B8"
               value={phone}
-              onChangeText={onChangePhone}
+              onChangeText={(t) => {
+                onChangePhone(t);
+                if (phoneError) setPhoneError(null);
+              }}
+              onBlur={() => {
+                const res = validatePhone(phone);
+                setPhoneError(res.isValid ? null : res.error || 'Invalid phone');
+              }}
               keyboardType="phone-pad"
               autoCapitalize="none"
             />
+            {phoneError && (
+              <View style={styles.gstErrorContainer}>
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <Text style={styles.gstErrorText}>{phoneError}</Text>
+              </View>
+            )}
           </View>
 
           {/* Email */}
@@ -307,10 +333,15 @@ export default function CreatePartyScreen() {
               onChangeText={(t) => {
                 const clean = t.replace(/\s/g, '');
                 onChangeGstin(clean);
+                if (gstValError) setGstValError(null);
                 if (clean.length !== 15) {
                   setGstPreview(null);
                   setGstError(null);
                 }
+              }}
+              onBlur={() => {
+                const res = validateGSTIN(gstin);
+                setGstValError(res.isValid ? null : res.error || 'Invalid GSTIN');
               }}
               maxLength={15}
               autoCapitalize="characters"
@@ -322,6 +353,13 @@ export default function CreatePartyScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {gstValError && (
+            <View style={styles.gstErrorContainer}>
+              <Ionicons name="alert-circle" size={16} color="#DC2626" />
+              <Text style={styles.gstErrorText}>{gstValError}</Text>
+            </View>
+          )}
 
           {fetchingGst && (
             <View style={styles.gstStatusContainer}>

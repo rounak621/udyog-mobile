@@ -13,6 +13,7 @@ import { useBottomPadding, FixedBottomBar } from '../../components/ui/SafeLayout
 import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
+import { validateHSN } from '../../utils/validators';
 
 export default function CreateItemScreen() {
   const { getToken } = useAuth();
@@ -36,6 +37,7 @@ export default function CreateItemScreen() {
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hsnError, setHsnError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadBusinessAndItem = async () => {
@@ -48,12 +50,12 @@ export default function CreateItemScreen() {
         setBusinessId(bId);
 
         if (id) {
-          const res = await api.get(`/items/${id}?business_id=${bId}`);
-          const item = res.data;
+          const itemRes = await api.get(`/items/${id}?business_id=${bId}`);
+          const item = itemRes.data;
           setName(item.name || '');
           setHsnCode(item.hsn_code || '');
           setRate(String(item.rate || ''));
-          setGstRate(String(Math.round(item.gst_rate || 0)));
+          setGstRate(String(item.gst_rate ?? 18));
           setUnit((item.unit || 'PCS').toUpperCase());
         }
       } catch (err) {
@@ -68,6 +70,12 @@ export default function CreateItemScreen() {
   const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Item name is required');
+      return;
+    }
+    const hsnRes = validateHSN(hsnCode);
+    if (!hsnRes.isValid) {
+      setHsnError(hsnRes.error || 'Invalid HSN code');
+      Alert.alert('Validation Error', hsnRes.error || 'Invalid HSN code');
       return;
     }
     const rateVal = Number(rate);
@@ -204,9 +212,22 @@ export default function CreateItemScreen() {
                   placeholder="e.g. 3004"
                   placeholderTextColor="#94A3B8"
                   value={hsnCode}
-                  onChangeText={setHsnCode}
+                  onChangeText={(t) => {
+                    setHsnCode(t);
+                    if (hsnError) setHsnError(null);
+                  }}
+                  onBlur={() => {
+                    const res = validateHSN(hsnCode);
+                    setHsnError(res.isValid ? null : res.error || 'Invalid HSN code');
+                  }}
                   keyboardType="numeric"
                 />
+                {hsnError && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                    <Ionicons name="alert-circle" size={16} color="#DC2626" style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 12, color: '#DC2626' }}>{hsnError}</Text>
+                  </View>
+                )}
               </View>
 
               {/* Unit Dropdown Selector */}

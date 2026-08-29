@@ -9,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { validateGSTIN } from '../../utils/validators';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -141,8 +142,9 @@ export default function Gstr1Screen() {
   const handleSaveGstin = async () => {
     if (!editingParty) return;
     const cleaned = editGstinInput.trim().toUpperCase();
-    if (cleaned && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(cleaned)) {
-      Alert.alert('Invalid GSTIN', 'Please enter a valid 15-character GSTIN (e.g. 29ABCDE1234F1Z5).');
+    const gstinRes = validateGSTIN(cleaned);
+    if (!gstinRes.isValid) {
+      Alert.alert('Invalid GSTIN', gstinRes.error || 'Please enter a valid 15-character GSTIN.');
       return;
     }
 

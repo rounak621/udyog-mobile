@@ -1018,7 +1018,7 @@ export default function CreateInvoiceScreen() {
               <WebView
                 source={{ html: pdfViewerHtml }}
                 style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-                originWhitelist={['*']}
+                originWhitelist={['about:blank', 'https://*', 'http://*']}
                 javaScriptEnabled={true}
                 onLoadStart={() => setWebViewLoading(true)}
                 onLoadEnd={() => setWebViewLoading(false)}

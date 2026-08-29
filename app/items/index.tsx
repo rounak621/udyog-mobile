@@ -14,6 +14,7 @@ import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
+import { validateHSN } from '../../utils/validators';
 
 interface Item {
   id: number;
@@ -32,7 +33,7 @@ interface BulkRow {
 }
 
 const createEmptyRow = (): BulkRow => ({
-  id: Math.random().toString(),
+  id: Math.random().toString(36).substring(2, 9),
   name: '',
   rate: '',
 });
@@ -56,6 +57,7 @@ export default function ItemsScreen() {
   // Bulk Add Modal state
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkHsn, setBulkHsn] = useState('');
+  const [bulkHsnError, setBulkHsnError] = useState<string | null>(null);
   const [bulkGstRate, setBulkGstRate] = useState('18');
   const [bulkUnit, setBulkUnit] = useState('PCS');
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([
@@ -138,6 +140,13 @@ export default function ItemsScreen() {
   };
 
   const handleSaveBulk = async () => {
+    const hsnRes = validateHSN(bulkHsn);
+    if (!hsnRes.isValid) {
+      setBulkHsnError(hsnRes.error || 'Invalid HSN code');
+      Alert.alert('Validation Error', hsnRes.error || 'Invalid HSN code');
+      return;
+    }
+    
     const validRows = bulkRows.filter(r => r.name.trim() && r.rate.trim() && !isNaN(Number(r.rate)));
     if (validRows.length === 0) {
       Alert.alert('Validation Error', 'Please enter at least one item with a valid name and rate.');
@@ -315,9 +324,22 @@ export default function ItemsScreen() {
                   placeholder="e.g. 8471"
                   placeholderTextColor={Colors.textMuted}
                   value={bulkHsn}
-                  onChangeText={setBulkHsn}
+                  onChangeText={(t) => {
+                    setBulkHsn(t);
+                    if (bulkHsnError) setBulkHsnError(null);
+                  }}
+                  onBlur={() => {
+                    const res = validateHSN(bulkHsn);
+                    setBulkHsnError(res.isValid ? null : res.error || 'Invalid HSN code');
+                  }}
                   keyboardType="numeric"
                 />
+                {bulkHsnError && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 8 }}>
+                    <Ionicons name="alert-circle" size={14} color="#DC2626" style={{ marginRight: 4 }} />
+                    <Text style={{ fontSize: 12, color: '#DC2626' }}>{bulkHsnError}</Text>
+                  </View>
+                )}
 
                 <Text style={styles.fieldLabel}>GST Rate (%)</Text>
                 <View style={styles.chipRow}>

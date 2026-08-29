@@ -12,6 +12,7 @@ import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
+import { validateHSN } from '../../utils/validators';
 const RATE_TYPES = [
   { label: 'Day', value: 'DAILY' },
   { label: 'Week', value: 'WEEKLY' },
@@ -107,6 +108,11 @@ export default function BulkAddProductScreen() {
       }
       if (isNaN(rateVal) || rateVal <= 0) {
         errors.push(`Row ${idx + 1} (${nameVal || 'unnamed'}): Rate must be greater than 0`);
+        return;
+      }
+      const hsnRes = validateHSN(r.hsnCode);
+      if (!hsnRes.isValid) {
+        errors.push(`Row ${idx + 1} (${nameVal}): ${hsnRes.error}`);
         return;
       }
 

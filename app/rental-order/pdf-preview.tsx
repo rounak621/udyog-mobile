@@ -53,7 +53,7 @@ export default function OrderPdfPreviewScreen() {
         <WebView
           source={{ html: pdfViewerHtml }}
           style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-          originWhitelist={['*']}
+          originWhitelist={['about:blank', 'https://*', 'http://*']}
           javaScriptEnabled={true}
           onLoadStart={() => setLoading(true)}
           onLoadEnd={() => setLoading(false)}
