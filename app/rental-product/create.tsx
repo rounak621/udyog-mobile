@@ -10,9 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
-
-const GST_RATES = ['0', '5', '18', '40'];
 const RATE_TYPES = [
   { label: 'Daily', value: 'DAILY' },
   { label: 'Weekly', value: 'WEEKLY' },
@@ -246,7 +245,7 @@ export default function CreateProductScreen() {
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>GST Rate *</Text>
               <View style={styles.chipsContainer}>
-                {GST_RATES.map((rateStr) => (
+                {GST_RATE_STRINGS.map((rateStr) => (
                   <TouchableOpacity
                     key={rateStr}
                     onPress={() => setGstRate(rateStr)}

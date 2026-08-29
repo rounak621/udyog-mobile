@@ -16,7 +16,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Udyog needs microphone access to let you create bills by speaking."
+        "NSMicrophoneUsageDescription": "Udyog needs microphone access to let you create bills by speaking.",
+        "NSPhotoLibraryUsageDescription": "Udyog needs access to your photos to attach receipts and scan bills."
       }
     },
     "android": {
@@ -29,7 +30,9 @@
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.udyog.udyogmobile",
       "permissions": [
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "READ_MEDIA_IMAGES",
+        "READ_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -42,6 +45,12 @@
       "expo-web-browser",
       "@react-native-community/datetimepicker",
       "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Udyog needs access to your photos to attach receipts and scan bills."
+        }
+      ],
       [
         "expo-av",
         {

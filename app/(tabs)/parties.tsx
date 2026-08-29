@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 
 interface Party {
   id: string;
@@ -64,6 +65,7 @@ export default function PartiesScreen() {
       setHasMore(currentSkip + PAGE_SIZE < totalCount);
     } catch (err) {
       console.log('Parties error:', err);
+      showApiError(err, 'Failed to load parties');
     } finally {
       setLoading(false);
       setRefreshing(false);

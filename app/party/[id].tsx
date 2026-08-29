@@ -9,6 +9,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 import * as FileSystem from 'expo-file-system/legacy';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
 
@@ -69,7 +70,7 @@ export default function PartyDetailScreen() {
       }
     } catch (err) {
       console.log('Khata PDF download error:', err);
-      Alert.alert('Error', 'Could not download Khata PDF');
+      showApiError(err, 'Could not download Khata PDF');
     } finally {
       setDownloadingKhata(false);
     }
@@ -89,6 +90,7 @@ export default function PartyDetailScreen() {
       setLedgerLoaded(true);
     } catch (err) {
       console.log('Failed to load ledger', err);
+      showApiError(err, 'Failed to load ledger');
     } finally {
       setLedgerLoading(false);
     }
@@ -171,6 +173,7 @@ export default function PartyDetailScreen() {
       }
     } catch (err) {
       console.log('Party detail error:', err);
+      showApiError(err, 'Failed to load party details');
     } finally {
       setLoading(false);
     }

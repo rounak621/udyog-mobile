@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 
 interface PurchaseBill {
   id: string;
@@ -79,6 +80,7 @@ export default function PurchaseBillsScreen() {
       }
     } catch (err: any) {
       console.log('Purchase Bills load error:', err);
+      showApiError(err, 'Failed to load purchase bills');
     } finally {
       setLoading(false);
       setRefreshing(false);

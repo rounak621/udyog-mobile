@@ -9,6 +9,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
+import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -20,6 +21,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Audio } from 'expo-av';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
+import { checkIsOnline } from '../../services/network';
 
 interface LineItem {
   id: string;
@@ -384,6 +386,13 @@ export default function CreateInvoiceScreen() {
   const handleSave = async () => {
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
     if (lineItems.some(i => !i.name || !i.rate)) { Alert.alert('Error', 'Please fill all item details'); return; }
+
+    const isOnline = await checkIsOnline();
+    if (!isOnline) {
+      Alert.alert('Network Error', 'Network error — your invoice was not saved, please try again.');
+      return;
+    }
+
     setSaving(true);
     try {
       const token = await getToken();
@@ -425,7 +434,11 @@ export default function CreateInvoiceScreen() {
         playSuccessSound();
       }
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'create'} invoice`);
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || (err.isAxiosError && !err.response)) {
+        Alert.alert('Network Error', 'Network error — your invoice was not saved, please try again.');
+      } else {
+        Alert.alert('Error', err.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'create'} invoice`);
+      }
     } finally {
       setSaving(false);
     }
@@ -757,7 +770,7 @@ export default function CreateInvoiceScreen() {
                   <View style={{ marginTop: 8 }}>
                     <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>GST Rate</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                      {['0', '5', '18', '40'].map(rate => (
+                      {GST_RATE_STRINGS.map(rate => (
                         <TouchableOpacity
                           key={rate}
                           onPress={() => updateItem(item.id, 'gst_rate', rate)}

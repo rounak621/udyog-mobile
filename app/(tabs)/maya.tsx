@@ -982,7 +982,7 @@ export default function MayaScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionChipsScroll}>
               {[
                 '"Create invoice for Rajesh 5 steel pipes at 4200 each"',
-                '"Bill Sunita Traders 10 bags cement 350 per bag GST 28%"',
+                '"Bill Sunita Traders 10 bags cement 350 per bag GST 18%"',
                 '"Invoice for Pawan 2 hours labour 1500 per hour"',
               ].map((ex, i) => (
                 <TouchableOpacity key={i} style={styles.suggestionChip} onPress={() => setManualInput(ex.replace(/"/g, ''))}>

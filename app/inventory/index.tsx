@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { showApiError } from '../../utils/apiError';
 
 interface InventoryItem {
   id: number;
@@ -52,6 +53,7 @@ export default function InventoryScreen() {
       setInventory(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.log('Inventory loading error:', err);
+      showApiError(err, 'Failed to load inventory');
     } finally {
       setLoading(false);
       setRefreshing(false);
