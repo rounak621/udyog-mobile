@@ -65,6 +65,17 @@ const generateMonths = () => {
   return months.reverse();
 };
 
+const getSelectedMonthStr = (monthLabel: string): string => {
+  if (!monthLabel) return '';
+  const [m, y] = monthLabel.split(' ');
+  const monthIndex = MONTH_NAMES.indexOf(m);
+  if (monthIndex === -1 || !y) return '';
+  const monthNum = monthIndex + 1;
+  const year = parseInt(y, 10);
+  if (isNaN(year) || monthNum < 1 || monthNum > 12) return '';
+  return `${year}-${String(monthNum).padStart(2, '0')}`;
+};
+
 export default function Gstr1Screen() {
   const { getToken } = useAuth();
   const router = useRouter();
@@ -99,10 +110,11 @@ export default function Gstr1Screen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
 
-      const [m, y] = months[selectedMonthIdx].split(' ');
-      const monthIndex = MONTH_NAMES.indexOf(m) + 1;
-      const year = parseInt(y, 10);
-      const monthStr = `${year}-${String(monthIndex).padStart(2, '0')}`;
+      const monthStr = getSelectedMonthStr(months[selectedMonthIdx]);
+      if (!monthStr) {
+        setError('Invalid month selected.');
+        return;
+      }
 
       const summaryRes = await api.get(`/exports/gstr1-summary?business_id=${bId}&month=${monthStr}`);
       const rawSummary = summaryRes.data?.rows || summaryRes.data || [];
@@ -176,10 +188,11 @@ export default function Gstr1Screen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
 
-      const [m, y] = months[selectedMonthIdx].split(' ');
-      const monthIndex = MONTH_NAMES.indexOf(m) + 1;
-      const year = parseInt(y, 10);
-      const monthStr = `${year}-${String(monthIndex).padStart(2, '0')}`;
+      const monthStr = getSelectedMonthStr(months[selectedMonthIdx]);
+      if (!monthStr) {
+        Alert.alert('Error', 'Invalid month selected.');
+        return;
+      }
 
       const url = `/exports/gstr1-json?business_id=${bId}&month=${monthStr}${force ? '&force=true' : ''}`;
       const gstrRes = await api.get(url);
