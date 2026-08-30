@@ -77,11 +77,12 @@ export default function ImportFromBusinessModal({
         source_business_id: selectedBusinessId,
       });
 
-      const { imported, skipped, total } = res.data;
+      const { imported, skipped, total_source, total } = res.data;
+      const totalCount = total_source ?? total ?? (imported + skipped);
       onClose();
       Alert.alert(
         'Import Successful',
-        `Imported ${imported} of ${total} ${entityTitle.toLowerCase()}.\n(${skipped} existing ${entityTitle.toLowerCase()} safely skipped as duplicates)`
+        `Imported ${imported} of ${totalCount} ${entityTitle.toLowerCase()}.\n(${skipped} existing ${entityTitle.toLowerCase()} safely skipped as duplicates)`
       );
       onSuccess();
     } catch (err: any) {
