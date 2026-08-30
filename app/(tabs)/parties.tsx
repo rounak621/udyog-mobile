@@ -12,6 +12,8 @@ import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
+import { useBusiness } from '../../context/BusinessContext';
+import ImportFromBusinessModal from '../../components/ImportFromBusinessModal';
 
 interface Party {
   id: string;
@@ -27,6 +29,8 @@ export default function PartiesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bottomPadding = useBottomPadding(20);
+  const { business } = useBusiness();
+  const [showImportModal, setShowImportModal] = useState(false);
   const [parties, setParties] = useState<Party[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,9 +104,18 @@ export default function PartiesScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>Parties</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/party/create')}>
-          <Ionicons name="add" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.importBtn}
+            onPress={() => setShowImportModal(true)}
+          >
+            <Ionicons name="download-outline" size={15} color={Colors.primary} />
+            <Text style={styles.importBtnText}>Import</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/party/create')}>
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchBox}>
@@ -198,6 +211,16 @@ export default function PartiesScreen() {
             );
         }}
       />
+
+      {business?.id && (
+        <ImportFromBusinessModal
+          visible={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          entityType="parties"
+          currentBusinessId={business.id}
+          onSuccess={() => loadParties(0)}
+        />
+      )}
     </View>
   );
 }
@@ -205,6 +228,8 @@ export default function PartiesScreen() {
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
+  importBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, height: 34, borderRadius: 8, borderWidth: 1, borderColor: '#FED7AA', backgroundColor: '#FFF7ED' },
+  importBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: Radius.sm, paddingHorizontal: 12, height: 44, borderWidth: 0.5, borderColor: Colors.border },
   searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: '100%', paddingVertical: 0 },
