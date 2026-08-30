@@ -30,6 +30,7 @@ export interface RecurringBillTemplate {
   end_date: string | null;
   status: RecurringStatus;
   auto_send_enabled: boolean;
+  whatsapp_auto_send: boolean;
   next_run_date: string;
   last_generated_invoice_id: number | null;
   notes: string | null;
@@ -56,6 +57,7 @@ export interface CreateRecurringBillPayload {
   start_date: string;
   end_date?: string | null;
   auto_send_enabled?: boolean;
+  whatsapp_auto_send?: boolean;
   notes?: string | null;
 }
 
@@ -79,6 +81,7 @@ export interface UpdateRecurringBillPayload {
   end_date?: string | null;
   status?: RecurringStatus;
   auto_send_enabled?: boolean;
+  whatsapp_auto_send?: boolean;
   notes?: string | null;
 }
 
