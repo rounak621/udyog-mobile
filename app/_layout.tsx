@@ -17,6 +17,7 @@ import { AppModeProvider, useAppMode } from '../context/AppModeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineBanner from '../components/OfflineBanner';
 import { setCrashUser } from '../services/crashReporting';
+import { startHeartbeatService, stopHeartbeatService } from '../services/heartbeat';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -188,6 +189,19 @@ function AuthGuard() {
       setTokenReady(true);
     }
   }, [isSignedIn]);
+
+  // Real-time device heartbeat (Phase 3)
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !tokenReady) {
+      stopHeartbeatService();
+      return;
+    }
+
+    const cleanup = startHeartbeatService(isSignedIn && tokenReady);
+    return () => {
+      cleanup();
+    };
+  }, [isLoaded, isSignedIn, tokenReady]);
 
   useEffect(() => {
     if (!isLoaded || !tokenReady || !modeLoaded) return;
