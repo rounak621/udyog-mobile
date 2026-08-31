@@ -1020,6 +1020,15 @@ export default function CreateRecurringBillScreen() {
                   </TouchableOpacity>
                 )}
               />
+
+              {/* Add New Item */}
+              <TouchableOpacity
+                style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}
+                onPress={() => { setShowItemDropdown(null); router.push('/items/create' as any); }}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.primary, flexShrink: 1 }}>Add New Item</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
