@@ -64,7 +64,7 @@ export default function PartyDetailScreen() {
       });
 
       if (downloadResult.status === 200) {
-        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Khata ${party.name}`);
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Khata ${party.name}`, 'Statements');
       } else {
         throw new Error('Download failed');
       }

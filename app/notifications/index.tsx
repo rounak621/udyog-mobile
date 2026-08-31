@@ -9,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api } from '../../services/api';
+import { normalizeDeepLink } from '../../services/notifications';
 
 interface NotificationItem {
   id: string;
@@ -59,8 +60,9 @@ export default function NotificationsScreen() {
       await api.post(`/notifications/${item.id}/mark-read`);
 
       // Navigate if deep link is present
-      if (item.deep_link) {
-        router.push(item.deep_link);
+      const normalized = normalizeDeepLink(item.deep_link);
+      if (normalized) {
+        router.push(normalized as any);
       }
     } catch (error) {
       console.log('Error marking notification as read:', error);

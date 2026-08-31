@@ -181,7 +181,7 @@ export default function PurchaseReportScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      await saveCsvToAndroidOrShare(fileUri, fileName, 'Export Purchase Report');
+      await saveCsvToAndroidOrShare(fileUri, fileName, 'Export Purchase Report', 'Reports');
     } catch (err) {
       console.log('CSV export error:', err);
       Alert.alert('Error', 'Failed to export Purchase Report CSV.');
@@ -302,7 +302,7 @@ export default function PurchaseReportScreen() {
         : 'Custom';
       const fileName = `Purchase_Report_${fileNameLabel}.pdf`;
 
-      await savePdfToAndroidOrShare(uri, fileName, 'Export Purchase Report PDF');
+      await savePdfToAndroidOrShare(uri, fileName, 'Export Purchase Report PDF', 'Reports');
     } catch (err) {
       console.log('PDF export error:', err);
       Alert.alert('Error', 'Failed to export Purchase Report PDF.');

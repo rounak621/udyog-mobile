@@ -2,13 +2,50 @@ import { Platform, Alert } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as SecureStore from 'expo-secure-store';
+import * as IntentLauncher from 'expo-intent-launcher';
 
 const STORAGE_KEY = 'udyog_save_folder_uri';
+
+export type DocumentSubfolder =
+  | 'Challan'
+  | 'Sales Bills'
+  | 'Purchase Bills'
+  | 'Quotations'
+  | 'Automated Bills'
+  | 'Rental Orders'
+  | 'Statements'
+  | 'Reports'
+  | 'Other';
+
+async function getOrCreateSubfolder(parentUri: string, folderName: string): Promise<string> {
+  const { StorageAccessFramework } = FileSystem;
+  try {
+    const files = await StorageAccessFramework.readDirectoryAsync(parentUri);
+    const targetSuffix = `/${folderName}`;
+    const targetEncodedSuffix = `%2F${encodeURIComponent(folderName)}`;
+
+    const match = files.find((f: string) => {
+      const decoded = decodeURIComponent(f);
+      return decoded.endsWith(targetSuffix) || decoded.endsWith(targetSuffix + '/') || f.endsWith(targetEncodedSuffix);
+    });
+
+    if (match) {
+      return match;
+    }
+
+    const createdUri = await StorageAccessFramework.makeDirectoryAsync(parentUri, folderName);
+    return createdUri || parentUri;
+  } catch (err) {
+    console.log(`[SAF-DEBUG] Subfolder resolution failed for ${folderName}, using parentUri:`, err);
+    return parentUri;
+  }
+}
 
 export async function saveFileToAndroidOrShare(
   cachedUri: string,
   fileName: string,
   dialogTitle: string,
+  subFolder: DocumentSubfolder = 'Other',
   mimeType: string = 'application/pdf',
   uti: string = 'com.adobe.pdf'
 ): Promise<void> {
@@ -26,7 +63,7 @@ export async function saveFileToAndroidOrShare(
   try {
     const { StorageAccessFramework } = FileSystem;
     
-    console.log('[SAF-DEBUG] Starting saveFileToAndroidOrShare for file:', fileName);
+    console.log('[SAF-DEBUG] Starting saveFileToAndroidOrShare for file:', fileName, 'subFolder:', subFolder);
     console.log('[SAF-DEBUG] Checking SecureStore for key:', STORAGE_KEY);
     
     // 1. Check if a stored SAF directory URI permission already exists
@@ -60,38 +97,20 @@ export async function saveFileToAndroidOrShare(
       throw new Error('Failed to obtain folder URI');
     }
 
-    // 2. Create/reuse a "Udyog" subfolder
-    let udyogFolderUri = '';
-    console.log('[SAF-DEBUG] Calling readDirectoryAsync on folderUri:', folderUri);
-    const files = await StorageAccessFramework.readDirectoryAsync(folderUri);
-    console.log('[SAF-DEBUG] readDirectoryAsync success! Total items found:', files.length);
+    // 2. Create/reuse "Udyog" root folder and document-specific subfolder
+    const udyogFolderUri = await getOrCreateSubfolder(folderUri, 'Udyog');
+    const destinationFolderUri = (subFolder && subFolder !== 'Other')
+      ? await getOrCreateSubfolder(udyogFolderUri, subFolder)
+      : udyogFolderUri;
 
-    const udyogMatch = files.find((f: string) => {
-      const decoded = decodeURIComponent(f);
-      return decoded.endsWith('/Udyog') || decoded.endsWith('/Udyog/') || decoded.endsWith('%2FUdyog');
-    });
-
-    if (udyogMatch) {
-      udyogFolderUri = udyogMatch;
-      console.log('[SAF-DEBUG] Found existing Udyog subfolder:', udyogFolderUri);
-    } else {
-      console.log('[SAF-DEBUG] No Udyog subfolder match found. Attempting makeDirectoryAsync...');
-      try {
-        const createdUri = await StorageAccessFramework.makeDirectoryAsync(folderUri, 'Udyog');
-        udyogFolderUri = createdUri || folderUri;
-        console.log('[SAF-DEBUG] makeDirectoryAsync created Udyog folder at:', udyogFolderUri);
-      } catch (err) {
-        console.log('[SAF-DEBUG] makeDirectoryAsync failed, using root folderUri:', err);
-        udyogFolderUri = folderUri;
-      }
-    }
+    console.log('[SAF-DEBUG] Target destination folder URI:', destinationFolderUri);
 
     // 3. De-duplicate filename if it already exists in the destination folder
     let targetFileName = fileName;
     try {
-      console.log('[SAF-DEBUG] Inspecting destination udyogFolderUri for existing files...');
-      const existingUdyogFiles = await StorageAccessFramework.readDirectoryAsync(udyogFolderUri);
-      const existingDecodedNames = existingUdyogFiles.map((f: string) => decodeURIComponent(f));
+      console.log('[SAF-DEBUG] Inspecting destination folder for existing files...');
+      const existingFiles = await StorageAccessFramework.readDirectoryAsync(destinationFolderUri);
+      const existingDecodedNames = existingFiles.map((f: string) => decodeURIComponent(f));
 
       let counter = 1;
       const lastDotIndex = fileName.lastIndexOf('.');
@@ -114,10 +133,10 @@ export async function saveFileToAndroidOrShare(
     });
     console.log('[SAF-DEBUG] Successfully read base64 content. Bytes size approx:', base64Content.length);
 
-    // 5. Create the destination file in the SAF directory
-    console.log('[SAF-DEBUG] Calling createFileAsync on udyogFolderUri with targetFileName:', targetFileName, 'mimeType:', mimeType);
+    // 5. Create destination file in the SAF directory
+    console.log('[SAF-DEBUG] Calling createFileAsync on destinationFolderUri with targetFileName:', targetFileName, 'mimeType:', mimeType);
     const newFileUri = await StorageAccessFramework.createFileAsync(
-      udyogFolderUri,
+      destinationFolderUri,
       targetFileName,
       mimeType
     );
@@ -134,8 +153,22 @@ export async function saveFileToAndroidOrShare(
     });
     console.log('[SAF-DEBUG] writeAsStringAsync completed successfully!');
 
-    const destinationPath = decodeURIComponent(newFileUri || udyogFolderUri || folderUri);
-    Alert.alert('Saved Successfully', `Saved as "${targetFileName}" in Udyog folder.\n\nPath:\n${destinationPath}`);
+    // 7. Auto-open the saved file directly for viewing
+    try {
+      const contentUri = await FileSystem.getContentUriAsync(cachedUri);
+      await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
+        data: contentUri,
+        flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+        type: mimeType,
+      });
+    } catch (openErr) {
+      console.log('[SAF-DEBUG] Auto-open IntentLauncher failed, fallback to share sheet:', openErr);
+      await Sharing.shareAsync(cachedUri, {
+        mimeType: mimeType,
+        dialogTitle: dialogTitle,
+        UTI: uti,
+      });
+    }
   } catch (err: any) {
     console.log('[SAF-DEBUG] CATCH BLOCK TRIGGERED! Raw error:', err);
     console.log('[SAF-DEBUG] Error message string:', err?.message || String(err));
@@ -177,15 +210,17 @@ export async function saveFileToAndroidOrShare(
 export async function savePdfToAndroidOrShare(
   cachedUri: string,
   fileName: string,
-  dialogTitle: string
+  dialogTitle: string,
+  subFolder: DocumentSubfolder = 'Other'
 ): Promise<void> {
-  return saveFileToAndroidOrShare(cachedUri, fileName, dialogTitle, 'application/pdf', 'com.adobe.pdf');
+  return saveFileToAndroidOrShare(cachedUri, fileName, dialogTitle, subFolder, 'application/pdf', 'com.adobe.pdf');
 }
 
 export async function saveCsvToAndroidOrShare(
   cachedUri: string,
   fileName: string,
-  dialogTitle: string
+  dialogTitle: string,
+  subFolder: DocumentSubfolder = 'Reports'
 ): Promise<void> {
-  return saveFileToAndroidOrShare(cachedUri, fileName, dialogTitle, 'text/csv', 'public.comma-separated-values-text');
+  return saveFileToAndroidOrShare(cachedUri, fileName, dialogTitle, subFolder, 'text/csv', 'public.comma-separated-values-text');
 }

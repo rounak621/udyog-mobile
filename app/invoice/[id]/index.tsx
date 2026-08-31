@@ -98,7 +98,7 @@ export default function InvoiceDetailScreen() {
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
 
       if (downloadResult.status === 200) {
-        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`);
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`, 'Sales Bills');
       } else {
         throw new Error('Download failed');
       }
@@ -191,7 +191,7 @@ export default function InvoiceDetailScreen() {
       });
       
       if (downloadResult.status === 200) {
-        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Statement ${invoice.invoice_number}`);
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Statement ${invoice.invoice_number}`, 'Statements');
       } else {
         throw new Error('Download failed');
       }
@@ -224,7 +224,7 @@ export default function InvoiceDetailScreen() {
       });
       
       if (downloadResult.status === 200) {
-        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Challan');
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Challan', 'Challan');
       } else {
         throw new Error('Download failed');
       }

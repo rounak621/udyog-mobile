@@ -175,7 +175,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`, 'Rental Orders');
       } else {
         Alert.alert('Error', 'Failed to generate invoice PDF.');
       }
@@ -210,7 +210,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`, 'Statements');
       } else {
         Alert.alert('Error', 'Failed to generate statement PDF.');
       }
@@ -246,7 +246,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`, 'Challan');
       } else {
         Alert.alert('Error', 'Failed to generate delivery challan PDF.');
       }

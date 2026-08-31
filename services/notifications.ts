@@ -90,3 +90,24 @@ export async function registerDeviceToken(businessId: string, token: string) {
     throw error;
   }
 }
+
+export function normalizeDeepLink(link?: string | null): string | null {
+  if (!link) return null;
+  let target = String(link).trim();
+  if (!target) return null;
+
+  // Handle plural /invoices/:id -> /invoice/:id (singular)
+  if (target.startsWith('/invoices/')) {
+    target = target.replace('/invoices/', '/invoice/');
+  } else if (target.startsWith('invoices/')) {
+    target = target.replace('invoices/', '/invoice/');
+  }
+
+  // Ensure leading slash if relative
+  if (!target.startsWith('/') && !target.startsWith('http')) {
+    target = '/' + target;
+  }
+
+  return target;
+}
+
