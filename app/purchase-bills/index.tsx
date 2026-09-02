@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, FlatList, Alert
+  ActivityIndicator, FlatList, Alert, Modal
 } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -14,6 +14,7 @@ import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import * as FileSystem from 'expo-file-system/legacy';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
+import DateRangePicker from '../../components/DateRangePicker';
 
 const FILTERS = ['All', 'Payables', 'Unpaid', 'Paid', 'Partial'];
 
@@ -40,6 +41,10 @@ export default function PurchaseBillsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+  const [dateRangePreset, setDateRangePreset] = useState<'all' | 'this_month' | 'last_30' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [businessId, setBusinessId] = useState<string>('');
@@ -58,7 +63,22 @@ export default function PurchaseBillsScreen() {
     }
   }, [initialFilter]);
 
-  const handleDownloadReportPdf = async () => {
+  const getPresetDates = (preset: 'all' | 'this_month' | 'last_30') => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    if (preset === 'this_month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startStr = `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-01`;
+      return { dateFrom: startStr, dateTo: todayStr };
+    } else if (preset === 'last_30') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const startStr = thirtyDaysAgo.toISOString().split('T')[0];
+      return { dateFrom: startStr, dateTo: todayStr };
+    }
+    return { dateFrom: '', dateTo: '' };
+  };
+
+  const handleDownloadReportPdf = async (customFrom?: string, customTo?: string) => {
     setDownloadingPdf(true);
     try {
       const token = await getToken();
@@ -80,9 +100,25 @@ export default function PurchaseBillsScreen() {
       else if (filter === 'Partial') statusParam = 'partial';
       else if (filter === 'Payables') statusParam = 'payables';
 
+      let dateFrom = '';
+      let dateTo = '';
+      if (dateRangePreset === 'this_month' || dateRangePreset === 'last_30') {
+        const p = getPresetDates(dateRangePreset);
+        dateFrom = p.dateFrom;
+        dateTo = p.dateTo;
+      } else if (dateRangePreset === 'custom') {
+        dateFrom = customFrom || customStartDate;
+        dateTo = customTo || customEndDate;
+      }
+
       const todayStr = new Date().toISOString().split('T')[0];
-      const fileName = `Purchase_Bills_${statusParam}_${todayStr}.pdf`;
-      const pdfUrl = `${API_BASE_URL}/purchase-bills/report-pdf?business_id=${bId}&status=${statusParam}`;
+      const rangeTag = dateRangePreset === 'all' ? 'AllTime' : (dateFrom && dateTo ? `${dateFrom}_to_${dateTo}` : todayStr);
+      const fileName = `Purchase_Bills_${statusParam}_${rangeTag}.pdf`;
+
+      let pdfUrl = `${API_BASE_URL}/purchase-bills/report-pdf?business_id=${bId}&status=${statusParam}`;
+      if (dateFrom) pdfUrl += `&date_from=${dateFrom}`;
+      if (dateTo) pdfUrl += `&date_to=${dateTo}`;
+
       const fileUri = (FileSystem as any).cacheDirectory + fileName;
 
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
@@ -92,7 +128,8 @@ export default function PurchaseBillsScreen() {
       });
 
       if (downloadResult.status === 200) {
-        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Purchase Bills Report');
+        setShowDateRangeModal(false);
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Purchase Bills Report', 'Purchase Bills');
       } else {
         throw new Error('Download failed');
       }
@@ -221,7 +258,7 @@ export default function PurchaseBillsScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
             style={styles.actionBtnSecondary}
-            onPress={handleDownloadReportPdf}
+            onPress={() => setShowDateRangeModal(true)}
             disabled={downloadingPdf}
           >
             {downloadingPdf ? (
@@ -331,6 +368,93 @@ export default function PurchaseBillsScreen() {
           ) : null
         }
       />
+
+      {/* Date Range Picker Modal for Purchase Report PDF */}
+      <Modal
+        visible={showDateRangeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !downloadingPdf && setShowDateRangeModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 20 + insets.bottom }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: Colors.text }}>Export Purchase PDF</Text>
+                <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 2 }}>Filter: {filter}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowDateRangeModal(false)} disabled={downloadingPdf} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Presets Row */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              {[
+                { key: 'all', label: 'All Time' },
+                { key: 'this_month', label: 'This Month' },
+                { key: 'last_30', label: 'Last 30 Days' },
+                { key: 'custom', label: 'Custom Range' },
+              ].map(p => (
+                <TouchableOpacity
+                  key={p.key}
+                  onPress={() => setDateRangePreset(p.key as any)}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: dateRangePreset === p.key ? Colors.primary : Colors.border,
+                    backgroundColor: dateRangePreset === p.key ? '#FFF7ED' : '#F8FAFC',
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: dateRangePreset === p.key ? Colors.primary : Colors.text }}>
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {dateRangePreset === 'custom' && (
+              <View style={{ marginBottom: 16 }}>
+                <DateRangePicker
+                  startDate={customStartDate}
+                  endDate={customEndDate}
+                  onApply={(start, end) => {
+                    setCustomStartDate(start);
+                    setCustomEndDate(end);
+                  }}
+                />
+              </View>
+            )}
+
+            {/* Action Buttons */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+              <TouchableOpacity
+                onPress={() => setShowDateRangeModal(false)}
+                disabled={downloadingPdf}
+                style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#475569' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDownloadReportPdf()}
+                disabled={downloadingPdf}
+                style={{ flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+              >
+                {downloadingPdf ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="download-outline" size={16} color="#fff" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>Download PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

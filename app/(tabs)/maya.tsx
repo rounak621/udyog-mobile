@@ -121,6 +121,7 @@ export default function MayaScreen() {
   // Live refs so the registered session always reads fresh values
   const businessIdRef = useRef<string | null>(null);
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
+  const tailBufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     isRecording,
@@ -131,6 +132,15 @@ export default function MayaScreen() {
     startRecording,
     stopRecording,
   } = useMayaRecording();
+
+  // Cleanup tail buffer timer on unmount
+  useEffect(() => {
+    return () => {
+      if (tailBufferTimerRef.current) {
+        clearTimeout(tailBufferTimerRef.current);
+      }
+    };
+  }, []);
 
   // Handle viewport height adjustments when keyboard toggles
   useEffect(() => {
@@ -513,12 +523,19 @@ export default function MayaScreen() {
     await handleSendQuery(text);
   };
 
-  const handleMicPress = async () => {
-    if (isRecording) {
-      await stopRecording();
-    } else {
-      await startRecording();
+  const handleMicPressIn = () => {
+    if (tailBufferTimerRef.current) {
+      clearTimeout(tailBufferTimerRef.current);
+      tailBufferTimerRef.current = null;
     }
+    startRecording();
+  };
+
+  const handleMicPressOut = () => {
+    tailBufferTimerRef.current = setTimeout(() => {
+      stopRecording();
+      tailBufferTimerRef.current = null;
+    }, 400);
   };
 
   const handleCreateInvoice = (draft: any) => {
@@ -1123,7 +1140,9 @@ export default function MayaScreen() {
               manualInput.trim().length > 0 && styles.circleActionBtnSend,
               (loading || !businessId) && styles.circleActionBtnDisabled,
             ]}
-            onPress={manualInput.trim().length > 0 ? handleSendText : handleMicPress}
+            onPress={manualInput.trim().length > 0 ? handleSendText : undefined}
+            onPressIn={manualInput.trim().length === 0 ? handleMicPressIn : undefined}
+            onPressOut={manualInput.trim().length === 0 ? handleMicPressOut : undefined}
             disabled={loading || !businessId}
             activeOpacity={0.8}
           >

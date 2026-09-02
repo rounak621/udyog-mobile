@@ -935,7 +935,7 @@ export default function CreateInvoiceScreen() {
       {/* Success Modal */}
       <Modal visible={showSuccess} transparent animationType="slide">
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24 }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 + insets.bottom }}>
             <View style={{ alignItems: 'center', marginBottom: 20 }}>
               <Animated.View
                 style={{
