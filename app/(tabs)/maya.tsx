@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useMayaRecording } from '../../context/MayaRecordingContext';
@@ -17,7 +18,13 @@ interface ChatMessage {
   content: string;
 }
 
-
+interface UIMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  draft?: any;
+  actionType?: string;
+  time?: string;
+}
 
 interface MayaResponse {
   reply_text: string;
@@ -32,15 +39,79 @@ interface MayaResponse {
   new_entity_name?: string | null;
 }
 
+function OrangeGradientBadge({
+  size = 76,
+  borderRadius = 22,
+  iconSize = 36,
+  iconName = 'sparkles',
+}: {
+  size?: number;
+  borderRadius?: number;
+  iconSize?: number;
+  iconName?: string;
+}) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor="#FB923C" />
+            <Stop offset="60%" stopColor="#F97316" />
+            <Stop offset="100%" stopColor="#EA580C" />
+          </LinearGradient>
+        </Defs>
+        <Rect width={size} height={size} rx={borderRadius} fill="url(#orangeGrad)" />
+      </Svg>
+      <Ionicons name={iconName as any} size={iconSize} color="#FFFFFF" />
+    </View>
+  );
+}
+
+function MayaAvatar({ size = 28 }: { size?: number }) {
+  const borderRadius = size / 2;
+  const iconSize = Math.round(size * 0.52);
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+        <Defs>
+          <LinearGradient id="mayaAvatarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <Stop offset="0%" stopColor="#FB923C" />
+            <Stop offset="100%" stopColor="#EA580C" />
+          </LinearGradient>
+        </Defs>
+        <Rect width={size} height={size} rx={borderRadius} fill="url(#mayaAvatarGrad)" />
+      </Svg>
+      <Ionicons name="sparkles" size={iconSize} color="#FFFFFF" />
+    </View>
+  );
+}
+
 export default function MayaScreen() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const insets = useSafeAreaInsets();
-  const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.fullName?.[0]?.toUpperCase() || 'U';
   const router = useRouter();
   const [manualInput, setManualInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string; draft?: any; actionType?: string }[]>([]);
+  const [messages, setMessages] = useState<UIMessage[]>([]);
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -51,7 +122,15 @@ export default function MayaScreen() {
   const businessIdRef = useRef<string | null>(null);
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
 
-  const { isRecording, setMayaScreenActive, isProcessing, registerSession, clearSession } = useMayaRecording();
+  const {
+    isRecording,
+    setMayaScreenActive,
+    isProcessing,
+    registerSession,
+    clearSession,
+    startRecording,
+    stopRecording,
+  } = useMayaRecording();
 
   // Handle viewport height adjustments when keyboard toggles
   useEffect(() => {
@@ -123,12 +202,19 @@ export default function MayaScreen() {
     })();
   }, []);
 
+  const getTimeString = () =>
+    new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+
   const handleVoiceTranscript = (transcript: string) => {
     // Step 1: Immediately show user's transcript bubble
-    setMessages(prev => [...prev, {
-      role: 'user',
-      text: transcript,
-    }]);
+    setMessages(prev => [
+      ...prev,
+      {
+        role: 'user',
+        text: transcript,
+        time: getTimeString(),
+      },
+    ]);
 
     // Step 2: Show thinking indicator (waiting on reasoning call)
     setIsThinking(true);
@@ -230,6 +316,7 @@ export default function MayaScreen() {
       updated.push({
         role: 'assistant',
         text: data.reply_text || 'Updated! Check karo.',
+        time: getTimeString(),
       });
       return updated;
     });
@@ -267,12 +354,16 @@ export default function MayaScreen() {
     setIsThinking(false);
 
     // Reveal assistant reply immediately (natural network delay provided the gap)
-    setMessages(prev => [...prev, {
-      role: 'assistant',
-      text: data.reply_text || '',
-      draft: draft || undefined,
-      actionType: data.action_type || undefined,
-    }]);
+    setMessages(prev => [
+      ...prev,
+      {
+        role: 'assistant',
+        text: data.reply_text || '',
+        draft: draft || undefined,
+        actionType: data.action_type || undefined,
+        time: getTimeString(),
+      },
+    ]);
 
     // Update conversation history context
     setConversationHistory(prev => [
@@ -339,15 +430,15 @@ export default function MayaScreen() {
     }, 800);
   };
 
-  const handleSendText = async () => {
-    const text = manualInput.trim();
-    if (!text || !businessId) return;
+  const handleSendQuery = async (queryText: string) => {
+    const text = queryText.trim();
+    if (!text || !businessIdRef.current || loading) return;
 
-    setManualInput('');
     setLoading(true);
+    const time = getTimeString();
 
     // Add user message to chat
-    setMessages(prev => [...prev, { role: 'user', text }]);
+    setMessages(prev => [...prev, { role: 'user', text, time }]);
 
     try {
       const token = await getToken();
@@ -355,9 +446,9 @@ export default function MayaScreen() {
 
       // Build multipart/form-data
       const formData = new FormData();
-      formData.append('business_id', businessId);
+      formData.append('business_id', businessIdRef.current);
       formData.append('text', text);
-      formData.append('conversation_history', JSON.stringify(conversationHistory));
+      formData.append('conversation_history', JSON.stringify(conversationHistoryRef.current));
 
       const res = await api.post('/ai/maya-chat', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -385,12 +476,16 @@ export default function MayaScreen() {
       }
 
       // Add assistant message
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        text: data.reply_text || '',
-        draft: draft || undefined,
-        actionType: data.action_type || undefined,
-      }]);
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: data.reply_text || '',
+          draft: draft || undefined,
+          actionType: data.action_type || undefined,
+          time: getTimeString(),
+        },
+      ]);
 
       // Update conversation history
       setConversationHistory(prev => [
@@ -402,9 +497,27 @@ export default function MayaScreen() {
       triggerNavigationWithDelay(data);
     } catch (err: any) {
       const detail = err.response?.data?.detail || 'Could not process request';
-      setMessages(prev => [...prev, { role: 'assistant', text: `Error: ${detail}` }]);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', text: `Error: ${detail}`, time: getTimeString() },
+      ]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendText = async () => {
+    const text = manualInput.trim();
+    if (!text) return;
+    setManualInput('');
+    await handleSendQuery(text);
+  };
+
+  const handleMicPress = async () => {
+    if (isRecording) {
+      await stopRecording();
+    } else {
+      await startRecording();
     }
   };
 
@@ -525,25 +638,25 @@ export default function MayaScreen() {
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       {/* Header */}
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
         <View style={styles.topbarRow}>
           <View>
             <Text style={styles.title}>Maya</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#f97316' }} />
-              <Text style={styles.subtitle}>Online · AI Voice Billing</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.subtitle}>Online · AI Voice</Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {messages.length > 0 && (
-              <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn}>
-                <Ionicons name="trash-outline" size={18} color={Colors.textMuted} />
+              <TouchableOpacity onPress={handleClearChat} style={styles.headerIconBtn}>
+                <Ionicons name="trash-outline" size={18} color="#64748B" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.clearBtn}>
-              <Ionicons name="close-outline" size={20} color={Colors.textMuted} />
+            <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.headerIconBtn}>
+              <Ionicons name="close" size={20} color="#64748B" />
             </TouchableOpacity>
           </View>
         </View>
@@ -563,16 +676,40 @@ export default function MayaScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.mainContainer}>
-            {/* Empty state illustration/placeholder */}
+            {/* Empty state illustration & vertically stacked suggestion chips */}
             {messages.length === 0 && !isRecording && !isProcessing && !isThinking && !loading && (
-              <View style={styles.emptyStateIllustrationContainer}>
-                <View style={styles.emptyStateIconCircle}>
-                  <Ionicons name="sparkles" size={48} color="#f97316" />
+              <View style={styles.emptyStateContainer}>
+                <View style={styles.badgeGlowWrapper}>
+                  <View style={styles.badgeGlowBackdrop} />
+                  <OrangeGradientBadge size={76} borderRadius={22} iconSize={36} iconName="sparkles" />
                 </View>
                 <Text style={styles.emptyStateTitle}>Bolo aur Bill Banao!</Text>
                 <Text style={styles.emptyStateSubtitle}>
-                  Maya voice instructions aur typed messages dono samajhti hai. Niche diye gaye suggestion chip par tap karke dekhein.
+                  Voice se bill banao, customer add karo, ya hisaab dekho.
                 </Text>
+
+                <View style={styles.suggestionSection}>
+                  <Text style={styles.suggestionLabel}>TRY SAYING</Text>
+                  <View style={styles.suggestionList}>
+                    {[
+                      'Invoice banao Rajesh ke liye',
+                      'Bill summary dikhao',
+                      'Aaj ke pending bills',
+                      'Customer add karo',
+                      'GST report download',
+                    ].map((example, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.suggestionPill}
+                        onPress={() => handleSendQuery(example)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="mic-outline" size={16} color="#EA580C" />
+                        <Text style={styles.suggestionPillText}>{example}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
             )}
 
@@ -588,6 +725,8 @@ export default function MayaScreen() {
                   const hasAnyCard = hasInvoiceDraft || hasRentalDraft || hasCustomerDraft || hasItemDraft;
 
                   if (!hasText && !hasAnyCard) return null;
+
+                  const showTimestamp = !!msg.time && (i === 0 || messages[i - 1]?.role !== msg.role);
 
                   const renderRentalDraftCard = (isStandalone: boolean) => {
                     const partyName = msg.draft.customer_name || msg.draft.party_name || 'Walk-in';
@@ -865,107 +1004,95 @@ export default function MayaScreen() {
                     );
                   };
 
-                  if (msg.role === 'user') {
-                    return (
-                      <View key={i} style={styles.msgRowUserContainer}>
-                        {hasText && (
-                          <View style={{ flexShrink: 1, maxWidth: '82%' }}>
-                            <View style={[styles.msgBubble, styles.msgBubbleUser]}>
-                              <Text style={[styles.msgText, styles.msgTextUser]}>{msg.text}</Text>
-                            </View>
-                          </View>
-                        )}
-                        <View style={styles.userAvatar}>
-                          <Text style={styles.userAvatarText}>{userInitial}</Text>
-                        </View>
-                      </View>
-                    );
-                  }
-
                   return (
-                    <View key={i} style={styles.msgRowAssistantContainer}>
-                      <View style={styles.assistantAvatar}>
-                        <Ionicons name="sparkles" size={15} color="#f97316" />
-                      </View>
-                      <View style={{ flexShrink: 1, maxWidth: '82%' }}>
-                        {hasText ? (
-                          <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
-                            <Text style={styles.msgText}>{msg.text}</Text>
-                            {hasInvoiceDraft && renderDraftCard(false)}
-                            {hasRentalDraft && renderRentalDraftCard(false)}
-                            {hasCustomerDraft && renderCustomerCard(false)}
-                            {hasItemDraft && renderItemCard(false)}
+                    <View key={i} style={styles.messageTurnWrapper}>
+                      {showTimestamp && (
+                        <View style={styles.timestampRow}>
+                          <View style={styles.timestampLine} />
+                          <Text style={styles.timestampText}>{msg.time}</Text>
+                          <View style={styles.timestampLine} />
+                        </View>
+                      )}
+
+                      {msg.role === 'user' ? (
+                        <View style={styles.userMessageRow}>
+                          <View style={styles.userBubble}>
+                            <Text style={styles.userMessageText}>{msg.text}</Text>
                           </View>
-                        ) : (
-                          <>
-                            {hasInvoiceDraft && renderDraftCard(true)}
-                            {hasRentalDraft && renderRentalDraftCard(true)}
-                            {hasCustomerDraft && renderCustomerCard(true)}
-                            {hasItemDraft && renderItemCard(true)}
-                          </>
-                        )}
-                      </View>
+                        </View>
+                      ) : (
+                        <View style={styles.assistantMessageRow}>
+                          <View style={styles.assistantAvatarWrap}>
+                            <MayaAvatar size={28} />
+                          </View>
+                          <View style={styles.assistantContentWrap}>
+                            {hasText && (
+                              <View style={styles.assistantBubble}>
+                                <Text style={styles.assistantMessageText}>{msg.text}</Text>
+                              </View>
+                            )}
+                            {hasInvoiceDraft && renderDraftCard(!hasText)}
+                            {hasRentalDraft && renderRentalDraftCard(!hasText)}
+                            {hasCustomerDraft && renderCustomerCard(!hasText)}
+                            {hasItemDraft && renderItemCard(!hasText)}
+                          </View>
+                        </View>
+                      )}
                     </View>
                   );
                 })}
 
-                {/* Passive status indicator at the bottom of message history when recording */}
+                {/* Status indicator when recording */}
                 {isRecording && (
-                  <View style={styles.msgRowAssistantContainer}>
-                    <View style={styles.assistantAvatar}>
-                      <Ionicons name="sparkles" size={15} color="#f97316" />
-                    </View>
-                    <View style={[styles.msgBubble, styles.msgBubbleAssistant, { backgroundColor: '#fff7ed', borderColor: '#f9731640' }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <ActivityIndicator size="small" color={Colors.primary} />
-                        <Text style={[styles.msgText, { color: Colors.primary, fontWeight: '500' }]}>Listening...</Text>
+                  <View style={styles.messageTurnWrapper}>
+                    <View style={styles.assistantMessageRow}>
+                      <View style={styles.assistantAvatarWrap}>
+                        <MayaAvatar size={28} />
+                      </View>
+                      <View style={[styles.assistantBubble, styles.listeningBubble]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <ActivityIndicator size="small" color="#EA580C" />
+                          <Text style={[styles.assistantMessageText, { color: '#EA580C', fontWeight: '600' }]}>
+                            Listening...
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
                 )}
 
-                {/* Processing indicator (backend round-trip for voice) */}
+                {/* Processing indicator */}
                 {isProcessing && (
-                  <View style={styles.msgRowAssistantContainer}>
-                    <View style={styles.assistantAvatar}>
-                      <Ionicons name="sparkles" size={15} color="#f97316" />
-                    </View>
-                    <View style={[styles.msgBubble, styles.msgBubbleAssistant, { backgroundColor: '#fff7ed', borderColor: '#f9731640' }]}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <ActivityIndicator size="small" color={Colors.primary} />
-                        <Text style={[styles.msgText, { color: Colors.primary, fontWeight: '500' }]}>Processing your voice...</Text>
+                  <View style={styles.messageTurnWrapper}>
+                    <View style={styles.assistantMessageRow}>
+                      <View style={styles.assistantAvatarWrap}>
+                        <MayaAvatar size={28} />
+                      </View>
+                      <View style={[styles.assistantBubble, styles.listeningBubble]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <ActivityIndicator size="small" color="#EA580C" />
+                          <Text style={[styles.assistantMessageText, { color: '#EA580C', fontWeight: '600' }]}>
+                            Processing your voice...
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
                 )}
 
-                {/* Typed loading indicator (backend round-trip for text) */}
-                {loading && (
-                  <View style={styles.msgRowAssistantContainer}>
-                    <View style={styles.assistantAvatar}>
-                      <Ionicons name="sparkles" size={15} color="#f97316" />
-                    </View>
-                    <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
-                      <View style={styles.dotsRow}>
-                        <PulsingDot delay={0} />
-                        <PulsingDot delay={200} />
-                        <PulsingDot delay={400} />
+                {/* Typed loading or thinking indicator */}
+                {(loading || (isThinking && !isProcessing)) && (
+                  <View style={styles.messageTurnWrapper}>
+                    <View style={styles.assistantMessageRow}>
+                      <View style={styles.assistantAvatarWrap}>
+                        <MayaAvatar size={28} />
                       </View>
-                    </View>
-                  </View>
-                )}
-
-                {/* Thinking indicator (400ms gap between transcript and reply) */}
-                {isThinking && !isProcessing && !loading && (
-                  <View style={styles.msgRowAssistantContainer}>
-                    <View style={styles.assistantAvatar}>
-                      <Ionicons name="sparkles" size={15} color="#f97316" />
-                    </View>
-                    <View style={[styles.msgBubble, styles.msgBubbleAssistant]}>
-                      <View style={styles.dotsRow}>
-                        <PulsingDot delay={0} />
-                        <PulsingDot delay={200} />
-                        <PulsingDot delay={400} />
+                      <View style={styles.assistantBubble}>
+                        <View style={styles.dotsRow}>
+                          <PulsingDot delay={0} />
+                          <PulsingDot delay={200} />
+                          <PulsingDot delay={400} />
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -975,49 +1102,39 @@ export default function MayaScreen() {
           </View>
         </ScrollView>
 
-        {/* Suggestion Chips placed directly above composer */}
-        {messages.length === 0 && !isRecording && !isProcessing && !isThinking && !loading && (
-          <View style={styles.suggestionChipsContainer}>
-            <Text style={styles.suggestionChipsTitle}>Try saying:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestionChipsScroll}>
-              {[
-                '"Create invoice for Rajesh 5 steel pipes at 4200 each"',
-                '"Bill Sunita Traders 10 bags cement 350 per bag GST 18%"',
-                '"Invoice for Pawan 2 hours labour 1500 per hour"',
-              ].map((ex, i) => (
-                <TouchableOpacity key={i} style={styles.suggestionChip} onPress={() => setManualInput(ex.replace(/"/g, ''))}>
-                  <Text style={styles.suggestionChipText}>{ex.replace(/"/g, '')}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Input bar — text only, mic is on the tab bar */}
-        <View style={[styles.inputBar, { paddingBottom: (Platform.OS === 'ios' ? 24 : 12) + insets.bottom }]}>
+        {/* Input bar */}
+        <View style={[styles.inputBar, { paddingBottom: (Platform.OS === 'ios' ? 20 : 12) + insets.bottom }]}>
           <View style={styles.textInputWrapper}>
             <TextInput
               style={styles.textInput}
               value={manualInput}
               onChangeText={setManualInput}
               placeholder="Type a message..."
-              placeholderTextColor={Colors.textMuted}
+              placeholderTextColor="#94A3B8"
               editable={!!businessId && !loading}
               onSubmitEditing={handleSendText}
               returnKeyType="send"
             />
-            <TouchableOpacity
-              style={[styles.sendBtn, (!manualInput.trim() || loading || !businessId) && styles.sendBtnDisabled]}
-              onPress={handleSendText}
-              disabled={loading || !manualInput.trim() || !businessId}
-            >
-              {loading ? (
-                <ActivityIndicator color={Colors.primary} size="small" />
-              ) : (
-                <Ionicons name="arrow-up" size={20} color={manualInput.trim() ? '#f97316' : '#9ca3af'} />
-              )}
-            </TouchableOpacity>
           </View>
+          <TouchableOpacity
+            style={[
+              styles.circleActionBtn,
+              isRecording && styles.circleActionBtnRecording,
+              manualInput.trim().length > 0 && styles.circleActionBtnSend,
+              (loading || !businessId) && styles.circleActionBtnDisabled,
+            ]}
+            onPress={manualInput.trim().length > 0 ? handleSendText : handleMicPress}
+            disabled={loading || !businessId}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : manualInput.trim().length > 0 ? (
+              <Ionicons name="arrow-up" size={22} color="#FFFFFF" />
+            ) : (
+              <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={22} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -1044,190 +1161,210 @@ function PulsingDot({ delay }: { delay: number }) {
 
 const styles = StyleSheet.create({
   topbar: {
-    backgroundColor: Colors.card,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: 52,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
     paddingBottom: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: Colors.border,
+    borderBottomColor: '#E2E8F0',
   },
   topbarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
-  subtitle: { fontSize: 12, color: Colors.textMuted },
-  clearBtn: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#f1f5f9',
+  title: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
+  subtitle: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  onlineDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#22C55E',
   },
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   content: {
-    paddingBottom: 48,
+    paddingBottom: 24,
   },
   mainContainer: {
-    paddingVertical: 16,
-  },
-  emptyStateContainer: {
-    justifyContent: 'center',
     paddingVertical: 12,
   },
-  chatContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  emptyStateIllustrationContainer: {
+
+  // Empty State Styles
+  emptyStateContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    marginTop: 40,
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 36,
+    paddingBottom: 24,
   },
-  emptyStateIconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#fff7ed',
+  badgeGlowWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#fed7aa',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  badgeGlowBackdrop: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 28,
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
   },
   emptyStateTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptyStateSubtitle: {
     fontSize: 13,
-    color: '#64748b',
+    color: '#64748B',
     textAlign: 'center',
     lineHeight: 18,
+    marginBottom: 30,
   },
-
-  // Suggestion Chips
-  suggestionChipsContainer: {
-    paddingVertical: 8,
-    backgroundColor: 'transparent',
+  suggestionSection: {
+    width: '100%',
+    marginTop: 6,
   },
-  suggestionChipsTitle: {
+  suggestionLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: Colors.textMuted,
+    fontWeight: '700',
+    color: '#94A3B8',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginLeft: 16,
-    marginBottom: 6,
+    letterSpacing: 1.2,
+    textAlign: 'center',
+    marginBottom: 14,
   },
-  suggestionChipsScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
+  suggestionList: {
+    width: '100%',
+    gap: 10,
   },
-  suggestionChip: {
-    backgroundColor: '#fff7ed',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 0.5,
-    borderColor: '#fed7aa',
+  suggestionPill: {
+    width: '100%',
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  suggestionChipText: {
-    color: '#ea580c',
-    fontSize: 13,
-    fontWeight: '500',
+  suggestionPillText: {
+    color: '#EA580C',
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 1,
   },
 
-  // Chat messages
-  msgRowUserContainer: {
+  // Chat Container Styles
+  chatContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  messageTurnWrapper: {
+    marginBottom: 16,
+  },
+  timestampRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
+    gap: 10,
+  },
+  timestampLine: {
+    flex: 1,
+    height: 0.5,
+    backgroundColor: '#E2E8F0',
+  },
+  timestampText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  userMessageRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    marginBottom: 12,
-  },
-  msgRowAssistantContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    marginBottom: 12,
-  },
-  assistantAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#fff7ed',
-    borderWidth: 1,
-    borderColor: '#fed7aa',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f97316',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userAvatarText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  msgRow: {
-    marginBottom: 12,
     width: '100%',
   },
-  msgRowUser: {
-    alignItems: 'flex-end',
-  },
-  msgRowAssistant: {
-    alignItems: 'flex-start',
-  },
-  msgBubble: {
-    borderRadius: 16,
+  userBubble: {
+    backgroundColor: '#F97316',
+    borderRadius: 18,
+    borderBottomRightRadius: 4,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: '#0f172a',
+    maxWidth: '82%',
+    shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  msgBubbleUser: {
-    backgroundColor: '#f97316', // Solid orange User messages
-    borderBottomRightRadius: 16,
-  },
-  msgBubbleAssistant: {
-    backgroundColor: '#f3f4f6', // Light gray background Assistant messages
-    borderBottomLeftRadius: 16,
-  },
-  msgText: {
+  userMessageText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    color: Colors.text,
     lineHeight: 20,
+    fontWeight: '500',
   },
-  msgTextUser: {
-    color: '#fff',
+  assistantMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    width: '100%',
+  },
+  assistantAvatarWrap: {
+    marginTop: 2,
+  },
+  assistantContentWrap: {
+    flex: 1,
+    maxWidth: '84%',
+  },
+  assistantBubble: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 18,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 0.5,
+    borderColor: '#E2E8F0',
+  },
+  listeningBubble: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  assistantMessageText: {
+    color: '#0F172A',
+    fontSize: 14,
+    lineHeight: 20,
   },
 
   // Restyled Draft Summary Card
   draftCard: {
-    marginTop: 12,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#E2E8F0',
     width: '100%',
-    minWidth: 260,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   draftCardHeader: {
     flexDirection: 'row',
@@ -1239,32 +1376,32 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#ffedd5',
+    backgroundColor: '#FFEDD5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   draftAvatarText: {
-    color: '#ea580c',
+    color: '#EA580C',
     fontWeight: 'bold',
     fontSize: 12,
   },
   draftPartyName: {
     fontWeight: 'bold',
-    color: '#0f172a',
+    color: '#0F172A',
     fontSize: 13,
   },
   draftDate: {
-    color: '#6b7280',
+    color: '#6B7280',
     fontSize: 11,
   },
   draftBadge: {
-    backgroundColor: '#ffedd5',
+    backgroundColor: '#FFEDD5',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
   },
   draftBadgeText: {
-    color: '#ea580c',
+    color: '#EA580C',
     fontWeight: 'bold',
     fontSize: 10,
   },
@@ -1274,28 +1411,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#F3F4F6',
   },
   draftItemName: {
     fontWeight: '600',
-    color: '#1e293b',
+    color: '#1E293B',
     fontSize: 12,
   },
   draftItemDetail: {
-    color: '#6b7280',
+    color: '#6B7280',
     fontSize: 11,
     marginTop: 2,
   },
   draftItemAmount: {
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#0F172A',
     fontSize: 12,
   },
   draftTotalContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 8,
-    backgroundColor: '#fff7ed',
+    backgroundColor: '#FFF7ED',
     borderRadius: 6,
     marginTop: 6,
     marginBottom: 12,
@@ -1304,12 +1441,12 @@ const styles = StyleSheet.create({
   draftTotalLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0f172a',
+    color: '#0F172A',
   },
   draftTotalValue: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#f97316',
+    color: '#F97316',
   },
   draftActionsRow: {
     flexDirection: 'row',
@@ -1318,20 +1455,20 @@ const styles = StyleSheet.create({
   draftBtnOutline: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   draftBtnOutlineText: {
-    color: '#4b5563',
+    color: '#4B5563',
     fontSize: 12,
     fontWeight: '600',
   },
   draftBtnSolid: {
     flex: 1.5,
-    backgroundColor: '#f97316',
+    backgroundColor: '#F97316',
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: 'center',
@@ -1339,7 +1476,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   draftBtnSolidText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -1355,47 +1492,57 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#f97316',
+    backgroundColor: '#F97316',
   },
 
   // Bottom Input Bar
   inputBar: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    backgroundColor: '#f3f4f6',
+    paddingTop: 10,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 0.5,
-    borderTopColor: Colors.border,
+    borderTopColor: '#E2E8F0',
     alignItems: 'center',
+    gap: 10,
   },
   textInputWrapper: {
     flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 22,
-    borderWidth: 0.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    paddingRight: 6,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 16,
+    height: 46,
+    justifyContent: 'center',
   },
   textInput: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     fontSize: 14,
-    color: Colors.text,
+    color: '#0F172A',
     height: 40,
+    paddingVertical: 0,
   },
-  sendBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  circleActionBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#F97316',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  sendBtnDisabled: {
+  circleActionBtnRecording: {
+    backgroundColor: '#EA580C',
+    transform: [{ scale: 1.05 }],
+  },
+  circleActionBtnSend: {
+    backgroundColor: '#F97316',
+  },
+  circleActionBtnDisabled: {
     opacity: 0.5,
   },
 });
