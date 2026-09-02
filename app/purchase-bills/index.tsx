@@ -1,17 +1,21 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, FlatList
+  ActivityIndicator, FlatList, Alert
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
+import * as FileSystem from 'expo-file-system/legacy';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
+
+const FILTERS = ['All', 'Payables', 'Unpaid', 'Paid', 'Partial'];
 
 interface PurchaseBill {
   id: string;
@@ -31,9 +35,11 @@ export default function PurchaseBillsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const bottomPadding = useBottomPadding(20);
+  const { initialFilter } = useLocalSearchParams<{ initialFilter?: string }>();
   const [bills, setBills] = useState<PurchaseBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [businessId, setBusinessId] = useState<string>('');
@@ -41,6 +47,62 @@ export default function PurchaseBillsScreen() {
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const LIMIT = 20;
+
+  useEffect(() => {
+    if (initialFilter) {
+      if (initialFilter === 'Payables') {
+        setFilter('Payables');
+      } else if (FILTERS.includes(initialFilter)) {
+        setFilter(initialFilter);
+      }
+    }
+  }, [initialFilter]);
+
+  const handleDownloadReportPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      let bId = businessId;
+      if (!bId) {
+        const bizRes = await api.get('/businesses/me');
+        bId = bizRes.data.id;
+        setBusinessId(bId);
+      }
+      if (!bId) {
+        Alert.alert('Error', 'Business not found');
+        return;
+      }
+
+      let statusParam = 'all';
+      if (filter === 'Unpaid') statusParam = 'unpaid';
+      else if (filter === 'Paid') statusParam = 'paid';
+      else if (filter === 'Partial') statusParam = 'partial';
+      else if (filter === 'Payables') statusParam = 'payables';
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const fileName = `Purchase_Bills_${statusParam}_${todayStr}.pdf`;
+      const pdfUrl = `${API_BASE_URL}/purchase-bills/report-pdf?business_id=${bId}&status=${statusParam}`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (downloadResult.status === 200) {
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Purchase Bills Report');
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (err: any) {
+      console.log('Download purchase bills report PDF error:', err);
+      Alert.alert('Error', 'Could not download purchase bills report PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const loadBills = async (currentSkip = 0, isRefreshing = false) => {
     if (currentSkip === 0) {
@@ -115,6 +177,8 @@ export default function PurchaseBillsScreen() {
       matchFilter = ps === 'PARTIAL';
     } else if (filter === 'Paid') {
       matchFilter = ps === 'PAID';
+    } else if (filter === 'Payables') {
+      matchFilter = ps === 'UNPAID' || ps === 'PARTIAL';
     }
     return matchSearch && matchFilter;
   });
@@ -148,13 +212,31 @@ export default function PurchaseBillsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
-          <Ionicons name="arrow-back" size={22} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Purchase Bills</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/purchase-bills/create')}>
-          <Ionicons name="add" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+          <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+            <Ionicons name="arrow-back" size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.title} numberOfLines={1}>Purchase Bills</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            style={styles.actionBtnSecondary}
+            onPress={handleDownloadReportPdf}
+            disabled={downloadingPdf}
+          >
+            {downloadingPdf ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={15} color={Colors.primary} />
+                <Text style={styles.actionBtnSecondaryText}>PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/purchase-bills/create')}>
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchBox}>
@@ -179,7 +261,7 @@ export default function PurchaseBillsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center', height: 44 }}
         >
-          {['All', 'Unpaid', 'Paid', 'Partial'].map(f => (
+          {FILTERS.map(f => (
             <TouchableOpacity
               key={f}
               onPress={() => setFilter(f)}
@@ -255,7 +337,23 @@ export default function PurchaseBillsScreen() {
 
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
-  title: { flex: 1, fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  title: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  actionBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 0.5,
+    borderColor: '#FED7AA',
+  },
+  actionBtnSecondaryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   searchBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: Colors.card, marginHorizontal: 12, marginTop: 12, marginBottom: 8, borderRadius: Radius.sm, paddingHorizontal: 12, height: 44, borderWidth: 0.5, borderColor: Colors.border },
   searchInput: { flex: 1, fontSize: 13, color: Colors.text, height: '100%', paddingVertical: 0 },

@@ -197,30 +197,42 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.heroAmount}>₹{Number(stats?.receivables || 0).toLocaleString('en-IN')}</Text>
           <Text style={styles.heroSub}>from {stats?.unpaidCount || 0} unpaid invoices</Text>
-          <TouchableOpacity style={styles.heroBtn} onPress={() => router.push({ pathname: '/(tabs)/bills', params: { initialFilter: 'Outstanding' } })}>
+          <TouchableOpacity style={styles.heroBtn} onPress={() => router.push({ pathname: '/(tabs)/bills', params: { initialFilter: 'Receivables' } })}>
             <Ionicons name="eye-outline" size={16} color="#0F172A" />
-            <Text style={styles.heroBtnText}>View Outstanding</Text>
+            <Text style={styles.heroBtnText}>Receivables</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            activeOpacity={0.7}
+            onPress={() => router.push('/(tabs)/bills')}
+          >
             <Text style={styles.statLabel} maxFontSizeMultiplier={1.2} numberOfLines={1}>SALES</Text>
             <Text style={[styles.statValue, { color: '#16A34A' }]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{compactFmt(stats?.total_sales || 0)}</Text>
             <Text style={styles.statSub} maxFontSizeMultiplier={1.2}>this year</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            activeOpacity={0.7}
+            onPress={() => router.push('/purchase-bills')}
+          >
             <Text style={styles.statLabel} maxFontSizeMultiplier={1.2} numberOfLines={1}>PURCHASES</Text>
             <Text style={styles.statValue} maxFontSizeMultiplier={1.2} numberOfLines={1}>{compactFmt(stats?.total_purchases || 0)}</Text>
             <Text style={styles.statSub} maxFontSizeMultiplier={1.2}>this year</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statDivider} />
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            style={styles.statItem}
+            activeOpacity={0.7}
+            onPress={() => router.push({ pathname: '/purchase-bills', params: { initialFilter: 'Payables' } })}
+          >
             <Text style={styles.statLabel} maxFontSizeMultiplier={1.2} numberOfLines={1}>PAYABLES</Text>
             <Text style={[styles.statValue, { color: '#C2410C' }]} maxFontSizeMultiplier={1.2} numberOfLines={1}>{compactFmt(stats?.payables || 0)}</Text>
             <Text style={styles.statSub} maxFontSizeMultiplier={1.2}>to pay</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.quickActionsRow}>

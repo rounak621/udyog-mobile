@@ -4,16 +4,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, TextInput, RefreshControl,
-  ActivityIndicator, FlatList
+  ActivityIndicator, FlatList, Alert
 } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
+import * as FileSystem from 'expo-file-system/legacy';
+import { savePdfToAndroidOrShare } from '../../services/safHelper';
 
-const FILTERS = ['All', 'Unpaid', 'Paid', 'Partial'];
+const FILTERS = ['All', 'Receivables', 'Unpaid', 'Paid', 'Partial'];
 
 interface Invoice {
   id: string;
@@ -35,6 +37,7 @@ export default function BillsScreen() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
   const [businessId, setBusinessId] = useState<string>('');
@@ -44,10 +47,60 @@ export default function BillsScreen() {
   const LIMIT = 20;
 
   useEffect(() => {
-    if (initialFilter === 'Outstanding') {
-      setFilter('Outstanding');
+    if (initialFilter) {
+      if (initialFilter === 'Receivables' || initialFilter === 'Outstanding') {
+        setFilter('Receivables');
+      } else if (FILTERS.includes(initialFilter)) {
+        setFilter(initialFilter);
+      }
     }
   }, [initialFilter]);
+
+  const handleDownloadReportPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      let bId = businessId;
+      if (!bId) {
+        const bizRes = await api.get('/businesses/me');
+        bId = bizRes.data.id;
+        setBusinessId(bId);
+      }
+      if (!bId) {
+        Alert.alert('Error', 'Business not found');
+        return;
+      }
+
+      let statusParam = 'all';
+      if (filter === 'Unpaid') statusParam = 'unpaid';
+      else if (filter === 'Paid') statusParam = 'paid';
+      else if (filter === 'Partial') statusParam = 'partial';
+      else if (filter === 'Receivables' || filter === 'Outstanding') statusParam = 'receivables';
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const fileName = `Sales_Bills_${statusParam}_${todayStr}.pdf`;
+      const pdfUrl = `${API_BASE_URL}/invoices/report-pdf?business_id=${bId}&status=${statusParam}`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+
+      const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (downloadResult.status === 200) {
+        await savePdfToAndroidOrShare(downloadResult.uri, fileName, 'Sales Report');
+      } else {
+        throw new Error('Download failed');
+      }
+    } catch (err: any) {
+      console.log('Download sales report PDF error:', err);
+      Alert.alert('Error', 'Could not download sales report PDF. Please try again.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   const loadInvoices = async (currentSkip = 0, isRefreshing = false) => {
     if (currentSkip === 0) {
@@ -123,7 +176,7 @@ export default function BillsScreen() {
       matchFilter = ps === 'PARTIAL';
     } else if (filter === 'Paid') {
       matchFilter = ps === 'PAID';
-    } else if (filter === 'Outstanding') {
+    } else if (filter === 'Receivables' || filter === 'Outstanding') {
       matchFilter = ps === 'UNPAID' || ps === 'PARTIAL';
     }
     return matchSearch && matchFilter;
@@ -161,6 +214,20 @@ export default function BillsScreen() {
         <Text style={styles.title}>Bills</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
+            style={styles.actionBtnSecondary}
+            onPress={handleDownloadReportPdf}
+            disabled={downloadingPdf}
+          >
+            {downloadingPdf ? (
+              <ActivityIndicator size="small" color={Colors.primary} />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={15} color={Colors.primary} />
+                <Text style={styles.actionBtnSecondaryText}>PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
             style={styles.quotationsLinkBtn}
             onPress={() => router.push('/quotations')}
           >
@@ -195,7 +262,7 @@ export default function BillsScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center', height: 44 }}
         >
-          {['All', 'Unpaid', 'Paid', 'Partial'].map(f => (
+          {FILTERS.map(f => (
             <TouchableOpacity
               key={f}
               onPress={() => setFilter(f)}
@@ -273,6 +340,22 @@ export default function BillsScreen() {
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
+  actionBtnSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.sm,
+    borderWidth: 0.5,
+    borderColor: '#FED7AA',
+  },
+  actionBtnSecondaryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
   quotationsLinkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
