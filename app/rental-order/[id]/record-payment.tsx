@@ -121,7 +121,6 @@ export default function RentalOrderRecordPaymentScreen() {
               onChangeText={setPaymentAmount}
               keyboardType="numeric"
               placeholderTextColor={Colors.textMuted}
-              autoFocus
             />
           </View>
 

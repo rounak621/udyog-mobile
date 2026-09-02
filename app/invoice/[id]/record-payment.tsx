@@ -135,7 +135,6 @@ export default function InvoiceRecordPaymentScreen() {
               onChangeText={setPaymentAmount}
               placeholder="Enter amount"
               placeholderTextColor={Colors.textMuted}
-              autoFocus
             />
           </View>
 

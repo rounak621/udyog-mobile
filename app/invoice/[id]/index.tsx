@@ -140,6 +140,27 @@ export default function InvoiceDetailScreen() {
   const isPartial = ps === 'PARTIAL';
   const balanceDue = invoice ? Math.max(0, Number(invoice.total_amount) - Number(invoice.paid_amount || 0)) : 0;
 
+  const [sendingReminder, setSendingReminder] = useState(false);
+
+  const handleSendPaymentReminder = async () => {
+    if (!invoice || !invoice.business_id) return;
+    setSendingReminder(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      await api.post(`/invoices/${id}/send-payment-reminder?business_id=${invoice.business_id}`);
+      Alert.alert('Success', 'Payment reminder sent successfully');
+    } catch (err: any) {
+      if (err.response?.status === 503) {
+        Alert.alert('Notice', 'WhatsApp reminders — Coming soon!');
+      } else {
+        Alert.alert('Error', err.response?.data?.detail || 'Failed to send reminder');
+      }
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
 
 
   const handleRevertPayment = (paymentId: string) => {
@@ -392,6 +413,25 @@ export default function InvoiceDetailScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {!isPaid && balanceDue > 0 && (
+          <View style={{ marginTop: 4, marginBottom: 4 }}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: '#EA580C', opacity: sendingReminder ? 0.7 : 1 }]}
+              onPress={handleSendPaymentReminder}
+              disabled={sendingReminder}
+            >
+              {sendingReminder ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="notifications-outline" size={18} color="#fff" />
+                  <Text style={[styles.actionBtnText, { color: '#fff' }]}>Send Payment Reminder</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, marginBottom: 6 }}>
           <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Payment History</Text>

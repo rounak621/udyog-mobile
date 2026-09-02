@@ -134,7 +134,6 @@ export default function PurchaseBillRecordPaymentScreen() {
               onChangeText={setPaymentAmount}
               placeholder="Enter amount"
               placeholderTextColor={Colors.textMuted}
-              autoFocus
             />
           </View>
 
