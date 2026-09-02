@@ -4,7 +4,7 @@ import { SystemBars } from 'react-native-edge-to-edge';
 import * as SecureStore from 'expo-secure-store';
 import { Slot, Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, AppState, Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import IntroOverlay from '../components/IntroOverlay';
 
@@ -177,6 +177,68 @@ function AuthGuard() {
       }
     };
   }, [isLoaded, isSignedIn, tokenReady, businessCheckDone, hasBusiness]);
+
+  // Handle custom scheme deep links (e.g. udyog://payment-success)
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !tokenReady) return;
+
+    let isMounted = true;
+
+    const handleDeepLinkUrl = async (url: string | null) => {
+      if (!url) return;
+      console.log('[DEEP-LINK] Received deep link URL:', url);
+      if (url.includes('payment-success')) {
+        console.log('[DEEP-LINK] Payment success deep link detected. Refreshing business status...');
+        try {
+          await refreshBusinesses();
+          if (mode === 'rental') {
+            router.replace('/(rental)/overview');
+          } else {
+            router.replace('/(tabs)');
+          }
+        } catch (err) {
+          console.log('[DEEP-LINK] Error refreshing business on payment-success:', err);
+        }
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url && isMounted) {
+        handleDeepLinkUrl(url);
+      }
+    });
+
+    const sub = Linking.addEventListener('url', (event) => {
+      if (isMounted) {
+        handleDeepLinkUrl(event.url);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      sub.remove();
+    };
+  }, [isLoaded, isSignedIn, tokenReady, mode, refreshBusinesses, router]);
+
+  // AppState fallback: re-fetch status when returning to foreground specifically on subscription-locked screen
+  useEffect(() => {
+    if (!isSignedIn || !tokenReady) return;
+
+    const sub = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'active' && segments[0] === 'subscription-locked') {
+        console.log('[APP-STATE] Resumed on subscription-locked screen. Re-fetching business status...');
+        try {
+          await refreshBusinesses();
+        } catch (err) {
+          console.log('[APP-STATE] Error re-checking business status on resume:', err);
+        }
+      }
+    });
+
+    return () => {
+      sub.remove();
+    };
+  }, [isSignedIn, tokenReady, segments, refreshBusinesses]);
 
   useEffect(() => {
     if (isSignedIn) {
