@@ -9,6 +9,7 @@ import {
 } from 'expo-av/build/Audio/RecordingConstants';
 import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
+import { stopMayaTTS } from '../services/mayaTts';
 
 // Voice-optimized recording preset: 16kHz mono 64kbps AAC
 // Produces ~4x smaller files than HIGH_QUALITY (44.1kHz stereo 128kbps)
@@ -134,6 +135,9 @@ export function MayaRecordingProvider({ children }: { children: ReactNode }) {
 
   const startRecording = async () => {
     try {
+      // Ensure any ongoing TTS playback is immediately terminated before recording starts
+      await stopMayaTTS();
+
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(

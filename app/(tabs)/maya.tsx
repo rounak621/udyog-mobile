@@ -143,6 +143,9 @@ export default function MayaScreen() {
   const tailBufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingWhatsAppRef = useRef<WhatsAppProposalData | null>(null);
   const pendingConvertQuotationRef = useRef<ConvertQuotationProposalData | null>(null);
+  const isSendingWhatsAppRef = useRef(false);
+  const isConvertingQuotationRef = useRef(false);
+  const isCreatingQuotationRef = useRef(false);
 
   const {
     isRecording,
@@ -881,8 +884,21 @@ export default function MayaScreen() {
   };
 
   const confirmSendWhatsApp = async (proposal: WhatsAppProposalData, index?: number) => {
-    if (!proposal || !businessIdRef.current) return;
+    if (!proposal || !businessIdRef.current || isSendingWhatsAppRef.current) return;
+    isSendingWhatsAppRef.current = true;
     setIsSendingWhatsApp(true);
+
+    // Synchronously clear pending proposal state to guarantee no duplicate trigger from voice or UI
+    setPendingWhatsApp(null);
+    pendingWhatsAppRef.current = null;
+
+    // Dismiss card from messages immediately
+    if (typeof index === 'number') {
+      setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, whatsAppProposal: undefined } : m));
+    } else {
+      setMessages(prev => prev.map(m => m.whatsAppProposal?.invoice_id === proposal.invoice_id ? { ...m, whatsAppProposal: undefined } : m));
+    }
+
     try {
       const token = await getToken();
       setAuthToken(token);
@@ -898,14 +914,6 @@ export default function MayaScreen() {
           ? 'Payment reminder WhatsApp par bhej diya gaya hai!'
           : `Invoice ${proposal.invoice_number} WhatsApp par bhej diya gaya hai!`
       );
-
-      // Dismiss card from messages
-      if (typeof index === 'number') {
-        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, whatsAppProposal: undefined } : m));
-      } else {
-        setMessages(prev => prev.map(m => m.whatsAppProposal?.invoice_id === proposal.invoice_id ? { ...m, whatsAppProposal: undefined } : m));
-      }
-      setPendingWhatsApp(null);
 
       // Append assistant success message
       setMessages(prev => [
@@ -926,12 +934,14 @@ export default function MayaScreen() {
       const msg = err.response?.data?.detail || 'WhatsApp message bhejne mein error aaya.';
       Alert.alert('Error', msg);
     } finally {
+      isSendingWhatsAppRef.current = false;
       setIsSendingWhatsApp(false);
     }
   };
 
   const createQuotationDirectly = async (draft: any, index: number) => {
-    if (!draft || !businessIdRef.current) return;
+    if (!draft || !businessIdRef.current || isCreatingQuotationRef.current) return;
+    isCreatingQuotationRef.current = true;
     setIsCreatingQuotation(true);
 
     try {
@@ -967,6 +977,7 @@ export default function MayaScreen() {
       if (!matchedCustomer) {
         Alert.alert('Customer Required', 'Quotation create karne ke liye pehle customer add karein.');
         setIsCreatingQuotation(false);
+        isCreatingQuotationRef.current = false;
         return;
       }
 
@@ -1025,13 +1036,26 @@ export default function MayaScreen() {
       const msg = err.response?.data?.detail || 'Quotation create karne mein error aaya.';
       Alert.alert('Error', msg);
     } finally {
+      isCreatingQuotationRef.current = false;
       setIsCreatingQuotation(false);
     }
   };
 
   const confirmConvertQuotation = async (proposal: ConvertQuotationProposalData, index?: number) => {
-    if (!proposal || !businessIdRef.current) return;
+    if (!proposal || !businessIdRef.current || isConvertingQuotationRef.current) return;
+    isConvertingQuotationRef.current = true;
     setIsConvertingQuotation(true);
+
+    // Synchronously clear pending conversion state to guarantee no duplicate trigger
+    setPendingConvertQuotation(null);
+    pendingConvertQuotationRef.current = null;
+
+    // Dismiss card from messages immediately
+    if (typeof index === 'number') {
+      setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, convertQuotationProposal: undefined } : m));
+    } else {
+      setMessages(prev => prev.map(m => m.convertQuotationProposal?.quotation_id === proposal.quotation_id ? { ...m, convertQuotationProposal: undefined } : m));
+    }
 
     try {
       const token = await getToken();
@@ -1043,14 +1067,6 @@ export default function MayaScreen() {
       });
 
       const successMsg = response.data?.message || `Quotation ${proposal.quotation_number} Invoice mein convert ho gaya!`;
-
-      // Dismiss card
-      if (typeof index === 'number') {
-        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, convertQuotationProposal: undefined } : m));
-      } else {
-        setMessages(prev => prev.map(m => m.convertQuotationProposal?.quotation_id === proposal.quotation_id ? { ...m, convertQuotationProposal: undefined } : m));
-      }
-      setPendingConvertQuotation(null);
 
       // Append assistant success message
       setMessages(prev => [
@@ -1071,6 +1087,7 @@ export default function MayaScreen() {
       const msg = err.response?.data?.detail || 'Quotation convert karne mein error aaya.';
       Alert.alert('Error', msg);
     } finally {
+      isConvertingQuotationRef.current = false;
       setIsConvertingQuotation(false);
     }
   };
