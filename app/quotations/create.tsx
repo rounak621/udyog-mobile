@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -91,8 +91,15 @@ export default function CreateQuotationScreen() {
   ]);
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
   const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
+  const [unitSearch, setUnitSearch] = useState('');
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
   const [showDiscount, setShowDiscount] = useState(false);
+
+  const filteredUnits = useMemo(() => {
+    if (!unitSearch.trim()) return UNITS;
+    const q = unitSearch.trim().toLowerCase();
+    return UNITS.filter(u => u.toLowerCase().includes(q));
+  }, [unitSearch]);
 
   // Ref to track if initial mount load has completed
   const hasLoadedInitialRef = useRef(false);
@@ -922,19 +929,49 @@ export default function CreateQuotationScreen() {
           visible={!!showUnitPicker}
           animationType="slide"
           transparent={true}
-          onRequestClose={() => setShowUnitPicker(null)}
+          onRequestClose={() => {
+            setShowUnitPicker(null);
+            setUnitSearch('');
+          }}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={[styles.modalContent, { height: '55%' }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Select Unit</Text>
-                <TouchableOpacity onPress={() => setShowUnitPicker(null)}>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowUnitPicker(null);
+                    setUnitSearch('');
+                  }}
+                >
                   <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
               </View>
+
+              {/* Search Box */}
+              <View style={styles.modalSearchBox}>
+                <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Search unit (e.g. PCS, KGS)..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={unitSearch}
+                  onChangeText={setUnitSearch}
+                  autoCapitalize="characters"
+                />
+                {unitSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setUnitSearch('')}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <FlatList
                 style={{ flex: 1 }}
-                data={UNITS}
+                data={filteredUnits}
                 keyExtractor={u => u}
                 renderItem={({ item: unitOption }) => {
                   const activeLine = lineItems.find(l => l.id === showUnitPicker);
@@ -947,6 +984,7 @@ export default function CreateQuotationScreen() {
                           updateLineItem(showUnitPicker, 'unit', unitOption);
                         }
                         setShowUnitPicker(null);
+                        setUnitSearch('');
                       }}
                     >
                       <Text style={[styles.modalItemName, isSelected && { color: Colors.primary, fontWeight: '700' }]}>
@@ -956,10 +994,15 @@ export default function CreateQuotationScreen() {
                     </TouchableOpacity>
                   );
                 }}
+                ListEmptyComponent={
+                  <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No matching units found.</Text>
+                  </View>
+                }
                 keyboardShouldPersistTaps="handled"
               />
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
     </View>
