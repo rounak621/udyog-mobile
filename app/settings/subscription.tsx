@@ -174,7 +174,7 @@ export default function SubscriptionScreen() {
       const token = await getToken();
       setAuthToken(token);
       const res = await api.post('/subscriptions/handover-token');
-      const redirectTarget = encodeURIComponent(`https://app.udyogbook.in/subscribe?plan=${planId}`);
+      const redirectTarget = encodeURIComponent(`https://app.udyogbook.in/subscribe?plan=${planId}&source=mobile`);
       const finalUrl = `${res.data.url}&redirect_url=${redirectTarget}`;
       await Linking.openURL(finalUrl);
     } catch (err: any) {
