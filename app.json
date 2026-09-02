@@ -61,11 +61,15 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/notification-icon.png",
           "color": "#F97316"
         }
       ]
     ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#F97316"
+    },
     "extra": {
       "router": {},
       "eas": {
