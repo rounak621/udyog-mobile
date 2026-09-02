@@ -9,9 +9,15 @@ import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import * as SecureStore from 'expo-secure-store';
 import { Colors, Radius, Spacing } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useMayaRecording } from '../../context/MayaRecordingContext';
+import { playMayaTTS, stopMayaTTS } from '../../services/mayaTts';
+import { MayaWhatsAppCard, WhatsAppProposalData } from '../../components/maya/MayaWhatsAppCard';
+import { MayaQuotationCard } from '../../components/maya/MayaQuotationCard';
+import { MayaConvertQuotationCard, ConvertQuotationProposalData } from '../../components/maya/MayaConvertQuotationCard';
+import { quotationService } from '../../services/quotation';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -23,6 +29,8 @@ interface UIMessage {
   text: string;
   draft?: any;
   actionType?: string;
+  whatsAppProposal?: WhatsAppProposalData;
+  convertQuotationProposal?: ConvertQuotationProposalData;
   time?: string;
 }
 
@@ -115,13 +123,26 @@ export default function MayaScreen() {
   const [conversationHistory, setConversationHistory] = useState<ChatMessage[]>([]);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
-  
+
+  // TTS State
+  const [isTtsEnabled, setIsTtsEnabled] = useState(true);
+  const isTtsEnabledRef = useRef(true);
+
+  // Action Proposal States
+  const [pendingWhatsApp, setPendingWhatsApp] = useState<WhatsAppProposalData | null>(null);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [pendingConvertQuotation, setPendingConvertQuotation] = useState<ConvertQuotationProposalData | null>(null);
+  const [isConvertingQuotation, setIsConvertingQuotation] = useState(false);
+  const [isCreatingQuotation, setIsCreatingQuotation] = useState(false);
+
   const scrollRef = useRef<ScrollView>(null);
 
   // Live refs so the registered session always reads fresh values
   const businessIdRef = useRef<string | null>(null);
   const conversationHistoryRef = useRef<ChatMessage[]>([]);
   const tailBufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingWhatsAppRef = useRef<WhatsAppProposalData | null>(null);
+  const pendingConvertQuotationRef = useRef<ConvertQuotationProposalData | null>(null);
 
   const {
     isRecording,
@@ -133,12 +154,38 @@ export default function MayaScreen() {
     stopRecording,
   } = useMayaRecording();
 
-  // Cleanup tail buffer timer on unmount
+  // Load persisted TTS preference on mount
+  useEffect(() => {
+    SecureStore.getItemAsync('maya_tts_enabled')
+      .then(stored => {
+        if (stored !== null) {
+          const enabled = stored !== 'false';
+          setIsTtsEnabled(enabled);
+          isTtsEnabledRef.current = enabled;
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleTts = async () => {
+    const next = !isTtsEnabled;
+    setIsTtsEnabled(next);
+    isTtsEnabledRef.current = next;
+    if (!next) {
+      await stopMayaTTS();
+    }
+    try {
+      await SecureStore.setItemAsync('maya_tts_enabled', String(next));
+    } catch {}
+  };
+
+  // Cleanup tail buffer timer & stop TTS on unmount
   useEffect(() => {
     return () => {
       if (tailBufferTimerRef.current) {
         clearTimeout(tailBufferTimerRef.current);
       }
+      stopMayaTTS();
     };
   }, []);
 
@@ -165,6 +212,18 @@ export default function MayaScreen() {
     conversationHistoryRef.current = conversationHistory;
   }, [conversationHistory]);
 
+  useEffect(() => {
+    isTtsEnabledRef.current = isTtsEnabled;
+  }, [isTtsEnabled]);
+
+  useEffect(() => {
+    pendingWhatsAppRef.current = pendingWhatsApp;
+  }, [pendingWhatsApp]);
+
+  useEffect(() => {
+    pendingConvertQuotationRef.current = pendingConvertQuotation;
+  }, [pendingConvertQuotation]);
+
   // Handle setting active state and session registration when focused
   useFocusEffect(
     useCallback(() => {
@@ -180,6 +239,7 @@ export default function MayaScreen() {
       return () => {
         setMayaScreenActive(false);
         clearSession();
+        stopMayaTTS();
       };
     }, [setMayaScreenActive, registerSession, clearSession, getToken])
   );
@@ -339,31 +399,158 @@ export default function MayaScreen() {
         { role: 'assistant', content: data.reply_text || 'Updated! Check karo.' },
       ]);
     }
+
+    if (data.reply_text) {
+      playMayaTTS(data.reply_text, isTtsEnabledRef.current);
+    }
   };
 
-  const handleVoiceResponse = (data: MayaResponse) => {
+  const handleVoiceResponse = async (data: MayaResponse) => {
+    // 1. Check Voice Confirmation for Pending WhatsApp Proposal
+    const activeWhatsApp = pendingWhatsAppRef.current;
+    if (activeWhatsApp) {
+      const actionType = data.action_type || data.intent;
+      const lowerTranscript = (data.user_transcript || data.user_text || '').toLowerCase().trim();
+      const words = lowerTranscript.split(/\s+/).filter(Boolean);
+
+      const isNewCommand = !!(
+        actionType ||
+        data.extracted_data?.party_name ||
+        data.extracted_data?.customer_name ||
+        data.extracted_data?.invoice_number ||
+        data.extracted_data?.items?.length ||
+        data.extracted_data?.new_party ||
+        data.extracted_data?.new_item ||
+        data.extracted_data?.query_type ||
+        words.length > 4
+      );
+
+      if (isNewCommand) {
+        setPendingWhatsApp(null);
+      } else {
+        const confirmKeywords = ['haan', 'ha', 'yes', 'confirm', 'sahi hai', 'bhejo', 'bhej do', 'send karo', 'kar do', 'send it', 'bhej de'];
+        const cancelKeywords = ['cancel', 'nahi', 'ruk jao', 'no', 'mat bhejo', 'rehne do', 'close', 'mat karo'];
+
+        const isConfirm = words.length <= 4 && confirmKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
+        const isCancel = words.length <= 4 && cancelKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
+
+        if (isConfirm && !isCancel) {
+          setIsThinking(false);
+          await confirmSendWhatsApp(activeWhatsApp);
+          return;
+        } else if (isCancel) {
+          setIsThinking(false);
+          setPendingWhatsApp(null);
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              text: 'WhatsApp message cancel kar diya.',
+              time: getTimeString(),
+            },
+          ]);
+          setConversationHistory(prev => [
+            ...prev,
+            { role: 'assistant', content: 'WhatsApp message cancel kar diya.' },
+          ]);
+          playMayaTTS('WhatsApp message cancel kar diya.', isTtsEnabledRef.current);
+          return;
+        }
+      }
+    }
+
+    // 2. Check Voice Confirmation for Pending Quotation Conversion
+    const activeConvert = pendingConvertQuotationRef.current;
+    if (activeConvert) {
+      const actionType = data.action_type || data.intent;
+      const lowerTranscript = (data.user_transcript || data.user_text || '').toLowerCase().trim();
+      const words = lowerTranscript.split(/\s+/).filter(Boolean);
+
+      const isNewCommand = !!(
+        actionType ||
+        data.extracted_data?.party_name ||
+        data.extracted_data?.customer_name ||
+        data.extracted_data?.quotation_number ||
+        data.extracted_data?.items?.length ||
+        data.extracted_data?.new_party ||
+        data.extracted_data?.new_item ||
+        data.extracted_data?.query_type ||
+        words.length > 4
+      );
+
+      if (isNewCommand) {
+        setPendingConvertQuotation(null);
+      } else {
+        const confirmKeywords = ['haan', 'ha', 'yes', 'confirm', 'sahi hai', 'convert', 'convert karo', 'kar do', 'invoice bana do', 'convert it'];
+        const cancelKeywords = ['cancel', 'nahi', 'ruk jao', 'no', 'mat karo', 'rehne do', 'close'];
+
+        const isConfirm = words.length <= 4 && confirmKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
+        const isCancel = words.length <= 4 && cancelKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
+
+        if (isConfirm && !isCancel) {
+          setIsThinking(false);
+          await confirmConvertQuotation(activeConvert);
+          return;
+        } else if (isCancel) {
+          setIsThinking(false);
+          setPendingConvertQuotation(null);
+          setMessages(prev => [
+            ...prev,
+            {
+              role: 'assistant',
+              text: 'Quotation conversion cancel kar diya.',
+              time: getTimeString(),
+            },
+          ]);
+          setConversationHistory(prev => [
+            ...prev,
+            { role: 'assistant', content: 'Quotation conversion cancel kar diya.' },
+          ]);
+          playMayaTTS('Quotation conversion cancel kar diya.', isTtsEnabledRef.current);
+          return;
+        }
+      }
+    }
+
     if (data.action_type === 'edit_draft') {
       handleEditDraftResponse(data);
       return;
     }
 
     let draft = null;
-    if (data.action_type === 'draft_invoice') {
+    let whatsAppProposal: WhatsAppProposalData | undefined = undefined;
+    let convertQuotationProposal: ConvertQuotationProposalData | undefined = undefined;
+
+    const normalizedAction = (data.action_type || '').toLowerCase();
+
+    if (normalizedAction === 'draft_invoice') {
       draft = data.current_draft || data.extracted_data || null;
-    } else if (data.action_type === 'draft_rental') {
+    } else if (normalizedAction === 'draft_rental') {
       draft = data.extracted_data || data.current_draft || null;
       if (draft) draft.is_rental = true;
-    } else if (data.action_type === 'create_customer') {
+    } else if (normalizedAction === 'draft_quotation') {
+      draft = data.extracted_data || data.current_draft || null;
+    } else if (normalizedAction === 'create_customer') {
       draft = data.extracted_data?.new_party || null;
-    } else if (data.action_type === 'create_item') {
+    } else if (normalizedAction === 'create_item') {
       draft = data.extracted_data?.new_item || null;
+    } else if (normalizedAction === 'propose_whatsapp_send' && data.extracted_data) {
+      whatsAppProposal = data.extracted_data as WhatsAppProposalData;
+      setPendingWhatsApp(whatsAppProposal);
+    } else if (
+      (normalizedAction === 'propose_quotation_conversion' || normalizedAction === 'convert_quotation') &&
+      data.extracted_data
+    ) {
+      convertQuotationProposal = data.extracted_data as ConvertQuotationProposalData;
+      setPendingConvertQuotation(convertQuotationProposal);
     }
+
     const userSpokenText = data.user_transcript || data.user_text || 'Voice message';
 
     // Step 2 has completed
     setIsThinking(false);
 
-    // Reveal assistant reply immediately (natural network delay provided the gap)
+    // Reveal assistant reply immediately
     setMessages(prev => [
       ...prev,
       {
@@ -371,6 +558,8 @@ export default function MayaScreen() {
         text: data.reply_text || '',
         draft: draft || undefined,
         actionType: data.action_type || undefined,
+        whatsAppProposal,
+        convertQuotationProposal,
         time: getTimeString(),
       },
     ]);
@@ -381,6 +570,11 @@ export default function MayaScreen() {
       { role: 'user', content: userSpokenText },
       { role: 'assistant', content: data.reply_text || '' },
     ]);
+
+    // TTS playback for voice response
+    if (data.reply_text && data.reply_text.trim()) {
+      playMayaTTS(data.reply_text, isTtsEnabledRef.current);
+    }
 
     triggerNavigationWithDelay(data);
   };
@@ -431,6 +625,7 @@ export default function MayaScreen() {
           '/purchases': '/purchase-bills',
           '/settings': '/(tabs)/more',
           '/rentals': '/(rental)/overview',
+          '/quotations': '/quotations',
         };
         const mappedRoute = routeMap[data.navigation_route];
         if (mappedRoute) {
@@ -472,17 +667,33 @@ export default function MayaScreen() {
         return;
       }
 
-      // Extract draft based on action_type
+      // Extract draft or proposals based on action_type
       let draft = null;
-      if (data.action_type === 'draft_invoice') {
+      let whatsAppProposal: WhatsAppProposalData | undefined = undefined;
+      let convertQuotationProposal: ConvertQuotationProposalData | undefined = undefined;
+
+      const normalizedAction = (data.action_type || '').toLowerCase();
+
+      if (normalizedAction === 'draft_invoice') {
         draft = data.current_draft || data.extracted_data || null;
-      } else if (data.action_type === 'draft_rental') {
+      } else if (normalizedAction === 'draft_rental') {
         draft = data.extracted_data || data.current_draft || null;
         if (draft) draft.is_rental = true;
-      } else if (data.action_type === 'create_customer') {
+      } else if (normalizedAction === 'draft_quotation') {
+        draft = data.extracted_data || data.current_draft || null;
+      } else if (normalizedAction === 'create_customer') {
         draft = data.extracted_data?.new_party || null;
-      } else if (data.action_type === 'create_item') {
+      } else if (normalizedAction === 'create_item') {
         draft = data.extracted_data?.new_item || null;
+      } else if (normalizedAction === 'propose_whatsapp_send' && data.extracted_data) {
+        whatsAppProposal = data.extracted_data as WhatsAppProposalData;
+        setPendingWhatsApp(whatsAppProposal);
+      } else if (
+        (normalizedAction === 'propose_quotation_conversion' || normalizedAction === 'convert_quotation') &&
+        data.extracted_data
+      ) {
+        convertQuotationProposal = data.extracted_data as ConvertQuotationProposalData;
+        setPendingConvertQuotation(convertQuotationProposal);
       }
 
       // Add assistant message
@@ -493,6 +704,8 @@ export default function MayaScreen() {
           text: data.reply_text || '',
           draft: draft || undefined,
           actionType: data.action_type || undefined,
+          whatsAppProposal,
+          convertQuotationProposal,
           time: getTimeString(),
         },
       ]);
@@ -503,6 +716,11 @@ export default function MayaScreen() {
         { role: 'user', content: text },
         { role: 'assistant', content: data.reply_text || '' },
       ]);
+
+      // TTS playback
+      if (data.reply_text && data.reply_text.trim()) {
+        playMayaTTS(data.reply_text, isTtsEnabledRef.current);
+      }
 
       triggerNavigationWithDelay(data);
     } catch (err: any) {
@@ -524,6 +742,9 @@ export default function MayaScreen() {
   };
 
   const handleMicPressIn = () => {
+    // Stop any active TTS voice playback immediately when user touches mic to talk
+    stopMayaTTS();
+
     if (tailBufferTimerRef.current) {
       clearTimeout(tailBufferTimerRef.current);
       tailBufferTimerRef.current = null;
@@ -554,9 +775,19 @@ export default function MayaScreen() {
     });
   };
 
+  const handleEditQuotation = (draft: any, index?: number) => {
+    if (!draft) return;
+    router.push({
+      pathname: '/quotations/create',
+      params: { maya_data: JSON.stringify(draft) },
+    });
+    if (typeof index === 'number') {
+      setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+    }
+  };
+
   const handleCancelDraft = (index: number) => {
-    // TODO: wire cancel action
-    setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+    setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined, whatsAppProposal: undefined, convertQuotationProposal: undefined } : m));
   };
 
   const handleEditCustomer = (draft: any, index: number) => {
@@ -599,17 +830,18 @@ export default function MayaScreen() {
       });
 
       if (response.data.success) {
-        // Close card
         setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
-        // Append helper success message
+        const successMsg = `Party "${draft.name}" successfully add ho gayi!`;
         setMessages(prev => [...prev, {
           role: 'assistant',
-          text: `Party "${draft.name}" successfully add ho gayi!`
+          text: successMsg,
+          time: getTimeString(),
         }]);
         setConversationHistory(prev => [
           ...prev,
-          { role: 'assistant', content: `Party "${draft.name}" successfully add ho gayi!` }
+          { role: 'assistant', content: successMsg }
         ]);
+        playMayaTTS(successMsg, isTtsEnabledRef.current);
       }
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Party create karne mein error aaya';
@@ -629,17 +861,18 @@ export default function MayaScreen() {
       });
 
       if (response.data.success) {
-        // Close card
         setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
-        // Append helper success message
+        const successMsg = `Item "${draft.name}" successfully add ho gaya!`;
         setMessages(prev => [...prev, {
           role: 'assistant',
-          text: `Item "${draft.name}" successfully add ho gaya!`
+          text: successMsg,
+          time: getTimeString(),
         }]);
         setConversationHistory(prev => [
           ...prev,
-          { role: 'assistant', content: `Item "${draft.name}" successfully add ho gaya!` }
+          { role: 'assistant', content: successMsg }
         ]);
+        playMayaTTS(successMsg, isTtsEnabledRef.current);
       }
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Item create karne mein error aaya';
@@ -647,9 +880,207 @@ export default function MayaScreen() {
     }
   };
 
+  const confirmSendWhatsApp = async (proposal: WhatsAppProposalData, index?: number) => {
+    if (!proposal || !businessIdRef.current) return;
+    setIsSendingWhatsApp(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const response = await api.post('/ai/maya-execute-whatsapp', {
+        business_id: businessIdRef.current,
+        invoice_id: proposal.invoice_id,
+        send_type: proposal.send_type,
+      });
+
+      const successMsg = response.data?.message || (
+        proposal.send_type === 'reminder'
+          ? 'Payment reminder WhatsApp par bhej diya gaya hai!'
+          : `Invoice ${proposal.invoice_number} WhatsApp par bhej diya gaya hai!`
+      );
+
+      // Dismiss card from messages
+      if (typeof index === 'number') {
+        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, whatsAppProposal: undefined } : m));
+      } else {
+        setMessages(prev => prev.map(m => m.whatsAppProposal?.invoice_id === proposal.invoice_id ? { ...m, whatsAppProposal: undefined } : m));
+      }
+      setPendingWhatsApp(null);
+
+      // Append assistant success message
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: successMsg,
+          time: getTimeString(),
+        },
+      ]);
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: successMsg },
+      ]);
+
+      playMayaTTS(successMsg, isTtsEnabledRef.current);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'WhatsApp message bhejne mein error aaya.';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsSendingWhatsApp(false);
+    }
+  };
+
+  const createQuotationDirectly = async (draft: any, index: number) => {
+    if (!draft || !businessIdRef.current) return;
+    setIsCreatingQuotation(true);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      // 1. Fetch customers & items catalog
+      const [customersRes, itemsRes] = await Promise.all([
+        api.get('/customers/', { params: { business_id: businessIdRef.current, limit: 1000 } }),
+        api.get('/items/', { params: { business_id: businessIdRef.current, limit: 1000 } }),
+      ]);
+
+      const customers = Array.isArray(customersRes.data) ? customersRes.data : customersRes.data?.items || [];
+      const items = Array.isArray(itemsRes.data) ? itemsRes.data : itemsRes.data?.items || [];
+
+      // 2. Find matching customer
+      const draftCustomerName = (draft.customer_name || draft.party_name || '').toLowerCase();
+      let matchedCustomer = customers.find((c: any) =>
+        c.name?.toLowerCase().includes(draftCustomerName) ||
+        draftCustomerName.includes(c.name?.toLowerCase())
+      );
+
+      if (!matchedCustomer && draft.walk_in_name) {
+        matchedCustomer = customers.find((c: any) => c.name?.toLowerCase() === 'cash sale');
+      }
+      if (!matchedCustomer) {
+        matchedCustomer = customers.find((c: any) => c.name?.toLowerCase() === 'cash sale');
+      }
+      if (!matchedCustomer && customers.length > 0) {
+        matchedCustomer = customers[0];
+      }
+
+      if (!matchedCustomer) {
+        Alert.alert('Customer Required', 'Quotation create karne ke liye pehle customer add karein.');
+        setIsCreatingQuotation(false);
+        return;
+      }
+
+      // 3. Map line items
+      const lineItems = (draft.items || []).map((item: any) => {
+        const matchedItem = items.find((i: any) =>
+          i.name?.toLowerCase() === item.name?.toLowerCase() ||
+          item.name?.toLowerCase().includes(i.name?.toLowerCase())
+        );
+
+        return {
+          item_id: matchedItem ? matchedItem.id : null,
+          item_name: item.name,
+          quantity: Number(item.qty || item.quantity || 1),
+          rate: Number(item.rate || item.unit_price || matchedItem?.price || 0),
+          gst_rate: Number(item.tax_rate ?? item.gst_rate ?? matchedItem?.gst_rate ?? 0),
+          discount_percent: Number(item.discount_percent || 0),
+          hsn_code: item.hsn_code || matchedItem?.hsn_code || null,
+          description: item.description || null,
+        };
+      });
+
+      // 4. Create quotation payload
+      const quotationPayload = {
+        customer_id: String(matchedCustomer.id),
+        issue_date: draft.issue_date || new Date().toISOString().split('T')[0],
+        valid_until: draft.valid_until || null,
+        walk_in_name: draft.walk_in_name || (!matchedCustomer ? draft.customer_name : null),
+        line_items: lineItems,
+        notes: draft.notes || null,
+        terms_and_conditions: draft.terms_and_conditions || null,
+      };
+
+      const res = await quotationService.createQuotation(businessIdRef.current, quotationPayload);
+      const successMsg = `Quotation ${res?.quotation_number || ''} successfully create ho gaya!`;
+
+      // Dismiss card
+      setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, draft: undefined } : m));
+
+      // Append assistant success message
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: successMsg,
+          time: getTimeString(),
+        },
+      ]);
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: successMsg },
+      ]);
+
+      playMayaTTS(successMsg, isTtsEnabledRef.current);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Quotation create karne mein error aaya.';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsCreatingQuotation(false);
+    }
+  };
+
+  const confirmConvertQuotation = async (proposal: ConvertQuotationProposalData, index?: number) => {
+    if (!proposal || !businessIdRef.current) return;
+    setIsConvertingQuotation(true);
+
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+
+      const response = await api.post('/ai/maya-execute-convert-quotation', {
+        business_id: businessIdRef.current,
+        quotation_id: proposal.quotation_id,
+      });
+
+      const successMsg = response.data?.message || `Quotation ${proposal.quotation_number} Invoice mein convert ho gaya!`;
+
+      // Dismiss card
+      if (typeof index === 'number') {
+        setMessages(prev => prev.map((m, idx) => idx === index ? { ...m, convertQuotationProposal: undefined } : m));
+      } else {
+        setMessages(prev => prev.map(m => m.convertQuotationProposal?.quotation_id === proposal.quotation_id ? { ...m, convertQuotationProposal: undefined } : m));
+      }
+      setPendingConvertQuotation(null);
+
+      // Append assistant success message
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: successMsg,
+          time: getTimeString(),
+        },
+      ]);
+      setConversationHistory(prev => [
+        ...prev,
+        { role: 'assistant', content: successMsg },
+      ]);
+
+      playMayaTTS(successMsg, isTtsEnabledRef.current);
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Quotation convert karne mein error aaya.';
+      Alert.alert('Error', msg);
+    } finally {
+      setIsConvertingQuotation(false);
+    }
+  };
+
   const handleClearChat = () => {
+    stopMayaTTS();
     setMessages([]);
     setConversationHistory([]);
+    setPendingWhatsApp(null);
+    setPendingConvertQuotation(null);
   };
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
@@ -667,6 +1098,15 @@ export default function MayaScreen() {
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {/* Speaker / Mute Toggle Button */}
+            <TouchableOpacity onPress={toggleTts} style={styles.headerIconBtn} activeOpacity={0.7}>
+              <Ionicons
+                name={isTtsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
+                size={19}
+                color={isTtsEnabled ? '#F97316' : '#64748B'}
+              />
+            </TouchableOpacity>
+
             {messages.length > 0 && (
               <TouchableOpacity onPress={handleClearChat} style={styles.headerIconBtn}>
                 <Ionicons name="trash-outline" size={18} color="#64748B" />
@@ -710,6 +1150,7 @@ export default function MayaScreen() {
                   <View style={styles.suggestionList}>
                     {[
                       'Invoice banao Rajesh ke liye',
+                      'Quotation banao Priya ke liye 5 laptops',
                       'Bill summary dikhao',
                       'Aaj ke pending bills',
                       'Customer add karo',
@@ -737,9 +1178,20 @@ export default function MayaScreen() {
                   const hasText = !!(msg.text && msg.text.trim().length > 0);
                   const hasInvoiceDraft = !!(msg.draft && msg.actionType === 'draft_invoice');
                   const hasRentalDraft = !!(msg.draft && msg.actionType === 'draft_rental');
+                  const hasQuotationDraft = !!(msg.draft && msg.actionType === 'draft_quotation');
                   const hasCustomerDraft = !!(msg.draft && msg.actionType === 'create_customer');
                   const hasItemDraft = !!(msg.draft && msg.actionType === 'create_item');
-                  const hasAnyCard = hasInvoiceDraft || hasRentalDraft || hasCustomerDraft || hasItemDraft;
+                  const hasWhatsAppProposal = !!msg.whatsAppProposal;
+                  const hasConvertQuotation = !!msg.convertQuotationProposal;
+
+                  const hasAnyCard =
+                    hasInvoiceDraft ||
+                    hasRentalDraft ||
+                    hasQuotationDraft ||
+                    hasCustomerDraft ||
+                    hasItemDraft ||
+                    hasWhatsAppProposal ||
+                    hasConvertQuotation;
 
                   if (!hasText && !hasAnyCard) return null;
 
@@ -804,7 +1256,7 @@ export default function MayaScreen() {
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
                             <Text style={styles.draftBtnOutlineText}>Cancel</Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCreateRental(msg.draft)}>
                             <Text style={styles.draftBtnOutlineText}>Edit</Text>
                           </TouchableOpacity>
@@ -872,7 +1324,7 @@ export default function MayaScreen() {
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
                             <Text style={styles.draftBtnOutlineText}>Cancel</Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleEditCustomer(msg.draft, i)}>
                             <Text style={styles.draftBtnOutlineText}>Edit</Text>
                           </TouchableOpacity>
@@ -936,7 +1388,7 @@ export default function MayaScreen() {
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
                             <Text style={styles.draftBtnOutlineText}>Cancel</Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleEditItem(msg.draft, i)}>
                             <Text style={styles.draftBtnOutlineText}>Edit</Text>
                           </TouchableOpacity>
@@ -1007,7 +1459,7 @@ export default function MayaScreen() {
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
                             <Text style={styles.draftBtnOutlineText}>Cancel</Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCreateInvoice(msg.draft)}>
                             <Text style={styles.draftBtnOutlineText}>Edit</Text>
                           </TouchableOpacity>
@@ -1052,6 +1504,34 @@ export default function MayaScreen() {
                             {hasRentalDraft && renderRentalDraftCard(!hasText)}
                             {hasCustomerDraft && renderCustomerCard(!hasText)}
                             {hasItemDraft && renderItemCard(!hasText)}
+                            {hasQuotationDraft && (
+                              <MayaQuotationCard
+                                draft={msg.draft}
+                                isCreatingQuotation={isCreatingQuotation}
+                                onEdit={() => handleEditQuotation(msg.draft, i)}
+                                onCreate={() => createQuotationDirectly(msg.draft, i)}
+                                onClose={() => handleCancelDraft(i)}
+                                isStandalone={!hasText}
+                              />
+                            )}
+                            {hasWhatsAppProposal && msg.whatsAppProposal && (
+                              <MayaWhatsAppCard
+                                proposal={msg.whatsAppProposal}
+                                isSending={isSendingWhatsApp}
+                                onSend={() => confirmSendWhatsApp(msg.whatsAppProposal!, i)}
+                                onClose={() => handleCancelDraft(i)}
+                                isStandalone={!hasText}
+                              />
+                            )}
+                            {hasConvertQuotation && msg.convertQuotationProposal && (
+                              <MayaConvertQuotationCard
+                                proposal={msg.convertQuotationProposal}
+                                isConverting={isConvertingQuotation}
+                                onConfirm={() => confirmConvertQuotation(msg.convertQuotationProposal!, i)}
+                                onClose={() => handleCancelDraft(i)}
+                                isStandalone={!hasText}
+                              />
+                            )}
                           </View>
                         </View>
                       )}
@@ -1370,7 +1850,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Restyled Draft Summary Card
+  // Draft Summary Card
   draftCard: {
     marginTop: 10,
     backgroundColor: '#FFFFFF',

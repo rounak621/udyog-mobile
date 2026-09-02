@@ -49,7 +49,7 @@ export default function CreateQuotationScreen() {
   const bottomPadding = useBottomPadding(24);
   const { getToken } = useAuth();
   const { business } = useBusiness();
-  const params = useLocalSearchParams<{ id?: string; customer_id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; customer_id?: string; maya_data?: string }>();
   const isEditMode = !!params.id;
 
   const [businessId, setBusinessId] = useState<string>('');
@@ -231,6 +231,61 @@ export default function CreateQuotationScreen() {
     setShowCustomerPicker(false);
     setPartySearch('');
   };
+
+  // Pre-fill from Maya draft data if maya_data was passed in route params
+  useEffect(() => {
+    if (!params.maya_data || parties.length === 0) return;
+    try {
+      const draft = JSON.parse(params.maya_data as string);
+      // Match customer by name
+      const draftCustomerName = draft.customer_name || draft.party_name;
+      if (draftCustomerName && !selectedParty) {
+        const match = parties.find(
+          (p: any) => p.name?.toLowerCase().trim() === draftCustomerName.toLowerCase().trim()
+        );
+        if (match) {
+          selectCustomer(match, businessState);
+        }
+      }
+      // Pre-fill line items
+      if (draft.items && draft.items.length > 0) {
+        const newLineItems: FormLineItem[] = draft.items.map((di: any) => {
+          const catalogMatch = itemsCatalog.find(
+            (it: any) => it.name?.toLowerCase().trim() === (di.name || '').toLowerCase().trim()
+          );
+          return {
+            id: Math.random().toString(),
+            item_id: catalogMatch?.id || di.item_id || null,
+            name: di.name || '',
+            qty: String(di.qty || di.quantity || 1),
+            rate: String(di.rate || di.unit_price || catalogMatch?.price || ''),
+            gst_rate: String(di.tax_rate ?? di.gst_rate ?? catalogMatch?.gst_rate ?? '18'),
+            unit: di.unit || catalogMatch?.unit || 'PCS',
+            discount_percent: di.discount_percent ? String(di.discount_percent) : '',
+            hsn_code: di.hsn_code || catalogMatch?.hsn_code,
+            description: di.description,
+            isCustom: !catalogMatch,
+          };
+        });
+        setLineItems(newLineItems);
+      }
+      // Pre-fill dates & notes
+      if (draft.valid_until) {
+        setValidUntil(draft.valid_until);
+      }
+      if (draft.issue_date) {
+        setIssueDate(draft.issue_date);
+      }
+      if (draft.notes) {
+        setNotes(draft.notes);
+      }
+      if (draft.terms_and_conditions) {
+        setTermsAndConditions(draft.terms_and_conditions);
+      }
+    } catch (err) {
+      console.log('Maya quotation data parse error:', err);
+    }
+  }, [params.maya_data, parties, itemsCatalog, businessState]);
 
   // Line item manipulation
   const addLineItem = () => {
