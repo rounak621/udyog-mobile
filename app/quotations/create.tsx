@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,14 +13,14 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth } from '@clerk/clerk-expo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
-import { Colors, Spacing, Radius } from '../../constants/theme';
+import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { quotationService, QuotationLineItem } from '../../services/quotation';
@@ -90,31 +90,45 @@ export default function CreateQuotationScreen() {
     },
   ]);
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
+  const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
   const [showDiscount, setShowDiscount] = useState(false);
+
+  // Ref to track if initial mount load has completed
+  const hasLoadedInitialRef = useRef(false);
 
   // Additional Fields
   const [termsAndConditions, setTermsAndConditions] = useState('');
   const [notes, setNotes] = useState('');
   const [quotationNumber, setQuotationNumber] = useState('');
 
-  // Initial load
-  useEffect(() => {
-    loadMasterData();
-  }, [params.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedInitialRef.current) {
+        hasLoadedInitialRef.current = true;
+        loadMasterData(true);
+      } else {
+        // Refetch master data (parties & items catalog) on refocus so newly created items appear
+        loadMasterData(false);
+      }
+    }, [params.id, business?.id])
+  );
 
-  const loadMasterData = async () => {
+  const loadMasterData = async (isInitial = true) => {
     const hasAccess = hasVistaarPlusAccess(business);
     if (!hasAccess) {
-      Alert.alert(
-        'Plan Upgrade Required',
-        'Estimates / Quotations are available on Vistaar, Premium, and Enterprise plans. Upgrade your subscription to create quotations.',
-        [{ text: 'OK', onPress: () => router.back() }]
-      );
+      if (isInitial) {
+        Alert.alert(
+          'Plan Upgrade Required',
+          'Estimates / Quotations are available on Vistaar, Premium, and Enterprise plans. Upgrade your subscription to create quotations.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      }
       return;
     }
 
     try {
+      if (isInitial) setLoadingInitial(isEditMode);
       const token = await getToken();
       setAuthToken(token);
 
@@ -146,7 +160,7 @@ export default function CreateQuotationScreen() {
       );
 
       // If preselected customer param passed
-      if (params.customer_id) {
+      if (isInitial && params.customer_id) {
         const pre = loadedParties.find((p: any) => String(p.id) === String(params.customer_id));
         if (pre) {
           selectCustomer(pre, bState);
@@ -154,7 +168,7 @@ export default function CreateQuotationScreen() {
       }
 
       // If edit mode, load quotation
-      if (isEditMode && params.id) {
+      if (isInitial && isEditMode && params.id) {
         const q = await quotationService.getQuotation(params.id, bId);
         setQuotationNumber(q.quotation_number);
         setIssueDate(q.issue_date?.split('T')[0] || issueDate);
@@ -196,9 +210,9 @@ export default function CreateQuotationScreen() {
       }
     } catch (err) {
       console.log('Error loading quotation master data:', err);
-      showApiError(err, 'Failed to load master data');
+      if (isInitial) showApiError(err, 'Failed to load master data');
     } finally {
-      setLoadingInitial(false);
+      if (isInitial) setLoadingInitial(false);
     }
   };
 
@@ -242,6 +256,9 @@ export default function CreateQuotationScreen() {
   };
 
   const selectCatalogItem = (lineId: string, item: any) => {
+    const itemRate = item.rate !== undefined && item.rate !== null
+      ? String(item.rate)
+      : (item.price !== undefined && item.price !== null ? String(item.price) : '');
     setLineItems(prev =>
       prev.map(l => {
         if (l.id !== lineId) return l;
@@ -249,9 +266,9 @@ export default function CreateQuotationScreen() {
           ...l,
           item_id: item.id,
           name: item.name || '',
-          rate: String(item.rate || item.price || item.selling_price || ''),
+          rate: itemRate || l.rate,
           gst_rate: item.gst_rate !== null && item.gst_rate !== undefined ? String(item.gst_rate) : l.gst_rate,
-          unit: item.unit || l.unit,
+          unit: item.unit ? String(item.unit).toUpperCase() : l.unit,
           hsn_code: item.hsn_code || l.hsn_code,
           isCustom: false,
         };
@@ -561,7 +578,7 @@ export default function CreateQuotationScreen() {
                             style={[styles.itemSelectBtnText, !item.name && { color: Colors.textMuted }]}
                             numberOfLines={1}
                           >
-                            {item.name || 'Select from catalog or custom...'}
+                            {item.name || 'Select item...'}
                           </Text>
                           <Ionicons name="chevron-down" size={16} color={Colors.textMuted} />
                         </TouchableOpacity>
@@ -600,13 +617,15 @@ export default function CreateQuotationScreen() {
 
                       <View style={{ flex: 1 }}>
                         <Text style={styles.miniLabel}>UNIT</Text>
-                        <TextInput
-                          style={styles.itemInput}
-                          placeholder="PCS"
-                          placeholderTextColor={Colors.textMuted}
-                          value={item.unit}
-                          onChangeText={val => updateLineItem(item.id, 'unit', val.toUpperCase())}
-                        />
+                        <TouchableOpacity
+                          style={styles.unitSelectBtn}
+                          onPress={() => setShowUnitPicker(item.id)}
+                        >
+                          <Text style={styles.unitSelectBtnText} numberOfLines={1}>
+                            {item.unit || 'PCS'}
+                          </Text>
+                          <Ionicons name="chevron-down" size={12} color={Colors.textMuted} />
+                        </TouchableOpacity>
                       </View>
 
                       {showDiscount && (
@@ -869,7 +888,7 @@ export default function CreateQuotationScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.catalogItemName}>{item.name}</Text>
                       <Text style={styles.catalogItemSub}>
-                        Rate: ₹{item.rate || item.price || item.selling_price || 0} · GST: {item.gst_rate || 0}%
+                        Rate: ₹{item.rate ?? item.price ?? 0} · GST: {item.gst_rate || 0}%
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -879,6 +898,65 @@ export default function CreateQuotationScreen() {
                     <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No catalog items found.</Text>
                   </View>
                 }
+                ListFooterComponent={
+                  <TouchableOpacity
+                    style={styles.addNewItemBtn}
+                    onPress={() => {
+                      setShowItemDropdown(null);
+                      router.push('/items/create');
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
+                    <Text style={styles.addNewItemBtnText}>+ Add New Item</Text>
+                  </TouchableOpacity>
+                }
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Unit Picker Modal */}
+      {showUnitPicker && (
+        <Modal
+          visible={!!showUnitPicker}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowUnitPicker(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Unit</Text>
+                <TouchableOpacity onPress={() => setShowUnitPicker(null)}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                style={{ flex: 1 }}
+                data={UNITS}
+                keyExtractor={u => u}
+                renderItem={({ item: unitOption }) => {
+                  const activeLine = lineItems.find(l => l.id === showUnitPicker);
+                  const isSelected = (activeLine?.unit || 'PCS').toUpperCase() === unitOption;
+                  return (
+                    <TouchableOpacity
+                      style={styles.modalItem}
+                      onPress={() => {
+                        if (showUnitPicker) {
+                          updateLineItem(showUnitPicker, 'unit', unitOption);
+                        }
+                        setShowUnitPicker(null);
+                      }}
+                    >
+                      <Text style={[styles.modalItemName, isSelected && { color: Colors.primary, fontWeight: '700' }]}>
+                        {unitOption}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
+                    </TouchableOpacity>
+                  );
+                }}
+                keyboardShouldPersistTaps="handled"
               />
             </View>
           </View>
@@ -1115,4 +1193,50 @@ const styles = StyleSheet.create({
   },
   catalogItemName: { fontSize: 13, fontWeight: '600', color: Colors.text },
   catalogItemSub: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
+  addNewItemBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderTopWidth: 0.5,
+    borderTopColor: Colors.border,
+    backgroundColor: '#FFF7ED',
+  },
+  addNewItemBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  unitSelectBtn: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderWidth: 0.5,
+    borderColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  unitSelectBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: Colors.border,
+  },
+  modalItemName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text,
+  },
 });

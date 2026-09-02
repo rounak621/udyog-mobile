@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Udyog",
+    "name": "UDYOG",
     "slug": "udyog-mobile",
     "scheme": "udyog",
     "version": "1.0.0",
@@ -16,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
+        "CFBundleDisplayName": "UDYOG",
         "NSMicrophoneUsageDescription": "Udyog needs microphone access to let you create bills by speaking.",
         "NSPhotoLibraryUsageDescription": "Udyog needs access to your photos to attach receipts and scan bills."
       }
