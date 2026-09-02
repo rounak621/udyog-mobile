@@ -11,8 +11,11 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
 
   const logoScale = useRef(new Animated.Value(0.65)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
-  const glowScale = useRef(new Animated.Value(0.75)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
+
+  // Radiating glow animation refs (entrance + continuous loop)
+  const glowEntranceScale = useRef(new Animated.Value(0.75)).current;
+  const glowEntranceOpacity = useRef(new Animated.Value(0)).current;
+  const glowPulseAnim = useRef(new Animated.Value(1)).current;
 
   const wordmarkOpacity = useRef(new Animated.Value(0)).current;
   const wordmarkY = useRef(new Animated.Value(14)).current;
@@ -31,13 +34,33 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   useEffect(() => {
     if (!fontsLoaded) return;
 
+    // Continuous pulsating glow loop
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulseAnim, {
+          toValue: 1.14,
+          duration: 1100,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowPulseAnim, {
+          toValue: 0.96,
+          duration: 1100,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseLoop.start();
+
+    // Entrance animation sequence
     Animated.sequence([
       // 1. Logo & Radiating Glow entrance
       Animated.parallel([
         Animated.timing(logoOpacity, { toValue: 1, duration: 450, useNativeDriver: true }),
         Animated.spring(logoScale, { toValue: 1, tension: 130, friction: 8.5, useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 1, duration: 550, useNativeDriver: true }),
-        Animated.spring(glowScale, { toValue: 1, tension: 110, friction: 9, useNativeDriver: true }),
+        Animated.timing(glowEntranceOpacity, { toValue: 1, duration: 550, useNativeDriver: true }),
+        Animated.spring(glowEntranceScale, { toValue: 1, tension: 110, friction: 9, useNativeDriver: true }),
       ]),
 
       // 2. Wordmark entrance
@@ -52,7 +75,7 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         Animated.timing(taglineY, { toValue: 0, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
 
-      // 4. Maya is listening card & footer
+      // 4. Maya is listening card & device icons
       Animated.delay(120),
       Animated.parallel([
         Animated.timing(mayaCardOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
@@ -61,19 +84,29 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         Animated.timing(footerY, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
     ]).start(() => {
-      // Hold briefly then smoothly fade out to main application
+      // Smooth fade out to main application
       setTimeout(() => {
         Animated.timing(containerOpacity, {
           toValue: 0,
           duration: 300,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
-        }).start(onFinish);
+        }).start(() => {
+          pulseLoop.stop();
+          onFinish();
+        });
       }, 650);
     });
+
+    return () => {
+      pulseLoop.stop();
+    };
   }, [fontsLoaded]);
 
   if (!fontsLoaded) return <View style={styles.fallbackContainer} />;
+
+  // Combined scale for radiating rings: entrance scale * continuous pulsating loop
+  const combinedGlowScale = Animated.multiply(glowEntranceScale, glowPulseAnim);
 
   return (
     <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
@@ -89,17 +122,17 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         <Rect width={width} height={height} fill="url(#creamGrad)" />
       </Svg>
 
-      {/* Main Content Area (Positioned slightly above center) */}
+      {/* Main Content Area (Positioned comfortably above true center) */}
       <View style={styles.mainContent}>
-        {/* 2. Logo Mark with Radiating Warm Orange Glow Rings */}
+        {/* 2. Logo Mark with Continuously Pulsing Radiating Warm Orange Glow Rings */}
         <View style={styles.logoWrapper}>
           {/* Outermost subtle radiance ring */}
           <Animated.View
             style={[
               styles.glowRingOuter,
               {
-                opacity: glowOpacity,
-                transform: [{ scale: glowScale }],
+                opacity: glowEntranceOpacity,
+                transform: [{ scale: combinedGlowScale }],
               },
             ]}
           />
@@ -108,8 +141,8 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
             style={[
               styles.glowRingMiddle,
               {
-                opacity: glowOpacity,
-                transform: [{ scale: glowScale }],
+                opacity: glowEntranceOpacity,
+                transform: [{ scale: combinedGlowScale }],
               },
             ]}
           />
@@ -118,8 +151,8 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
             style={[
               styles.glowRingInner,
               {
-                opacity: glowOpacity,
-                transform: [{ scale: glowScale }],
+                opacity: glowEntranceOpacity,
+                transform: [{ scale: combinedGlowScale }],
               },
             ]}
           />
@@ -138,7 +171,7 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
           />
         </View>
 
-        {/* 3. Wordmark: UDYOG in bold uppercase */}
+        {/* 3. Wordmark: UDYOG in bold uppercase (tightened gap and refined letterSpacing) */}
         <Animated.Text
           style={[
             styles.wordmark,
@@ -165,9 +198,9 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         </Animated.Text>
       </View>
 
-      {/* Bottom Section: Maya Widget + Footer */}
+      {/* Bottom Section: Maya Widget + Phone/Desktop Icons */}
       <View style={styles.bottomSection}>
-        {/* 5. Maya is Listening Card */}
+        {/* 5. Premium "Maya is listening" Widget */}
         <Animated.View
           style={[
             styles.mayaCard,
@@ -178,7 +211,7 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
           ]}
         >
           <View style={styles.mayaIconCircle}>
-            <Ionicons name="mic" size={17} color="#FFFFFF" />
+            <Ionicons name="sparkles" size={16} color="#FFFFFF" />
           </View>
           <View style={styles.mayaTextWrap}>
             <View style={styles.mayaTitleRow}>
@@ -189,18 +222,20 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
           </View>
         </Animated.View>
 
-        {/* 6. Footer Text */}
-        <Animated.Text
+        {/* 6. Phone + Desktop Icon Pair */}
+        <Animated.View
           style={[
-            styles.footerText,
+            styles.deviceIconRow,
             {
               opacity: footerOpacity,
               transform: [{ translateY: footerY }],
             },
           ]}
         >
-          GST BILLING · MOBILE & DESKTOP
-        </Animated.Text>
+          <Ionicons name="phone-portrait-outline" size={16} color="#94A3B8" />
+          <View style={styles.deviceDivider} />
+          <Ionicons name="desktop-outline" size={17} color="#94A3B8" />
+        </Animated.View>
       </View>
     </Animated.View>
   );
@@ -229,33 +264,33 @@ const styles = StyleSheet.create({
     marginTop: -20,
   },
 
-  // Logo & Glow Stack
+  // Logo & Glow Stack (Tightened spacing between logo and wordmark)
   logoWrapper: {
     width: 220,
     height: 220,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 2, // Tightened from 8 to 2
   },
   glowRingOuter: {
     position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 204,
+    height: 204,
+    borderRadius: 102,
     backgroundColor: 'rgba(249, 115, 22, 0.05)',
   },
   glowRingMiddle: {
     position: 'absolute',
-    width: 156,
-    height: 156,
-    borderRadius: 78,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     backgroundColor: 'rgba(249, 115, 22, 0.10)',
   },
   glowRingInner: {
     position: 'absolute',
-    width: 124,
-    height: 124,
-    borderRadius: 62,
+    width: 126,
+    height: 126,
+    borderRadius: 63,
     backgroundColor: 'rgba(251, 146, 60, 0.18)',
   },
   logoImage: {
@@ -269,20 +304,20 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  // Typography
+  // Typography (Tightened margin and letterSpacing)
   wordmark: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 36,
     color: '#0F172A',
-    letterSpacing: 2,
-    marginTop: 6,
+    letterSpacing: 0.75, // Tightened from 2 to 0.75 for cohesive typography
+    marginTop: 0, // Tightened from 6 to 0
     marginBottom: 4,
   },
   tagline: {
     fontFamily: 'Poppins_500Medium',
     fontSize: 14,
     color: '#64748B',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 
   // Bottom Section
@@ -293,24 +328,24 @@ const styles = StyleSheet.create({
     paddingBottom: '10%',
   },
 
-  // Maya is Listening Card
+  // Premium Maya is Listening Card
   mayaCard: {
     width: '100%',
     maxWidth: 340,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 20,
     paddingVertical: 12,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(249, 115, 22, 0.18)',
+    borderColor: 'rgba(249, 115, 22, 0.20)',
     shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   mayaIconCircle: {
     width: 36,
@@ -322,7 +357,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -336,7 +371,7 @@ const styles = StyleSheet.create({
   },
   mayaHeadline: {
     fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#0F172A',
   },
   liveDot: {
@@ -347,17 +382,22 @@ const styles = StyleSheet.create({
   },
   mayaSubtext: {
     fontFamily: 'Poppins_500Medium',
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#64748B',
     marginTop: 1,
   },
 
-  // Footer
-  footerText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-    color: '#94A3B8',
-    letterSpacing: 2,
-    textAlign: 'center',
+  // Phone + Desktop Device Icons
+  deviceIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  deviceDivider: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#CBD5E1',
   },
 });

@@ -264,11 +264,11 @@ export default function InvoiceSettingsScreen() {
     );
   }
 
-  const bottomPadding = useBottomPadding(40);
+  const bottomPadding = useBottomPadding(90);
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>

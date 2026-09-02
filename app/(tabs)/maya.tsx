@@ -428,37 +428,49 @@ export default function MayaScreen() {
         words.length > 4
       );
 
+      const confirmKeywords = ['haan', 'ha', 'yes', 'confirm', 'sahi hai', 'bhejo', 'bhej do', 'send karo', 'kar do', 'send it', 'bhej de'];
+      const cancelKeywords = ['cancel', 'nahi', 'ruk jao', 'no', 'mat bhejo', 'rehne do', 'close', 'mat karo'];
+
+      const isConfirm = words.length <= 4 && confirmKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
+      const isCancel = words.length <= 4 && cancelKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
+
+      console.log('[Maya-WhatsApp] Voice utterance during pending WhatsApp proposal:', {
+        transcript: lowerTranscript,
+        wordsCount: words.length,
+        isNewCommand,
+        isConfirm,
+        isCancel,
+        activeProposal: activeWhatsApp,
+      });
+
       if (isNewCommand) {
+        console.log('[Maya-WhatsApp] Utterance classified as a new command. Discarding pending proposal.');
         setPendingWhatsApp(null);
+      } else if (isConfirm && !isCancel) {
+        console.log('[Maya-WhatsApp] Utterance confirmed WhatsApp send! Executing confirmSendWhatsApp.');
+        setIsThinking(false);
+        await confirmSendWhatsApp(activeWhatsApp);
+        return;
+      } else if (isCancel) {
+        console.log('[Maya-WhatsApp] Utterance canceled WhatsApp send.');
+        setIsThinking(false);
+        setPendingWhatsApp(null);
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            text: 'WhatsApp message cancel kar diya.',
+            time: getTimeString(),
+          },
+        ]);
+        setConversationHistory(prev => [
+          ...prev,
+          { role: 'assistant', content: 'WhatsApp message cancel kar diya.' },
+        ]);
+        playMayaTTS('WhatsApp message cancel kar diya.', isTtsEnabledRef.current);
+        return;
       } else {
-        const confirmKeywords = ['haan', 'ha', 'yes', 'confirm', 'sahi hai', 'bhejo', 'bhej do', 'send karo', 'kar do', 'send it', 'bhej de'];
-        const cancelKeywords = ['cancel', 'nahi', 'ruk jao', 'no', 'mat bhejo', 'rehne do', 'close', 'mat karo'];
-
-        const isConfirm = words.length <= 4 && confirmKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
-        const isCancel = words.length <= 4 && cancelKeywords.some(w => lowerTranscript === w || lowerTranscript.startsWith(w + ' ') || lowerTranscript.endsWith(' ' + w));
-
-        if (isConfirm && !isCancel) {
-          setIsThinking(false);
-          await confirmSendWhatsApp(activeWhatsApp);
-          return;
-        } else if (isCancel) {
-          setIsThinking(false);
-          setPendingWhatsApp(null);
-          setMessages(prev => [
-            ...prev,
-            {
-              role: 'assistant',
-              text: 'WhatsApp message cancel kar diya.',
-              time: getTimeString(),
-            },
-          ]);
-          setConversationHistory(prev => [
-            ...prev,
-            { role: 'assistant', content: 'WhatsApp message cancel kar diya.' },
-          ]);
-          playMayaTTS('WhatsApp message cancel kar diya.', isTtsEnabledRef.current);
-          return;
-        }
+        console.log('[Maya-WhatsApp] Utterance matched neither confirm nor cancel.');
       }
     }
 
@@ -537,15 +549,31 @@ export default function MayaScreen() {
       draft = data.extracted_data?.new_party || null;
     } else if (normalizedAction === 'create_item') {
       draft = data.extracted_data?.new_item || null;
-    } else if (normalizedAction === 'propose_whatsapp_send' && data.extracted_data) {
-      whatsAppProposal = data.extracted_data as WhatsAppProposalData;
-      setPendingWhatsApp(whatsAppProposal);
+    } else if (normalizedAction === 'propose_whatsapp_send') {
+      console.log('[Maya-WhatsApp] Received propose_whatsapp_send in handleVoiceResponse:', {
+        reply_text: data.reply_text,
+        extracted_data: data.extracted_data,
+      });
+      if (data.extracted_data) {
+        whatsAppProposal = data.extracted_data as WhatsAppProposalData;
+        setPendingWhatsApp(whatsAppProposal);
+        console.log('[Maya-WhatsApp] Set pendingWhatsApp into state & card:', JSON.stringify(whatsAppProposal));
+      } else {
+        console.warn('[Maya-WhatsApp] propose_whatsapp_send received but extracted_data was null!');
+      }
     } else if (
       (normalizedAction === 'propose_quotation_conversion' || normalizedAction === 'convert_quotation') &&
       data.extracted_data
     ) {
       convertQuotationProposal = data.extracted_data as ConvertQuotationProposalData;
       setPendingConvertQuotation(convertQuotationProposal);
+    }
+
+    if (
+      normalizedAction !== 'propose_whatsapp_send' &&
+      (data.reply_text?.toLowerCase().includes('whatsapp') || (data.user_transcript || data.user_text || '').toLowerCase().includes('whatsapp'))
+    ) {
+      console.log('[Maya-WhatsApp] Voice utterance/reply mentions WhatsApp but action_type is NOT propose_whatsapp_send. action_type:', data.action_type, 'reply_text:', data.reply_text, 'extracted_data:', JSON.stringify(data.extracted_data));
     }
 
     const userSpokenText = data.user_transcript || data.user_text || 'Voice message';
@@ -688,15 +716,31 @@ export default function MayaScreen() {
         draft = data.extracted_data?.new_party || null;
       } else if (normalizedAction === 'create_item') {
         draft = data.extracted_data?.new_item || null;
-      } else if (normalizedAction === 'propose_whatsapp_send' && data.extracted_data) {
-        whatsAppProposal = data.extracted_data as WhatsAppProposalData;
-        setPendingWhatsApp(whatsAppProposal);
+      } else if (normalizedAction === 'propose_whatsapp_send') {
+        console.log('[Maya-WhatsApp] Received propose_whatsapp_send in handleSendQuery:', {
+          reply_text: data.reply_text,
+          extracted_data: data.extracted_data,
+        });
+        if (data.extracted_data) {
+          whatsAppProposal = data.extracted_data as WhatsAppProposalData;
+          setPendingWhatsApp(whatsAppProposal);
+          console.log('[Maya-WhatsApp] Set pendingWhatsApp into state & card:', JSON.stringify(whatsAppProposal));
+        } else {
+          console.warn('[Maya-WhatsApp] propose_whatsapp_send received but extracted_data was null!');
+        }
       } else if (
         (normalizedAction === 'propose_quotation_conversion' || normalizedAction === 'convert_quotation') &&
         data.extracted_data
       ) {
         convertQuotationProposal = data.extracted_data as ConvertQuotationProposalData;
         setPendingConvertQuotation(convertQuotationProposal);
+      }
+
+      if (
+        normalizedAction !== 'propose_whatsapp_send' &&
+        (data.reply_text?.toLowerCase().includes('whatsapp') || text.toLowerCase().includes('whatsapp'))
+      ) {
+        console.log('[Maya-WhatsApp] Text query/reply mentions WhatsApp but action_type is NOT propose_whatsapp_send. action_type:', data.action_type, 'reply_text:', data.reply_text, 'extracted_data:', JSON.stringify(data.extracted_data));
       }
 
       // Add assistant message
@@ -884,7 +928,15 @@ export default function MayaScreen() {
   };
 
   const confirmSendWhatsApp = async (proposal: WhatsAppProposalData, index?: number) => {
-    if (!proposal || !businessIdRef.current || isSendingWhatsAppRef.current) return;
+    console.log('[Maya-WhatsApp] confirmSendWhatsApp triggered with proposal:', JSON.stringify(proposal));
+    if (!proposal || !businessIdRef.current || isSendingWhatsAppRef.current) {
+      console.warn('[Maya-WhatsApp] confirmSendWhatsApp aborted due to guard:', {
+        hasProposal: !!proposal,
+        businessId: businessIdRef.current,
+        isSending: isSendingWhatsAppRef.current,
+      });
+      return;
+    }
     isSendingWhatsAppRef.current = true;
     setIsSendingWhatsApp(true);
 
@@ -899,15 +951,19 @@ export default function MayaScreen() {
       setMessages(prev => prev.map(m => m.whatsAppProposal?.invoice_id === proposal.invoice_id ? { ...m, whatsAppProposal: undefined } : m));
     }
 
+    const payload = {
+      business_id: businessIdRef.current,
+      invoice_id: proposal.invoice_id,
+      send_type: proposal.send_type,
+    };
+    console.log('[Maya-WhatsApp] Dispatching POST /ai/maya-execute-whatsapp with payload:', JSON.stringify(payload));
+
     try {
       const token = await getToken();
       setAuthToken(token);
 
-      const response = await api.post('/ai/maya-execute-whatsapp', {
-        business_id: businessIdRef.current,
-        invoice_id: proposal.invoice_id,
-        send_type: proposal.send_type,
-      });
+      const response = await api.post('/ai/maya-execute-whatsapp', payload);
+      console.log('[Maya-WhatsApp] POST /ai/maya-execute-whatsapp succeeded. Status:', response.status, 'Data:', JSON.stringify(response.data));
 
       const successMsg = response.data?.message || (
         proposal.send_type === 'reminder'
@@ -931,6 +987,12 @@ export default function MayaScreen() {
 
       playMayaTTS(successMsg, isTtsEnabledRef.current);
     } catch (err: any) {
+      console.error('[Maya-WhatsApp] POST /ai/maya-execute-whatsapp failed with error:', {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message,
+        stack: err.stack,
+      });
       const msg = err.response?.data?.detail || 'WhatsApp message bhejne mein error aaya.';
       Alert.alert('Error', msg);
     } finally {
@@ -1617,7 +1679,7 @@ export default function MayaScreen() {
         </ScrollView>
 
         {/* Input bar */}
-        <View style={[styles.inputBar, { paddingBottom: (Platform.OS === 'ios' ? 20 : 12) + insets.bottom }]}>
+        <View style={styles.inputBar}>
           <View style={styles.textInputWrapper}>
             <TextInput
               style={styles.textInput}
@@ -1715,44 +1777,44 @@ const styles = StyleSheet.create({
   // Empty State Styles
   emptyStateContainer: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 36,
-    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   badgeGlowWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
     shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 6,
   },
   badgeGlowBackdrop: {
     position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 28,
+    width: 84,
+    height: 84,
+    borderRadius: 26,
     backgroundColor: 'rgba(249, 115, 22, 0.12)',
   },
   emptyStateTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   emptyStateSubtitle: {
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 18,
-    marginBottom: 30,
+    marginBottom: 18,
   },
   suggestionSection: {
     width: '100%',
-    marginTop: 6,
+    marginTop: 2,
   },
   suggestionLabel: {
     fontSize: 11,
@@ -1761,27 +1823,27 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   suggestionList: {
     width: '100%',
-    gap: 10,
+    gap: 8,
   },
   suggestionPill: {
     width: '100%',
     backgroundColor: '#FFF7ED',
     borderColor: '#FED7AA',
     borderWidth: 1,
-    borderRadius: 24,
-    paddingVertical: 13,
-    paddingHorizontal: 18,
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   suggestionPillText: {
     color: '#EA580C',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
     flexShrink: 1,
   },
@@ -2014,42 +2076,42 @@ const styles = StyleSheet.create({
   // Bottom Input Bar
   inputBar: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 0.5,
     borderTopColor: '#E2E8F0',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   textInputWrapper: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingHorizontal: 16,
-    height: 46,
+    paddingHorizontal: 14,
+    height: 42,
     justifyContent: 'center',
   },
   textInput: {
     fontSize: 14,
     color: '#0F172A',
-    height: 40,
+    height: 38,
     paddingVertical: 0,
   },
   circleActionBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#F97316',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#F97316',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   circleActionBtnRecording: {
     backgroundColor: '#EA580C',
