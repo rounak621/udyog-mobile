@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Spacing, Radius } from '../../constants/theme';
+import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -32,6 +32,8 @@ interface LineItem {
   gst_rate: string;
   unit: string;
   discount_percent: string;
+  hsn_code?: string;
+  description?: string;
   isCustom?: boolean;
 }
 
@@ -56,7 +58,7 @@ export default function CreateInvoiceScreen() {
   const [partySearch, setPartySearch] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', isCustom: false }
+    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false }
   ]);
   const [notes, setNotes] = useState('');
   const [consignmentAddress, setConsignmentAddress] = useState('');
@@ -72,6 +74,16 @@ export default function CreateInvoiceScreen() {
   // Item picker state
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
+
+  // Unit picker modal state
+  const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
+  const [unitSearch, setUnitSearch] = useState('');
+
+  const filteredUnits = useMemo(() => {
+    if (!unitSearch.trim()) return UNITS;
+    const q = unitSearch.trim().toLowerCase();
+    return UNITS.filter(u => u.toLowerCase().includes(q));
+  }, [unitSearch]);
 
   // Success modal actions states
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
@@ -157,6 +169,8 @@ export default function CreateInvoiceScreen() {
             gst_rate: String(li.gst_rate),
             unit: li.unit || 'PCS',
             discount_percent: String(li.discount_percent || 0),
+            hsn_code: li.hsn_code || li.item?.hsn_code || '',
+            description: li.description || '',
             isCustom: !li.item_id
           }));
           setLineItems(mapped);
@@ -234,6 +248,8 @@ export default function CreateInvoiceScreen() {
             gst_rate: String(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || '18'),
             unit: di.unit || catalogMatch?.unit || 'PCS',
             discount_percent: '0',
+            hsn_code: di.hsn_code || catalogMatch?.hsn_code || '',
+            description: di.description || '',
             isCustom: !catalogMatch,
           };
         });
@@ -283,7 +299,7 @@ export default function CreateInvoiceScreen() {
 
   const addLineItem = () => {
     const newId = Math.random().toString();
-    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', isCustom: false }]);
+    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false }]);
     setTimeout(() => {
       const y = itemPositions.current[newId];
       if (typeof y === 'number' && scrollViewRef.current) {
@@ -408,6 +424,9 @@ export default function CreateInvoiceScreen() {
           rate: Number(l.rate) || 0,
           gst_rate: (invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
           discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
+          hsn_code: l.hsn_code?.trim() || undefined,
+          description: l.description?.trim() || undefined,
+          unit: l.unit || 'PCS',
         })),
         consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || null) : null,
         is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
@@ -610,189 +629,250 @@ export default function CreateInvoiceScreen() {
         <View style={{ marginHorizontal: 16, marginBottom: 16 }} onLayout={(e) => { lineItemsSectionY.current = e.nativeEvent.layout.y; }}>
           <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>ITEMS · {lineItems.length}</Text>
           <View style={styles.card}>
-            {lineItems.map((item, index) => (
-              <View key={item.id} onLayout={(e) => { itemPositions.current[item.id] = e.nativeEvent.layout.y; }}>
-                {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {/* Item name: Select button or Custom TextInput */}
-                  <View style={{ flex: 1 }}>
-                    {item.isCustom ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, paddingRight: 12 }}>
-                        <TextInput
-                          key={`item_name_${item.id}`}
-                          blurOnSubmit={false}
-                          style={{ flex: 1, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
-                          placeholder="Type item name..."
-                          placeholderTextColor="#94A3B8"
-                          value={item.name}
-                          onChangeText={t => updateItem(item.id, 'name', t)}
-                          autoFocus
-                        />
-                        <TouchableOpacity onPress={() => {
-                          updateItem(item.id, 'isCustom', false);
-                          updateItem(item.id, 'name', '');
-                          updateItem(item.id, 'item_id', null);
-                        }}>
-                          <Ionicons name="close-circle" size={20} color="#94A3B8" />
-                        </TouchableOpacity>
-                      </View>
-                    ) : item.name ? (
-                      <TouchableOpacity
-                        style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-                        onPress={() => {
-                          setItemSearch(prev => ({ ...prev, [item.id]: '' }));
-                          setShowItemDropdown(item.id);
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A' }} numberOfLines={1}>{item.name}</Text>
-                          <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                            ₹{item.rate} · {item.gst_rate}% GST
-                          </Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Ionicons name="pencil-outline" size={16} color="#F97316" />
-                          <Text style={{ fontSize: 11, color: '#F97316', fontWeight: '600', marginLeft: 4 }}>Change</Text>
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, justifyContent: 'center' }}
-                        onPress={() => setShowItemDropdown(item.id)}
-                      >
-                        <Text style={{ fontSize: 14, color: '#94A3B8', fontWeight: '400' }}>
-                          Select item...
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {showItemDropdown === item.id && (
-                      <View style={{ backgroundColor: '#fff', borderRadius: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, maxHeight: 250, marginTop: 8 }}>
-                        <ScrollView nestedScrollEnabled style={{ maxHeight: 250 }} keyboardShouldPersistTaps="handled">
-                          {/* Custom Item option */}
-                          <TouchableOpacity
-                            style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: '#FFF7ED' }}
-                            onPress={() => {
-                              updateItem(item.id, 'isCustom', true);
-                              updateItem(item.id, 'name', '');
-                              updateItem(item.id, 'item_id', null);
-                              setShowItemDropdown(null);
-                            }}
-                          >
-                            <Ionicons name="create-outline" size={18} color="#F97316" />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Custom Item</Text>
+            {lineItems.map((item, index) => {
+              const showHsnSac = invoiceType === 'SERVICE' || (invoiceType !== 'NONGST' && isGstApplicable);
+              return (
+                <View key={item.id} onLayout={(e) => { itemPositions.current[item.id] = e.nativeEvent.layout.y; }}>
+                  {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* Item name: Select button or Custom TextInput */}
+                    <View style={{ flex: 1 }}>
+                      {item.isCustom ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 8, paddingRight: 12 }}>
+                          <TextInput
+                            key={`item_name_${item.id}`}
+                            blurOnSubmit={false}
+                            style={{ flex: 1, padding: 12, minHeight: 44, fontSize: 14, fontWeight: '600', color: '#0F172A' }}
+                            placeholder={invoiceType === 'SERVICE' ? "Type service name..." : "Type item name..."}
+                            placeholderTextColor="#94A3B8"
+                            value={item.name}
+                            onChangeText={t => updateItem(item.id, 'name', t)}
+                            autoFocus
+                          />
+                          <TouchableOpacity onPress={() => {
+                            updateItem(item.id, 'isCustom', false);
+                            updateItem(item.id, 'name', '');
+                            updateItem(item.id, 'item_id', null);
+                          }}>
+                            <Ionicons name="close-circle" size={20} color="#94A3B8" />
                           </TouchableOpacity>
-                          {/* Existing items list */}
-                          {items.filter(i => i.name?.toLowerCase().includes((itemSearch[item.id] || '').toLowerCase())).map(prod => (
+                        </View>
+                      ) : item.name ? (
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                          onPress={() => {
+                            setItemSearch(prev => ({ ...prev, [item.id]: '' }));
+                            setShowItemDropdown(item.id);
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#0F172A' }} numberOfLines={1}>{item.name}</Text>
+                            <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                              ₹{item.rate} · {item.gst_rate}% GST{item.unit ? ` · ${item.unit}` : ''}
+                            </Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Ionicons name="pencil-outline" size={16} color="#F97316" />
+                            <Text style={{ fontSize: 11, color: '#F97316', fontWeight: '600', marginLeft: 4 }}>Change</Text>
+                          </View>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#F8FAFC', borderRadius: 8, padding: 12, minHeight: 44, justifyContent: 'center' }}
+                          onPress={() => setShowItemDropdown(item.id)}
+                        >
+                          <Text style={{ fontSize: 14, color: '#94A3B8', fontWeight: '400' }}>
+                            {invoiceType === 'SERVICE' ? "Select service..." : "Select item..."}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {showItemDropdown === item.id && (
+                        <View style={{ backgroundColor: '#fff', borderRadius: 8, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, maxHeight: 250, marginTop: 8 }}>
+                          <ScrollView nestedScrollEnabled style={{ maxHeight: 250 }} keyboardShouldPersistTaps="handled">
+                            {/* Custom Item option */}
                             <TouchableOpacity
-                              key={String(prod.id)}
-                              style={{ padding: 12, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' }}
+                              style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: '#FFF7ED' }}
                               onPress={() => {
-                                setLineItems(prev => prev.map(l => l.id === item.id ? {
-                                  ...l,
-                                  name: prod.name,
-                                  item_id: prod.id,
-                                  rate: String(prod.rate || prod.price || ''),
-                                  gst_rate: String(prod.gst_rate || '18'),
-                                  isCustom: false,
-                                } : l));
-                                setItemSearch(prev => ({ ...prev, [item.id]: prod.name }));
+                                updateItem(item.id, 'isCustom', true);
+                                updateItem(item.id, 'name', '');
+                                updateItem(item.id, 'item_id', null);
                                 setShowItemDropdown(null);
                               }}
                             >
-                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>{prod.name}</Text>
-                              <Text style={{ fontSize: 11, color: '#64748B' }}>₹{prod.rate || prod.price} · {prod.gst_rate}% GST</Text>
+                              <Ionicons name="create-outline" size={18} color="#F97316" />
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">
+                                {invoiceType === 'SERVICE' ? "Custom Service" : "Custom Item"}
+                              </Text>
                             </TouchableOpacity>
-                          ))}
-                          {/* Add New Item */}
-                          <TouchableOpacity
-                            style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}
-                            onPress={() => { setShowItemDropdown(null); router.push('/items/create' as any); }}
-                          >
-                            <Ionicons name="add-circle-outline" size={18} color="#F97316" />
-                            <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add New Item</Text>
-                          </TouchableOpacity>
-                        </ScrollView>
-                      </View>
+                            {/* Existing items list */}
+                            {items.filter(i => i.name?.toLowerCase().includes((itemSearch[item.id] || '').toLowerCase())).map(prod => (
+                              <TouchableOpacity
+                                key={String(prod.id)}
+                                style={{ padding: 12, borderBottomWidth: 0.5, borderBottomColor: '#F1F5F9' }}
+                                onPress={() => {
+                                  setLineItems(prev => prev.map(l => l.id === item.id ? {
+                                    ...l,
+                                    name: prod.name,
+                                    item_id: prod.id,
+                                    rate: String(prod.rate || prod.price || ''),
+                                    gst_rate: String(prod.gst_rate || '18'),
+                                    hsn_code: prod.hsn_code || l.hsn_code || '',
+                                    unit: prod.unit || l.unit || 'PCS',
+                                    isCustom: false,
+                                  } : l));
+                                  setItemSearch(prev => ({ ...prev, [item.id]: prod.name }));
+                                  setShowItemDropdown(null);
+                                }}
+                              >
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>{prod.name}</Text>
+                                <Text style={{ fontSize: 11, color: '#64748B' }}>₹{prod.rate || prod.price} · {prod.gst_rate}% GST{prod.hsn_code ? ` · HSN ${prod.hsn_code}` : ''}</Text>
+                              </TouchableOpacity>
+                            ))}
+                            {/* Add New Item */}
+                            <TouchableOpacity
+                              style={{ padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}
+                              onPress={() => { setShowItemDropdown(null); router.push('/items/create' as any); }}
+                            >
+                              <Ionicons name="add-circle-outline" size={18} color="#F97316" />
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add New Item</Text>
+                            </TouchableOpacity>
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+                    {lineItems.length > 1 && (
+                      <TouchableOpacity onPress={() => removeItem(item.id)} style={{ marginLeft: 12, padding: 4 }}>
+                        <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     )}
                   </View>
-                  {lineItems.length > 1 && (
-                    <TouchableOpacity onPress={() => removeItem(item.id)} style={{ marginLeft: 12, padding: 4 }}>
-                      <Ionicons name="trash-outline" size={18} color="#EF4444" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 4, marginLeft: 2 }}>
-                  Amount: ₹{(() => {
-                    const base = (Number(item.rate) || 0) * (Number(item.qty) || 1);
-                    const disc = showDiscount ? (Number(item.discount_percent) || 0) : 0;
-                    return round2(base * (1 - disc / 100)).toLocaleString('en-IN');
-                  })()}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <TextInput
-                    key={`item_qty_${item.id}`}
-                    blurOnSubmit={false}
-                    style={styles.qtyInput}
-                    value={String(item.qty)}
-                    onChangeText={t => updateItem(item.id, 'qty', t)}
-                    keyboardType="numeric"
-                    placeholder="Qty"
-                    placeholderTextColor="#94A3B8"
-                  />
-                  <Text style={{ color: '#94A3B8' }}>×</Text>
-                  <TextInput
-                    key={`item_rate_${item.id}`}
-                    blurOnSubmit={false}
-                    style={styles.rateInput}
-                    value={String(item.rate)}
-                    onChangeText={t => updateItem(item.id, 'rate', t)}
-                    keyboardType="numeric"
-                    placeholder="Rate (₹)"
-                    placeholderTextColor="#94A3B8"
-                  />
-                  {showDiscount && (
-                    <>
-                      <Text style={{ color: '#94A3B8' }}>−</Text>
+
+                  {/* HSN / SAC Code Input (conditional on showHsnSac) */}
+                  {showHsnSac && (
+                    <View style={{ marginTop: 8 }}>
                       <TextInput
-                        key={`item_disc_${item.id}`}
+                        key={`item_hsn_${item.id}`}
                         blurOnSubmit={false}
-                        style={styles.qtyInput}
-                        value={String(item.discount_percent)}
-                        onChangeText={t => updateItem(item.id, 'discount_percent', t)}
-                        keyboardType="numeric"
-                        placeholder="Disc %"
+                        style={[styles.itemInput, { height: 38, paddingVertical: 6, paddingHorizontal: 10, fontSize: 13 }]}
+                        placeholder={invoiceType === 'SERVICE' ? "SAC Code (optional)" : "HSN Code (optional)"}
                         placeholderTextColor="#94A3B8"
+                        value={item.hsn_code || ''}
+                        onChangeText={t => updateItem(item.id, 'hsn_code', t)}
+                        keyboardType="numeric"
+                        autoCapitalize="characters"
                       />
-                    </>
+                    </View>
+                  )}
+
+                  {/* Variant / Description Input (always visible) */}
+                  <View style={{ marginTop: 8 }}>
+                    <TextInput
+                      key={`item_desc_${item.id}`}
+                      blurOnSubmit={false}
+                      style={[styles.itemInput, { height: 38, paddingVertical: 6, paddingHorizontal: 10, fontSize: 13 }]}
+                      placeholder="Variant / Description (optional)"
+                      placeholderTextColor="#94A3B8"
+                      value={item.description || ''}
+                      onChangeText={t => updateItem(item.id, 'description', t)}
+                    />
+                  </View>
+
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 6, marginLeft: 2 }}>
+                    Amount: ₹{(() => {
+                      const base = (Number(item.rate) || 0) * (Number(item.qty) || 1);
+                      const disc = showDiscount ? (Number(item.discount_percent) || 0) : 0;
+                      return round2(base * (1 - disc / 100)).toLocaleString('en-IN');
+                    })()}
+                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                    <TextInput
+                      key={`item_qty_${item.id}`}
+                      blurOnSubmit={false}
+                      style={styles.qtyInput}
+                      value={String(item.qty)}
+                      onChangeText={t => updateItem(item.id, 'qty', t)}
+                      keyboardType="numeric"
+                      placeholder="Qty"
+                      placeholderTextColor="#94A3B8"
+                    />
+                    <Text style={{ color: '#94A3B8' }}>×</Text>
+                    <TextInput
+                      key={`item_rate_${item.id}`}
+                      blurOnSubmit={false}
+                      style={styles.rateInput}
+                      value={String(item.rate)}
+                      onChangeText={t => updateItem(item.id, 'rate', t)}
+                      keyboardType="numeric"
+                      placeholder="Rate (₹)"
+                      placeholderTextColor="#94A3B8"
+                    />
+
+                    {/* Unit Selector */}
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderWidth: 1,
+                        borderColor: '#E2E8F0',
+                        borderRadius: 8,
+                        backgroundColor: '#F8FAFC',
+                        paddingHorizontal: 8,
+                        height: 38,
+                        minWidth: 64,
+                      }}
+                      onPress={() => setShowUnitPicker(item.id)}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#0F172A' }} numberOfLines={1}>
+                        {item.unit || 'PCS'}
+                      </Text>
+                      <Ionicons name="chevron-down" size={12} color="#94A3B8" style={{ marginLeft: 4 }} />
+                    </TouchableOpacity>
+
+                    {showDiscount && (
+                      <>
+                        <Text style={{ color: '#94A3B8' }}>−</Text>
+                        <TextInput
+                          key={`item_disc_${item.id}`}
+                          blurOnSubmit={false}
+                          style={styles.qtyInput}
+                          value={String(item.discount_percent)}
+                          onChangeText={t => updateItem(item.id, 'discount_percent', t)}
+                          keyboardType="numeric"
+                          placeholder="Disc %"
+                          placeholderTextColor="#94A3B8"
+                        />
+                      </>
+                    )}
+                  </View>
+                  {(invoiceType !== 'NONGST' && !(invoiceType === 'SERVICE' && !isGstApplicable)) && (
+                    <View style={{ marginTop: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>GST Rate</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                        {GST_RATE_STRINGS.map(rate => (
+                          <TouchableOpacity
+                            key={rate}
+                            onPress={() => updateItem(item.id, 'gst_rate', rate)}
+                            style={{
+                              paddingHorizontal: 14,
+                              paddingVertical: 6,
+                              borderRadius: 20,
+                              backgroundColor: String(item.gst_rate) === rate ? '#F97316' : '#FFF7ED',
+                              borderWidth: 1,
+                              borderColor: String(item.gst_rate) === rate ? '#F97316' : '#FED7AA',
+                            }}
+                          >
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: String(item.gst_rate) === rate ? '#fff' : '#F97316' }}>
+                              {rate}%
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
                   )}
                 </View>
-                {(invoiceType !== 'NONGST' && !(invoiceType === 'SERVICE' && !isGstApplicable)) && (
-                  <View style={{ marginTop: 8 }}>
-                    <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>GST Rate</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                      {GST_RATE_STRINGS.map(rate => (
-                        <TouchableOpacity
-                          key={rate}
-                          onPress={() => updateItem(item.id, 'gst_rate', rate)}
-                          style={{
-                            paddingHorizontal: 14,
-                            paddingVertical: 6,
-                            borderRadius: 20,
-                            backgroundColor: String(item.gst_rate) === rate ? '#F97316' : '#FFF7ED',
-                            borderWidth: 1,
-                            borderColor: String(item.gst_rate) === rate ? '#F97316' : '#FED7AA',
-                          }}
-                        >
-                          <Text style={{ fontSize: 12, fontWeight: '600', color: String(item.gst_rate) === rate ? '#fff' : '#F97316' }}>
-                            {rate}%
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-            ))}
+              );
+            })}
             <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12 }} onPress={addItem}>
               <Ionicons name="add" size={16} color="#F97316" />
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add Item</Text>
@@ -929,6 +1009,84 @@ export default function CreateInvoiceScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Unit Picker Modal */}
+      {showUnitPicker && (
+        <Modal
+          visible={!!showUnitPicker}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => {
+            setShowUnitPicker(null);
+            setUnitSearch('');
+          }}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalOverlay}
+          >
+            <View style={[styles.modalContent, { maxHeight: '60%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Unit</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowUnitPicker(null);
+                    setUnitSearch('');
+                  }}
+                >
+                  <Ionicons name="close" size={24} color="#0F172A" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Search Box */}
+              <View style={styles.modalSearch}>
+                <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Search unit (e.g. PCS, KGS)..."
+                  placeholderTextColor="#94A3B8"
+                  value={unitSearch}
+                  onChangeText={setUnitSearch}
+                  autoCapitalize="characters"
+                />
+                {unitSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setUnitSearch('')}>
+                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <FlatList
+                style={{ flex: 1 }}
+                data={filteredUnits}
+                keyExtractor={u => u}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item: unitOption }) => {
+                  const activeLine = lineItems.find(l => l.id === showUnitPicker);
+                  const isSelected = (activeLine?.unit || 'PCS').toUpperCase() === unitOption;
+                  return (
+                    <TouchableOpacity
+                      style={styles.modalItem}
+                      onPress={() => {
+                        if (showUnitPicker) {
+                          updateLineItem(showUnitPicker, 'unit', unitOption);
+                        }
+                        setShowUnitPicker(null);
+                        setUnitSearch('');
+                      }}
+                    >
+                      <Text style={[styles.modalItemName, isSelected && { color: '#F97316', fontWeight: '700' }]}>
+                        {unitOption}
+                      </Text>
+                      {isSelected && <Ionicons name="checkmark" size={18} color="#F97316" />}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
 
 
 

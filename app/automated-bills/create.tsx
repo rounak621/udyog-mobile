@@ -759,6 +759,32 @@ export default function CreateRecurringBillScreen() {
                       </TouchableOpacity>
                     </View>
 
+                    {/* HSN Code Input */}
+                    <View>
+                      <TextInput
+                        key={`item_hsn_${item.id}`}
+                        style={styles.itemInput}
+                        placeholder="HSN Code (optional)"
+                        placeholderTextColor={Colors.textMuted}
+                        value={item.hsn_code || ''}
+                        onChangeText={val => updateLineItem(item.id, 'hsn_code', val)}
+                        keyboardType="numeric"
+                        autoCapitalize="characters"
+                      />
+                    </View>
+
+                    {/* Variant / Description Input */}
+                    <View>
+                      <TextInput
+                        key={`item_desc_${item.id}`}
+                        style={styles.itemInput}
+                        placeholder="Variant / Description (optional)"
+                        placeholderTextColor={Colors.textMuted}
+                        value={item.description || ''}
+                        onChangeText={val => updateLineItem(item.id, 'description', val)}
+                      />
+                    </View>
+
                     {/* Rate, Qty, Unit Row */}
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <View style={{ flex: 1.2 }}>
