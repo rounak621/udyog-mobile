@@ -31,7 +31,11 @@ export default function RentalOrderRecordPaymentScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const outstandingAmount = order
-    ? Math.max(0, parseFloat(order.total_amount) - parseFloat(order.paid_amount))
+    ? Math.max(
+        0,
+        (parseFloat(order.total_amount || '0') + parseFloat(order.late_fee_total || '0')) -
+          parseFloat(order.paid_amount || '0')
+      )
     : 0;
 
   const loadOrder = async () => {

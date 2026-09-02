@@ -88,6 +88,7 @@ export default function CreateRecurringBillScreen() {
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [autoSendEnabled, setAutoSendEnabled] = useState(true);
+  const [whatsappAutoSend, setWhatsappAutoSend] = useState(true);
   const [notes, setNotes] = useState('');
 
   // Line Items
@@ -182,6 +183,7 @@ export default function CreateRecurringBillScreen() {
         if (t.start_date) setStartDate(t.start_date.split('T')[0]);
         if (t.end_date) setEndDate(t.end_date.split('T')[0]);
         setAutoSendEnabled(!!t.auto_send_enabled);
+        if (t.whatsapp_auto_send !== undefined) setWhatsappAutoSend(!!t.whatsapp_auto_send);
         setNotes(t.notes || '');
 
         const matchedParty = loadedParties.find((p: any) => String(p.id) === String(t.customer_id));
@@ -419,6 +421,7 @@ export default function CreateRecurringBillScreen() {
         start_date: startDate,
         end_date: endDate.trim() ? endDate : null,
         auto_send_enabled: autoSendEnabled,
+        whatsapp_auto_send: whatsappAutoSend,
         notes: notes.trim() ? notes.trim().slice(0, 300) : null,
         line_items: lineItems.map(l => ({
           item_id: l.item_id || null,
@@ -660,11 +663,25 @@ export default function CreateRecurringBillScreen() {
               </View>
             </View>
 
-            {/* Auto-send toggle */}
+            {/* WhatsApp Auto-send toggle */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, borderTopWidth: 0.5, borderTopColor: Colors.border }}>
               <View style={{ flex: 1, paddingRight: 10 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>Auto-Send Invoices</Text>
-                <Text style={{ fontSize: 11, color: Colors.textMuted }}>Automatically dispatch created bills to customer</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>Auto-Send via WhatsApp</Text>
+                <Text style={{ fontSize: 11, color: Colors.textMuted }}>Automatically send invoice PDF to customer's WhatsApp on generation</Text>
+              </View>
+              <Switch
+                value={whatsappAutoSend}
+                onValueChange={setWhatsappAutoSend}
+                trackColor={{ false: '#E2E8F0', true: '#FED7AA' }}
+                thumbColor={whatsappAutoSend ? Colors.primary : '#94A3B8'}
+              />
+            </View>
+
+            {/* In-app notification toggle */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, marginTop: 8, borderTopWidth: 0.5, borderTopColor: Colors.border }}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>In-App Generation Alerts</Text>
+                <Text style={{ fontSize: 11, color: Colors.textMuted }}>Receive in-app notification when each bill is generated</Text>
               </View>
               <Switch
                 value={autoSendEnabled}
@@ -1045,6 +1062,15 @@ export default function CreateRecurringBillScreen() {
                   </TouchableOpacity>
                 }
               />
+
+              {/* Add New Item */}
+              <TouchableOpacity
+                style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}
+                onPress={() => { setShowItemDropdown(null); router.push('/items/create' as any); }}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={Colors.primary} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.primary, flexShrink: 1 }}>Add New Item</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>

@@ -160,22 +160,22 @@ export default function BusinessSettingsScreen() {
       const token = await getToken();
       setAuthToken(token);
       await api.put('/businesses/settings', {
-        name: form.name,
-        legal_name: form.legal_name,
-        gst_number: form.gstin,
-        tagline: form.tagline,
-        phone: form.phone,
-        email: form.email,
-        address_line1: form.address_line1,
-        address_line2: form.address_line2 ? form.address_line2 : null,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-        bank_name: form.bank_name,
-        bank_account_number: form.bank_account_number,
-        ifsc_code: form.ifsc_code,
-        bank_branch: form.bank_branch,
-        upi_id: form.upi_id
+        name: form.name.trim(),
+        legal_name: form.legal_name.trim() || null,
+        gst_number: form.gstin.trim().toUpperCase() || null,
+        tagline: form.tagline.trim() || null,
+        phone: form.phone.trim(),
+        email: form.email.trim() || null,
+        address_line1: form.address_line1.trim() || null,
+        address_line2: form.address_line2.trim() || null,
+        city: form.city.trim() || null,
+        state: form.state.trim() || null,
+        pincode: form.pincode.trim() || null,
+        bank_name: form.bank_name.trim() || null,
+        bank_account_number: form.bank_account_number.trim() || null,
+        ifsc_code: form.ifsc_code.trim().toUpperCase() || null,
+        bank_branch: form.bank_branch.trim() || null,
+        upi_id: form.upi_id?.trim() || null
       });
       Alert.alert('Success', 'Business details updated');
     } catch (err: any) {

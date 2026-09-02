@@ -1,7 +1,8 @@
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Linking from 'expo-linking';
+import * as SecureStore from 'expo-secure-store';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Platform, ActivityIndicator, Alert, Image
@@ -24,6 +25,14 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  useEffect(() => {
+    SecureStore.getItemAsync('last_login_email')
+      .then((savedEmail) => {
+        if (savedEmail) setEmail(savedEmail);
+      })
+      .catch(() => {});
+  }, []);
+
   const handleLogin = async () => {
     if (!isLoaded) { Alert.alert('Please wait', 'Auth loading...'); return; }
     if (!email || !password) { Alert.alert('Error', 'Please enter email and password'); return; }
@@ -31,6 +40,7 @@ export default function LoginScreen() {
     try {
       const result = await signIn.create({ identifier: email.trim(), password });
       if (result.status === 'complete') {
+        SecureStore.setItemAsync('last_login_email', email.trim()).catch(() => {});
         await setActive({ session: result.createdSessionId });
         router.replace('/(tabs)');
       } else if (result.status === 'needs_second_factor') {
@@ -122,6 +132,8 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            textContentType="emailAddress"
+            autoComplete="email"
           />
         </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -139,6 +151,8 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPass}
+            textContentType="password"
+            autoComplete="password"
           />
           <TouchableOpacity onPress={() => setShowPass(!showPass)}>
             <Ionicons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color="#94A3B8" />

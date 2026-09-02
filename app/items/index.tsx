@@ -15,6 +15,7 @@ import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { validateHSN } from '../../utils/validators';
+import ImportFromBusinessModal from '../../components/ImportFromBusinessModal';
 
 interface Item {
   id: number;
@@ -54,7 +55,8 @@ export default function ItemsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // Bulk Add Modal state
+  // Modals state
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkHsn, setBulkHsn] = useState('');
   const [bulkHsnError, setBulkHsnError] = useState<string | null>(null);
@@ -197,6 +199,10 @@ export default function ItemsScreen() {
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.title}>Items</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity style={styles.importBtn} onPress={() => setShowImportModal(true)}>
+            <Ionicons name="download-outline" size={15} color={Colors.primary} />
+            <Text style={styles.importBtnText}>Import</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.bulkBtn} onPress={() => setShowBulkModal(true)}>
             <Ionicons name="layers-outline" size={16} color={Colors.primary} />
             <Text style={styles.bulkBtnText}>Bulk Add</Text>
@@ -431,6 +437,16 @@ export default function ItemsScreen() {
           </View>
         </View>
       </Modal>
+
+      {businessId && (
+        <ImportFromBusinessModal
+          visible={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          entityType="items"
+          currentBusinessId={businessId}
+          onSuccess={() => loadItems(0, true)}
+        />
+      )}
     </View>
   );
 }
@@ -438,6 +454,8 @@ export default function ItemsScreen() {
 const styles = StyleSheet.create({
   topbar: { backgroundColor: Colors.card, paddingHorizontal: Spacing.lg, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   title: { fontSize: 22, fontWeight: '700', color: '#0f172a' },
+  importBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#FED7AA', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#FFF7ED' },
+  importBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   addBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   bulkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.primary, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fff7ed' },
   bulkBtnText: { fontSize: 12, fontWeight: '600', color: Colors.primary },

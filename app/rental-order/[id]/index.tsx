@@ -85,8 +85,9 @@ export default function OrderDetailScreen() {
   const [damageNotes, setDamageNotes] = useState('');
   const [damageDeduction, setDamageDeduction] = useState('');
   const [waiveLateFee, setWaiveLateFee] = useState(false);
-  const [markAsPaid, setMarkAsPaid] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [downloadingChallan, setDownloadingChallan] = useState(false);
 
 
 
@@ -174,7 +175,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`, 'Rental Orders');
       } else {
         Alert.alert('Error', 'Failed to generate invoice PDF.');
       }
@@ -209,7 +210,7 @@ export default function OrderDetailScreen() {
       );
 
       if (response.status === 200) {
-        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`);
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`, 'Statements');
       } else {
         Alert.alert('Error', 'Failed to generate statement PDF.');
       }
@@ -218,6 +219,42 @@ export default function OrderDetailScreen() {
       Alert.alert('Error', 'Failed to download and share statement.');
     } finally {
       setDownloadingStatement(false);
+    }
+  };
+
+  const handleDownloadChallan = async () => {
+    if (!order || !business?.id) return;
+    try {
+      setDownloadingChallan(true);
+      const token = await getToken();
+      setAuthToken(token);
+
+      const safeOrderNumber = order.order_number.replace(/[\/\\]/g, '_');
+      const safeCustomerName = (order.customer_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${safeCustomerName}_${safeOrderNumber}_challan.pdf`;
+
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+
+      const response = await FileSystem.downloadAsync(
+        `${api.defaults.baseURL}/rental-orders/${order.id}/challan-pdf?business_id=${business.id}`,
+        fileUri,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200) {
+        await savePdfToAndroidOrShare(response.uri, fileName, `Save ${fileName}`, 'Challan');
+      } else {
+        Alert.alert('Error', 'Failed to generate delivery challan PDF.');
+      }
+    } catch (err) {
+      console.log('Challan download error:', err);
+      Alert.alert('Error', 'Failed to download and share delivery challan.');
+    } finally {
+      setDownloadingChallan(false);
     }
   };
 
@@ -274,14 +311,26 @@ export default function OrderDetailScreen() {
       const token = await getToken();
       setAuthToken(token);
 
-      const payload = {
+      const trimmedPayment = paymentAmount.trim();
+      let parsedPaymentAmount: number | null = null;
+      if (trimmedPayment !== '') {
+        const num = parseFloat(trimmedPayment);
+        if (isNaN(num) || num < 0) {
+          Alert.alert('Validation Error', 'Please enter a valid payment amount (leave blank for full balance, 0 for no payment, or a specific amount).');
+          setSubmitting(false);
+          return;
+        }
+        parsedPaymentAmount = num;
+      }
+
+      const payload: any = {
         quantity_returned: qty,
         condition: selectedCondition,
         damage_notes: (selectedCondition === 'DAMAGED' || selectedCondition === 'WRITE_OFF') ? damageNotes.trim() || null : null,
         damage_deduction: (selectedCondition === 'DAMAGED' || selectedCondition === 'WRITE_OFF') ? parseFloat(damageDeduction) || 0 : 0,
         waive_late_fee: waiveLateFee,
-        mark_as_paid: markAsPaid,
-        payment_method: markAsPaid ? paymentMethod : 'CASH'
+        payment_amount: parsedPaymentAmount,
+        payment_method: parsedPaymentAmount !== 0 ? paymentMethod : 'CASH'
       };
 
       await api.post(`/rental-orders/${order.id}/return?business_id=${business.id}`, payload);
@@ -294,7 +343,7 @@ export default function OrderDetailScreen() {
       setDamageNotes('');
       setDamageDeduction('');
       setWaiveLateFee(false);
-      setMarkAsPaid(false);
+      setPaymentAmount('');
       setPaymentMethod('CASH');
 
       loadOrderDetails();
@@ -353,6 +402,11 @@ export default function OrderDetailScreen() {
   const totalRented = order.items.reduce((acc, it) => acc + it.quantity_rented, 0);
   const totalReturned = order.items.reduce((acc, it) => acc + it.quantity_returned, 0);
   const remainingToReturn = totalRented - totalReturned;
+  const remainingBalance = Math.max(
+    0,
+    (parseFloat(order.total_amount || '0') + parseFloat(order.late_fee_total || '0')) -
+      parseFloat(order.paid_amount || '0')
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
@@ -538,6 +592,15 @@ export default function OrderDetailScreen() {
             </View>
             <Text style={styles.summaryVal}>₹{parseFloat(order.paid_amount).toLocaleString('en-IN')}</Text>
           </View>
+
+          <View style={[styles.summaryRow, { borderTopWidth: 0.5, borderTopColor: Colors.border, paddingTop: 10, marginTop: 10 }]}>
+            <Text style={[styles.summaryText, { fontWeight: '700', color: remainingBalance > 0 ? Colors.danger : Colors.textSecondary }]}>
+              Balance Due
+            </Text>
+            <Text style={[styles.summaryVal, { fontWeight: '800', color: remainingBalance > 0 ? Colors.danger : Colors.text, fontSize: 15 }]}>
+              ₹{remainingBalance.toLocaleString('en-IN')}
+            </Text>
+          </View>
         </View>
 
         {/* Payment Timeline Card */}
@@ -614,6 +677,23 @@ export default function OrderDetailScreen() {
             <TouchableOpacity style={[styles.actionButtonSecondary, { marginTop: 10 }]} onPress={handleWaiveFee}>
               <Ionicons name="cut-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
               <Text style={styles.actionButtonSecondaryText}>Waive Late Fees</Text>
+            </TouchableOpacity>
+          )}
+
+          {order.status !== 'CANCELLED' && (
+            <TouchableOpacity
+              style={[styles.actionButtonSecondary, { marginTop: 10, borderColor: '#0D9488' }]}
+              onPress={handleDownloadChallan}
+              disabled={downloadingChallan}
+            >
+              {downloadingChallan ? (
+                <ActivityIndicator size="small" color="#0D9488" />
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="document-text-outline" size={16} color="#0D9488" style={{ marginRight: 6 }} />
+                  <Text style={[styles.actionButtonSecondaryText, { color: '#0D9488' }]}>Delivery Challan</Text>
+                </View>
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -705,18 +785,28 @@ export default function OrderDetailScreen() {
                 </View>
               )}
 
-              {/* Mark as paid Switch */}
-              {order.payment_status !== 'PAID' && (
-                <View style={{ marginTop: 4 }}>
-                  <View style={[styles.switchRow, { marginBottom: 12 }]}>
-                    <Text style={styles.modalLabel}>Mark Order Payment as PAID</Text>
-                    <Switch value={markAsPaid} onValueChange={setMarkAsPaid} trackColor={{ true: Colors.primary }} />
-                  </View>
+              {/* Option B: Collect Payment Input */}
+              {remainingBalance > 0 && (
+                <View style={{ marginTop: 8, marginBottom: 12, padding: 12, backgroundColor: '#F8FAFC', borderRadius: Radius.md, borderWidth: 0.5, borderColor: Colors.border }}>
+                  <Text style={[styles.modalLabel, { fontWeight: '700', marginBottom: 4 }]}>
+                    Collect Payment (Optional)
+                  </Text>
+                  <Text style={{ fontSize: 12, color: Colors.textSecondary, marginBottom: 8, lineHeight: 17 }}>
+                    Leave blank to pay full remaining balance (₹{remainingBalance.toLocaleString('en-IN')}), enter 0 for no payment, or enter a custom amount.
+                  </Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder={`Full remaining (₹${remainingBalance.toLocaleString('en-IN')})`}
+                    value={paymentAmount}
+                    onChangeText={setPaymentAmount}
+                    keyboardType="numeric"
+                    placeholderTextColor={Colors.textMuted}
+                  />
 
-                  {markAsPaid && (
-                    <View style={styles.fieldContainer}>
-                      <Text style={styles.modalLabel}>Payment Method</Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {paymentAmount.trim() !== '0' && (
+                    <View style={{ marginTop: 10 }}>
+                      <Text style={[styles.modalLabel, { fontSize: 12, marginBottom: 4 }]}>Payment Method</Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                         {['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'].map((method) => {
                           const isSelected = paymentMethod === method;
                           return (

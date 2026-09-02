@@ -351,7 +351,7 @@ export default function CreateInvoiceScreen() {
         const fileUri = (FileSystem as any).cacheDirectory + fileName;
         const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
         if (downloadResult.status === 200) {
-          await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`);
+          await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`, 'Sales Bills');
         } else {
           throw new Error('Download failed');
         }
@@ -409,14 +409,14 @@ export default function CreateInvoiceScreen() {
           gst_rate: (invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
           discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
         })),
-        consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || undefined) : undefined,
+        consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || null) : null,
         is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
+        notes: notes.trim() || null,
       };
 
       if (!isEditMode) {
         payload.invoice_type = invoiceType;
         payload.status = 'ISSUED';
-        payload.notes = notes || undefined;
         payload.show_discount = showDiscount || false;
         payload.requested_invoice_number = invoiceNumber.trim() || undefined;
       }

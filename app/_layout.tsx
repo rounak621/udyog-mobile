@@ -8,16 +8,16 @@ import { ActivityIndicator, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import IntroOverlay from '../components/IntroOverlay';
 
-WebBrowser.maybeCompleteAuthSession();
 import { Colors } from '../constants/theme';
 import { setAuthToken, api } from '../services/api';
 import Constants from 'expo-constants';
-import { registerForPushNotificationsAsync, registerDeviceToken } from '../services/notifications';
+import { registerForPushNotificationsAsync, registerDeviceToken, normalizeDeepLink } from '../services/notifications';
 import { BusinessProvider, useBusiness } from '../context/BusinessContext';
 import { AppModeProvider, useAppMode } from '../context/AppModeContext';
 import ErrorBoundary from '../components/ErrorBoundary';
 import OfflineBanner from '../components/OfflineBanner';
 import { setCrashUser } from '../services/crashReporting';
+import { startHeartbeatService, stopHeartbeatService } from '../services/heartbeat';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -126,6 +126,58 @@ function AuthGuard() {
     }
   }, [isSignedIn, tokenReady, hasBusiness, pushRegistered]);
 
+  // Handle background / system-tray notification taps
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !tokenReady || !businessCheckDone || !hasBusiness) return;
+
+    let isMounted = true;
+    let subscription: any = null;
+
+    const handleNotificationResponse = (response: any) => {
+      try {
+        const data = response?.notification?.request?.content?.data;
+        const deepLink = data?.deep_link || data?.url || data?.link;
+        const normalized = normalizeDeepLink(deepLink);
+        if (normalized) {
+          console.log('[PUSH-ROUTER] Navigating to notification deep link:', normalized);
+          router.push(normalized as any);
+        }
+      } catch (err) {
+        console.log('[PUSH-ROUTER] Error navigating to notification deep link:', err);
+      }
+    };
+
+    const setupNotificationListeners = async () => {
+      try {
+        const Notifications = await import('expo-notifications');
+
+        // Handle cold start: app opened by tapping a notification from killed/closed state
+        const lastResponse = await Notifications.getLastNotificationResponseAsync();
+        if (lastResponse && isMounted) {
+          handleNotificationResponse(lastResponse);
+        }
+
+        // Handle background/foreground: app receives notification tap while running
+        subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+          if (isMounted) {
+            handleNotificationResponse(response);
+          }
+        });
+      } catch (err) {
+        console.log('[PUSH-ROUTER] Could not setup notification response listener:', err);
+      }
+    };
+
+    setupNotificationListeners();
+
+    return () => {
+      isMounted = false;
+      if (subscription?.remove) {
+        subscription.remove();
+      }
+    };
+  }, [isLoaded, isSignedIn, tokenReady, businessCheckDone, hasBusiness]);
+
   useEffect(() => {
     if (isSignedIn) {
       getToken().then(token => {
@@ -137,6 +189,19 @@ function AuthGuard() {
       setTokenReady(true);
     }
   }, [isSignedIn]);
+
+  // Real-time device heartbeat (Phase 3)
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !tokenReady) {
+      stopHeartbeatService();
+      return;
+    }
+
+    const cleanup = startHeartbeatService(isSignedIn && tokenReady);
+    return () => {
+      cleanup();
+    };
+  }, [isLoaded, isSignedIn, tokenReady]);
 
   useEffect(() => {
     if (!isLoaded || !tokenReady || !modeLoaded) return;

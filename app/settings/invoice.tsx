@@ -18,10 +18,18 @@ const THEMES = [
   { label: 'Modern Minimalist (Teal)', value: 'theme_modern_minimalist_teal' },
   { label: 'Classic Professional (Red & Charcoal)', value: 'theme_classic_red' },
   { label: 'Elegant Luxury (Dark & Gold)', value: 'theme_elegant_dark' },
-  { label: 'Vibrant Creative (Purple)', value: 'theme_vibrant_purple' },
-  { label: 'Simple Invoice (Non-GST)', value: 'simple_invoice' },
-  { label: 'Simple Invoice - Period (Non-GST)', value: 'simple_invoice_period' }
+  { label: 'Vibrant Creative (Purple)', value: 'theme_vibrant_purple' }
 ];
+
+const THEME_DISPLAY_NAMES: Record<string, string> = {
+  corporate_tax_invoice: 'Corporate Standard (Black & White)',
+  theme_modern_minimalist_teal: 'Modern Minimalist (Teal)',
+  theme_classic_red: 'Classic Professional (Red & Charcoal)',
+  theme_elegant_dark: 'Elegant Luxury (Dark & Gold)',
+  theme_vibrant_purple: 'Vibrant Creative (Purple)',
+  simple_invoice: 'Simple Invoice (Non-GST)',
+  simple_invoice_period: 'Simple Invoice - Period (Non-GST)',
+};
 
 export default function InvoiceSettingsScreen() {
   const { getToken } = useAuth();
@@ -232,7 +240,7 @@ export default function InvoiceSettingsScreen() {
     }
   };
 
-  const currentThemeLabel = THEMES.find(t => t.value === prefForm.invoice_theme)?.label || 'Select Theme';
+  const currentThemeLabel = THEME_DISPLAY_NAMES[prefForm.invoice_theme] || THEMES.find(t => t.value === prefForm.invoice_theme)?.label || 'Select Theme';
 
   const getPreviewText = (prefix: string, next_number: string, padding: number, suffix: string, monthly_reset_enabled: boolean) => {
     const num = String(parseInt(next_number) || 1).padStart(padding, '0');

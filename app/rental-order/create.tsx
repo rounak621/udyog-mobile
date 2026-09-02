@@ -467,7 +467,7 @@ export default function OrderCreateScreen() {
         const fileUri = (FileSystem as any).cacheDirectory + fileName;
         const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri);
         if (downloadResult.status === 200) {
-          await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`);
+          await savePdfToAndroidOrShare(downloadResult.uri, fileName, `Save ${fileName}`, 'Rental Orders');
         } else {
           throw new Error('Download failed');
         }

@@ -181,7 +181,7 @@ export default function SalesReportScreen() {
         encoding: FileSystem.EncodingType.UTF8,
       });
 
-      await saveCsvToAndroidOrShare(fileUri, fileName, 'Export Sales Report');
+      await saveCsvToAndroidOrShare(fileUri, fileName, 'Export Sales Report', 'Reports');
     } catch (err) {
       console.log('CSV export error:', err);
       Alert.alert('Error', 'Failed to export Sales Report CSV.');
@@ -302,7 +302,7 @@ export default function SalesReportScreen() {
         : 'Custom';
       const fileName = `Sales_Report_${fileNameLabel}.pdf`;
 
-      await savePdfToAndroidOrShare(uri, fileName, 'Export Sales Report PDF');
+      await savePdfToAndroidOrShare(uri, fileName, 'Export Sales Report PDF', 'Reports');
     } catch (err) {
       console.log('PDF export error:', err);
       Alert.alert('Error', 'Failed to export Sales Report PDF.');
