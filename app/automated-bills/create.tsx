@@ -431,6 +431,7 @@ export default function CreateRecurringBillScreen() {
           gst_rate: Number(l.gst_rate) || 0,
           hsn_code: l.hsn_code || null,
           description: l.description || null,
+          unit: l.unit || 'PCS',
           discount_percent: showDiscount ? Number(l.discount_percent) || 0 : 0,
         })),
       };

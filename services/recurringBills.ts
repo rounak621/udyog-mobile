@@ -49,6 +49,7 @@ export interface CreateRecurringBillPayload {
     hsn_code?: string | null;
     description?: string | null;
     discount_percent?: number;
+    unit?: string;
   }[];
   frequency: RecurringFrequency;
   interval_days?: number | null;
