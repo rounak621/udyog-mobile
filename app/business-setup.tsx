@@ -246,7 +246,7 @@ export default function BusinessSetupScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
+        contentContainerStyle={{ ...styles.content, paddingBottom: 20 }}
         enableOnAndroid={true}
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"

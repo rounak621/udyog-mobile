@@ -181,7 +181,7 @@ export default function CreateProductScreen() {
       ) : (
         <KeyboardAwareScrollView
           style={{ flex: 1, backgroundColor: '#F8FAFC' }}
-          contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+          contentContainerStyle={{ ...styles.content, paddingBottom: bottomPadding }}
           enableOnAndroid={true}
           extraScrollHeight={20}
           keyboardShouldPersistTaps="handled"

@@ -71,6 +71,8 @@ export function FixedBottomBar({
 /**
  * Custom hook to calculate total bottom padding (base + insets.bottom).
  * Use this for FlatList contentContainerStyle or KeyboardAwareScrollView where SafeScrollView cannot be used directly.
+ * NOTE: For KeyboardAwareScrollView, always pass a flat object (e.g. { ...styles.content, paddingBottom }),
+ * never an array ([styles.content, { paddingBottom }]), to prevent the Android HOC from zeroing out paddingBottom.
  */
 export function useBottomPadding(basePadding = 20): number {
   const insets = useSafeAreaInsets();

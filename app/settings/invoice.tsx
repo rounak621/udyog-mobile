@@ -277,7 +277,7 @@ export default function InvoiceSettingsScreen() {
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
+        contentContainerStyle={{ ...styles.content, paddingBottom: bottomPadding }}
         enableOnAndroid={true}
         enableAutomaticScroll={true}
         extraScrollHeight={180}

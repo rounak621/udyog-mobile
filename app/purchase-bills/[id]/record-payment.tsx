@@ -104,7 +104,7 @@ export default function PurchaseBillRecordPaymentScreen() {
 
         <KeyboardAwareScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={[styles.content, { paddingBottom: 20 }]}
+          contentContainerStyle={{ ...styles.content, paddingBottom: 20 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           enableOnAndroid={true}
