@@ -124,9 +124,10 @@ export default function MayaScreen() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
 
-  // TTS State
-  const [isTtsEnabled, setIsTtsEnabled] = useState(true);
-  const isTtsEnabledRef = useRef(true);
+  // TTS State - Temporarily disabled: Text reply arrives in ~5s, but TTS audio takes ~15s
+  const TTS_ENABLED_FOR_NOW = false;
+  const [isTtsEnabled, setIsTtsEnabled] = useState(false);
+  const isTtsEnabledRef = useRef(false);
 
   // Action Proposal States
   const [pendingWhatsApp, setPendingWhatsApp] = useState<WhatsAppProposalData | null>(null);
@@ -164,7 +165,7 @@ export default function MayaScreen() {
         if (stored !== null) {
           const enabled = stored !== 'false';
           setIsTtsEnabled(enabled);
-          isTtsEnabledRef.current = enabled;
+          isTtsEnabledRef.current = TTS_ENABLED_FOR_NOW && enabled;
         }
       })
       .catch(() => {});
@@ -173,7 +174,7 @@ export default function MayaScreen() {
   const toggleTts = async () => {
     const next = !isTtsEnabled;
     setIsTtsEnabled(next);
-    isTtsEnabledRef.current = next;
+    isTtsEnabledRef.current = TTS_ENABLED_FOR_NOW && next;
     if (!next) {
       await stopMayaTTS();
     }
@@ -216,7 +217,7 @@ export default function MayaScreen() {
   }, [conversationHistory]);
 
   useEffect(() => {
-    isTtsEnabledRef.current = isTtsEnabled;
+    isTtsEnabledRef.current = TTS_ENABLED_FOR_NOW && isTtsEnabled;
   }, [isTtsEnabled]);
 
   useEffect(() => {
@@ -1177,14 +1178,16 @@ export default function MayaScreen() {
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {/* Speaker / Mute Toggle Button */}
-            <TouchableOpacity onPress={toggleTts} style={styles.headerIconBtn} activeOpacity={0.7}>
-              <Ionicons
-                name={isTtsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
-                size={19}
-                color={isTtsEnabled ? '#F97316' : '#64748B'}
-              />
-            </TouchableOpacity>
+            {/* Speaker / Mute Toggle Button (Hidden while TTS is temporarily disabled) */}
+            {TTS_ENABLED_FOR_NOW && (
+              <TouchableOpacity onPress={toggleTts} style={styles.headerIconBtn} activeOpacity={0.7}>
+                <Ionicons
+                  name={isTtsEnabled ? 'volume-high-outline' : 'volume-mute-outline'}
+                  size={19}
+                  color={isTtsEnabled ? '#F97316' : '#64748B'}
+                />
+              </TouchableOpacity>
+            )}
 
             {messages.length > 0 && (
               <TouchableOpacity onPress={handleClearChat} style={styles.headerIconBtn}>
