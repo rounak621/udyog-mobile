@@ -1,11 +1,11 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
   Alert, Modal, FlatList, KeyboardAvoidingView, Platform
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { GST_RATES, GST_RATE_STRINGS } from '../../constants/gst';
@@ -245,15 +245,21 @@ export default function CreatePurchaseBillScreen() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (isInitial = true) => {
     try {
       const token = await getToken();
       setAuthToken(token);
       
-      const bizRes = await api.get('/businesses/me');
-      const bId = bizRes.data.id;
-      setBusinessId(bId);
-      setBusinessState(bizRes.data.state || '');
+      let bId = businessId;
+      let bState = businessState;
+      if (!bId || isInitial) {
+        const bizRes = await api.get('/businesses/me');
+        bId = bizRes.data.id;
+        bState = bizRes.data.state || '';
+        setBusinessId(bId);
+        setBusinessState(bState);
+      }
+      if (!bId) return;
       
       const [supRes, itemRes] = await Promise.allSettled([
         api.get(`/suppliers/?business_id=${bId}`),
@@ -273,7 +279,7 @@ export default function CreatePurchaseBillScreen() {
         setItems(fetchedItems);
       }
 
-      if (editId) {
+      if (isInitial && editId) {
         const billRes = await api.get(`/purchase-bills/${editId}?business_id=${bId}`);
         const billData = billRes.data;
         if (billData) {
@@ -293,7 +299,7 @@ export default function CreatePurchaseBillScreen() {
           if (billData.supplier) {
             setSelectedSupplier(billData.supplier);
             const customerState = billData.supplier.state || '';
-            const interState = bizRes.data.state && customerState && bizRes.data.state.toLowerCase().trim() !== customerState.toLowerCase().trim();
+            const interState = bState && customerState && bState.toLowerCase().trim() !== customerState.toLowerCase().trim();
             setIsInterState(!!interState);
           }
           
@@ -320,16 +326,25 @@ export default function CreatePurchaseBillScreen() {
       }
     } catch (err: any) {
       console.log('Load error in create purchase bill:', err);
-      if (editId) {
+      if (isInitial && editId) {
         Alert.alert('Error', 'Failed to load purchase bill details');
         router.back();
       }
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const hasLoadedInitialRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedInitialRef.current) {
+        hasLoadedInitialRef.current = true;
+        loadData(true);
+      } else {
+        loadData(false);
+      }
+    }, [editId])
+  );
 
   const filteredSuppliers = suppliers.filter(s => s.name?.toLowerCase().includes(supplierSearch.toLowerCase()));
 
@@ -801,7 +816,10 @@ export default function CreatePurchaseBillScreen() {
             </View>
             <TouchableOpacity
               style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: Colors.border }}
-              onPress={() => { setShowSupplierPicker(false); router.push('/party/create'); }}
+              onPress={() => {
+                setShowSupplierPicker(false);
+                router.push({ pathname: '/party/create', params: { partyType: 'supplier', lockPartyType: 'true' } });
+              }}
             >
               <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="person-add-outline" size={20} color={Colors.primary} />

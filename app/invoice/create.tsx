@@ -6,7 +6,7 @@ import {
   Alert, Modal, FlatList, Animated, Easing, Linking,
   KeyboardAvoidingView, Platform
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
@@ -111,17 +111,23 @@ export default function CreateInvoiceScreen() {
 
   // Helper aliases to match mockup JSX names perfectly (moved below definitions)
 
-  const loadData = async () => {
+  const loadData = async (isInitial = true) => {
     try {
       const token = await getToken();
       setAuthToken(token);
       
-      const bizRes = await api.get('/businesses/me');
-      const bId = bizRes.data.id;
-      setBusinessId(bId);
-      setBusinessState(bizRes.data.state || '');
-      setShowDiscount(!!bizRes.data.show_discount);
-      setDualAddressEnabled(!!bizRes.data.dual_address_enabled);
+      let bId = businessId;
+      let bState = businessState;
+      if (!bId || isInitial) {
+        const bizRes = await api.get('/businesses/me');
+        bId = bizRes.data.id;
+        bState = bizRes.data.state || '';
+        setBusinessId(bId);
+        setBusinessState(bState);
+        setShowDiscount(!!bizRes.data.show_discount);
+        setDualAddressEnabled(!!bizRes.data.dual_address_enabled);
+      }
+      if (!bId) return;
       
       const [custRes, itemRes] = await Promise.allSettled([
         api.get(`/customers/?business_id=${bId}&limit=100`),
@@ -139,7 +145,7 @@ export default function CreateInvoiceScreen() {
         setItems(Array.isArray(data) ? data : data.items || []);
       }
 
-      if (isEditMode) {
+      if (isInitial && isEditMode) {
         const invRes = await api.get(`/invoices/${params.id}`);
         const invData = invRes.data;
         setInvoiceNumber(invData.invoice_number);
@@ -155,7 +161,7 @@ export default function CreateInvoiceScreen() {
         if (match) {
           setSelectedParty(match);
           const customerState = match.state || '';
-          const interState = bizRes.data.state && customerState && bizRes.data.state.toLowerCase().trim() !== customerState.toLowerCase().trim();
+          const interState = bState && customerState && bState.toLowerCase().trim() !== customerState.toLowerCase().trim();
           setIsInterState(!!interState);
         }
 
@@ -181,9 +187,18 @@ export default function CreateInvoiceScreen() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const hasLoadedInitialRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasLoadedInitialRef.current) {
+        hasLoadedInitialRef.current = true;
+        loadData(true);
+      } else {
+        loadData(false);
+      }
+    }, [isEditMode, params.id])
+  );
 
   // Fetch next invoice number when invoiceType or businessId changes (single source of truth)
   useEffect(() => {
@@ -965,7 +980,10 @@ export default function CreateInvoiceScreen() {
             </View>
             <TouchableOpacity
               style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
-              onPress={() => { setShowCustomerPicker(false); router.push('/party/create'); }}
+              onPress={() => {
+                setShowCustomerPicker(false);
+                router.push({ pathname: '/party/create', params: { partyType: 'customer', lockPartyType: 'true' } });
+              }}
             >
               <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
                 <Ionicons name="person-add-outline" size={20} color="#F97316" />

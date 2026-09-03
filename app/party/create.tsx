@@ -28,15 +28,17 @@ export default function CreatePartyScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id, name: prefillName, phone: prefillPhone, gstin: prefillGstin, state: prefillState, partyType: prefillPartyType } = useLocalSearchParams<{
+  const { id, name: prefillName, phone: prefillPhone, gstin: prefillGstin, state: prefillState, partyType: prefillPartyType, lockPartyType } = useLocalSearchParams<{
     id?: string;
     name?: string;
     phone?: string;
     gstin?: string;
     state?: string;
     partyType?: 'customer' | 'supplier' | 'both';
+    lockPartyType?: string;
   }>();
   
+  const isTypeLocked = lockPartyType === 'true' || lockPartyType === '1';
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [name, setName] = useState(prefillName || '');
   const [phone, setPhone] = useState(prefillPhone || '');
@@ -249,12 +251,25 @@ export default function CreatePartyScreen() {
 
           {/* Type Selector Tabs */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Party Type *</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={styles.label}>Party Type *</Text>
+              {isTypeLocked && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="lock-closed" size={12} color="#94A3B8" />
+                  <Text style={{ fontSize: 11, color: '#94A3B8', fontWeight: '500' }}>Locked for this document</Text>
+                </View>
+              )}
+            </View>
             <View style={styles.typeRow}>
               {['customer', 'supplier', 'both'].map(type => (
                 <TouchableOpacity
                   key={type}
-                  style={[styles.typeBtn, partyType === type && styles.typeBtnActive]}
+                  disabled={isTypeLocked}
+                  style={[
+                    styles.typeBtn,
+                    partyType === type && styles.typeBtnActive,
+                    isTypeLocked && partyType !== type && { opacity: 0.35 }
+                  ]}
                   onPress={() => setPartyType(type as any)}
                 >
                   <Text style={[styles.typeBtnText, partyType === type && styles.typeBtnTextActive]}>

@@ -900,7 +900,7 @@ export default function CreateQuotationScreen() {
               style={styles.addNewPartyBtn}
               onPress={() => {
                 setShowCustomerPicker(false);
-                router.push('/party/create');
+                router.push({ pathname: '/party/create', params: { partyType: 'customer', lockPartyType: 'true' } });
               }}
             >
               <View style={styles.addNewPartyIcon}>
