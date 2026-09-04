@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { useBusiness } from '../../context/BusinessContext';
 import Svg, { Circle } from 'react-native-svg';
 
 const PLANS = [
@@ -123,6 +124,7 @@ function ProgressRing({ progress, size = 56, strokeWidth = 4, color = '#F97316' 
 
 export default function SubscriptionScreen() {
   const { getToken } = useAuth();
+  const { refreshBusinesses } = useBusiness();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [business, setBusiness] = useState<any>(null);
@@ -199,6 +201,7 @@ export default function SubscriptionScreen() {
               const token = await getToken();
               setAuthToken(token);
               await api.post('/subscriptions/cancel', { business_id: business.id });
+              await refreshBusinesses();
               Alert.alert(
                 'Success',
                 'Subscription cancelled. You can continue using Udyog until your billing period ends.'

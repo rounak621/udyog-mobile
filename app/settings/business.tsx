@@ -15,6 +15,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { validateGSTIN, validatePhone } from '../../utils/validators';
+import { useBusiness } from '../../context/BusinessContext';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -52,6 +53,7 @@ const Field = ({ label, value, onChangeText, onBlur, placeholder, keyboardType, 
 
 export default function BusinessSettingsScreen() {
   const { getToken } = useAuth();
+  const { refreshBusinesses } = useBusiness();
   const router = useRouter();
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -177,6 +179,7 @@ export default function BusinessSettingsScreen() {
         bank_branch: form.bank_branch.trim() || null,
         upi_id: form.upi_id?.trim() || null
       });
+      await refreshBusinesses();
       Alert.alert('Success', 'Business details updated');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to save');
@@ -242,6 +245,7 @@ export default function BusinessSettingsScreen() {
       await api.delete(`/businesses/logo?business_id=${businessId}`);
       setLogoPath(null);
       setHasLogo(false);
+      await refreshBusinesses();
       Alert.alert('Success', 'Logo removed successfully');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to remove logo');
@@ -331,6 +335,7 @@ export default function BusinessSettingsScreen() {
         setSignaturePath(res.data.url);
         setHasSignature(true);
       }
+      await refreshBusinesses();
       Alert.alert('Success', `${isLogo ? 'Logo' : 'Signature'} uploaded successfully`);
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || `Failed to upload ${type}`);
@@ -366,6 +371,7 @@ export default function BusinessSettingsScreen() {
       await api.delete(`/businesses/signature?business_id=${businessId}`);
       setSignaturePath(null);
       setHasSignature(false);
+      await refreshBusinesses();
       Alert.alert('Success', 'Signature removed successfully');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to remove signature');
