@@ -397,6 +397,13 @@ export default function CreateRecurringBillScreen() {
       return;
     }
 
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (startDate < todayStr && !isEditMode) {
+      Alert.alert('Invalid Start Date', 'Start date cannot be in the past. Please select today or a future date.');
+      return;
+    }
+
     const invalidItem = lineItems.find(l => !l.name.trim() || Number(l.rate) < 0 || Number(l.qty) <= 0);
     if (invalidItem) {
       Alert.alert('Invalid Item', 'Please ensure all items have a name, positive quantity, and non-negative rate.');
@@ -625,6 +632,7 @@ export default function CreateRecurringBillScreen() {
                     value={new Date(startDate)}
                     mode="date"
                     display="default"
+                    minimumDate={new Date()}
                     onChange={(event, selectedDate) => {
                       setShowStartDatePicker(false);
                       if (selectedDate) setStartDate(selectedDate.toISOString().split('T')[0]);
