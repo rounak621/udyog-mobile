@@ -9,10 +9,16 @@ import { SafeScrollView } from '../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 
+import { useRouter } from 'expo-router';
+import { useBusiness } from '../context/BusinessContext';
+
 export default function SubscriptionLockedScreen() {
   const { getToken, signOut } = useAuth();
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const { refreshBusinesses } = useBusiness();
+  const router = useRouter();
 
   useEffect(() => {
     const load = async () => {
@@ -32,11 +38,42 @@ export default function SubscriptionLockedScreen() {
       const token = await getToken();
       setAuthToken(token);
       const res = await api.post('/subscriptions/handover-token');
-      const redirectTarget = encodeURIComponent(`https://app.udyogbook.in/subscribe?plan=${planId}`);
+      const redirectTarget = encodeURIComponent(`https://app.udyogbook.in/subscribe?plan=${planId}&source=mobile`);
       const finalUrl = `${res.data.url}&redirect_url=${redirectTarget}`;
       await Linking.openURL(finalUrl);
     } catch (err: any) {
       Alert.alert('Error', 'Could not open subscription page. Please try again.');
+    }
+  };
+
+  const handleCheckStatus = async () => {
+    setCheckingStatus(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const res = await api.get('/businesses/me');
+      const updatedBiz = res.data;
+      setBusiness(updatedBiz);
+      await refreshBusinesses();
+
+      const status = updatedBiz?.subscription_status?.toLowerCase();
+      if (status === 'active' || status === 'trial') {
+        Alert.alert('Subscription Active!', 'Your account has been unlocked.', [
+          {
+            text: 'Go to Dashboard',
+            onPress: () => router.replace('/(tabs)'),
+          },
+        ]);
+      } else {
+        Alert.alert(
+          'Still Processing',
+          "We haven't received your payment confirmation yet. If you recently completed payment, please wait a moment and try again."
+        );
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Could not verify subscription status. Please check your internet connection and try again.');
+    } finally {
+      setCheckingStatus(false);
     }
   };
 
@@ -74,6 +111,23 @@ export default function SubscriptionLockedScreen() {
           <View style={styles.divider} />
           <Text style={styles.statusPlan}>LAST PLAN: {planName}</Text>
         </View>
+
+        {/* Manual Fallback Check Status Button */}
+        <TouchableOpacity
+          style={styles.checkStatusBtn}
+          onPress={handleCheckStatus}
+          disabled={checkingStatus}
+          activeOpacity={0.8}
+        >
+          {checkingStatus ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <View style={styles.checkStatusBtnContent}>
+              <Ionicons name="refresh-circle-outline" size={20} color={Colors.primary} />
+              <Text style={styles.checkStatusBtnText}>I've completed payment — Check Status</Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Select a Plan to Reactivate</Text>
 
@@ -166,5 +220,30 @@ const styles = StyleSheet.create({
   planBtnRecommended: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   planBtnText: { color: Colors.text, fontSize: 14, fontWeight: '600' },
   planBtnTextRecommended: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  checkStatusBtn: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  checkStatusBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  checkStatusBtnText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   note: { textAlign: 'center', fontSize: 12, color: Colors.textMuted, lineHeight: 18, marginTop: 8 },
 });

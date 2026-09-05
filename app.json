@@ -26,14 +26,13 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 31,
+      "versionCode": 34,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.udyog.udyogmobile",
       "permissions": [
         "RECORD_AUDIO",
-        "READ_MEDIA_IMAGES",
         "READ_EXTERNAL_STORAGE"
       ]
     },

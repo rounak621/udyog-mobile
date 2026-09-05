@@ -170,9 +170,9 @@ export default function CreateInvoiceScreen() {
             id: String(li.id || Math.random()),
             item_id: li.item_id,
             name: li.item_name || li.item?.name || '',
-            qty: String(li.quantity),
+            qty: String(Number(li.quantity || 1)),
             rate: String(li.rate),
-            gst_rate: String(li.gst_rate),
+            gst_rate: String(Number(li.gst_rate) || 0),
             unit: li.unit || 'PCS',
             discount_percent: String(li.discount_percent || 0),
             hsn_code: li.hsn_code || li.item?.hsn_code || '',
@@ -258,9 +258,9 @@ export default function CreateInvoiceScreen() {
             id: Math.random().toString(),
             item_id: catalogMatch?.id || di.item_id || null,
             name: di.name || '',
-            qty: String(di.qty || di.quantity || 1),
+            qty: String(Number(di.qty || di.quantity || 1)),
             rate: String(di.rate || di.unit_price || catalogMatch?.price || ''),
-            gst_rate: String(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || '18'),
+            gst_rate: String(Number(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || 18)),
             unit: di.unit || catalogMatch?.unit || 'PCS',
             discount_percent: '0',
             hsn_code: di.hsn_code || catalogMatch?.hsn_code || '',
@@ -799,65 +799,63 @@ export default function CreateInvoiceScreen() {
                       return round2(base * (1 - disc / 100)).toLocaleString('en-IN');
                     })()}
                   </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                    <TextInput
-                      key={`item_qty_${item.id}`}
-                      blurOnSubmit={false}
-                      style={styles.qtyInput}
-                      value={String(item.qty)}
-                      onChangeText={t => updateItem(item.id, 'qty', t)}
-                      keyboardType="numeric"
-                      placeholder="Qty"
-                      placeholderTextColor="#94A3B8"
-                    />
-                    <Text style={{ color: '#94A3B8' }}>×</Text>
-                    <TextInput
-                      key={`item_rate_${item.id}`}
-                      blurOnSubmit={false}
-                      style={styles.rateInput}
-                      value={String(item.rate)}
-                      onChangeText={t => updateItem(item.id, 'rate', t)}
-                      keyboardType="numeric"
-                      placeholder="Rate (₹)"
-                      placeholderTextColor="#94A3B8"
-                    />
+                  {/* Rate, Qty, Unit Row */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 6 }}>
+                    <View style={{ flex: 1.2 }}>
+                      <Text style={styles.miniLabel}>RATE (₹)</Text>
+                      <TextInput
+                        key={`item_rate_${item.id}`}
+                        blurOnSubmit={false}
+                        style={styles.itemInput}
+                        value={String(item.rate)}
+                        onChangeText={t => updateItem(item.id, 'rate', t)}
+                        keyboardType="numeric"
+                        placeholder="Rate (₹)"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
 
-                    {/* Unit Selector */}
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderWidth: 1,
-                        borderColor: '#E2E8F0',
-                        borderRadius: 8,
-                        backgroundColor: '#F8FAFC',
-                        paddingHorizontal: 8,
-                        height: 38,
-                        minWidth: 64,
-                      }}
-                      onPress={() => setShowUnitPicker(item.id)}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#0F172A' }} numberOfLines={1}>
-                        {item.unit || 'PCS'}
-                      </Text>
-                      <Ionicons name="chevron-down" size={12} color="#94A3B8" style={{ marginLeft: 4 }} />
-                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.miniLabel}>QTY</Text>
+                      <TextInput
+                        key={`item_qty_${item.id}`}
+                        blurOnSubmit={false}
+                        style={styles.itemInput}
+                        value={String(item.qty)}
+                        onChangeText={t => updateItem(item.id, 'qty', t)}
+                        keyboardType="numeric"
+                        placeholder="Qty"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.miniLabel}>UNIT</Text>
+                      <TouchableOpacity
+                        style={styles.unitSelectBtn}
+                        onPress={() => setShowUnitPicker(item.id)}
+                      >
+                        <Text style={styles.unitSelectBtnText} numberOfLines={1}>
+                          {item.unit || 'PCS'}
+                        </Text>
+                        <Ionicons name="chevron-down" size={12} color="#94A3B8" />
+                      </TouchableOpacity>
+                    </View>
 
                     {showDiscount && (
-                      <>
-                        <Text style={{ color: '#94A3B8' }}>−</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.miniLabel}>DISC %</Text>
                         <TextInput
                           key={`item_disc_${item.id}`}
                           blurOnSubmit={false}
-                          style={styles.qtyInput}
+                          style={styles.itemInput}
                           value={String(item.discount_percent)}
                           onChangeText={t => updateItem(item.id, 'discount_percent', t)}
                           keyboardType="numeric"
                           placeholder="Disc %"
                           placeholderTextColor="#94A3B8"
                         />
-                      </>
+                      </View>
                     )}
                   </View>
                   {(invoiceType !== 'NONGST' && !(invoiceType === 'SERVICE' && !isGstApplicable)) && (
@@ -1043,7 +1041,7 @@ export default function CreateInvoiceScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalOverlay}
           >
-            <View style={[styles.modalContent, { maxHeight: '60%' }]}>
+            <View style={[styles.modalContent, { height: '55%' }]}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Select Unit</Text>
                 <TouchableOpacity
@@ -1370,33 +1368,61 @@ const styles = StyleSheet.create({
     color: '#0F172A',
     marginLeft: 8,
   },
+  miniLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
   itemInput: {
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    height: 38,
     fontSize: 13,
     color: '#0F172A',
-    minWidth: 50,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     textAlign: 'center',
+  },
+  unitSelectBtn: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    height: 38,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  unitSelectBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0F172A',
   },
   qtyInput: {
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    height: 38,
     fontSize: 13,
     color: '#0F172A',
-    width: 80,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     textAlign: 'center',
   },
   rateInput: {
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    height: 38,
     fontSize: 13,
     color: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     flex: 1,
     textAlign: 'center',
   },

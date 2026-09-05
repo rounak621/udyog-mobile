@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { View, Text, Animated, StyleSheet, Easing, Dimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -8,6 +8,29 @@ const { width, height } = Dimensions.get('window');
 
 export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   const [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium });
+
+  const hasFinishedRef = useRef(false);
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const safeFinish = useCallback(() => {
+    if (hasFinishedRef.current) return;
+    hasFinishedRef.current = true;
+    if (pulseLoopRef.current) {
+      pulseLoopRef.current.stop();
+    }
+    onFinish();
+  }, [onFinish]);
+
+  // Priority Watchdog: Guarantee onFinish is called within 2800ms regardless of animation or device state
+  useEffect(() => {
+    const watchdogTimer = setTimeout(() => {
+      safeFinish();
+    }, 2800);
+
+    return () => {
+      clearTimeout(watchdogTimer);
+    };
+  }, [safeFinish]);
 
   const logoScale = useRef(new Animated.Value(0.65)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -51,16 +74,29 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         }),
       ])
     );
+    pulseLoopRef.current = pulseLoop;
     pulseLoop.start();
 
+    let fadeTimer: ReturnType<typeof setTimeout> | null = null;
+
     // Entrance animation sequence
-    Animated.sequence([
-      // 1. Logo & Radiating Glow entrance
+    const animSequence = Animated.sequence([
+      // 1. Logo & Radiating Glow entrance (deterministic timing with overshoot easing, replacing unbounded springs)
       Animated.parallel([
         Animated.timing(logoOpacity, { toValue: 1, duration: 450, useNativeDriver: true }),
-        Animated.spring(logoScale, { toValue: 1, tension: 130, friction: 8.5, useNativeDriver: true }),
+        Animated.timing(logoScale, {
+          toValue: 1,
+          duration: 550,
+          easing: Easing.out(Easing.back(1.4)),
+          useNativeDriver: true,
+        }),
         Animated.timing(glowEntranceOpacity, { toValue: 1, duration: 550, useNativeDriver: true }),
-        Animated.spring(glowEntranceScale, { toValue: 1, tension: 110, friction: 9, useNativeDriver: true }),
+        Animated.timing(glowEntranceScale, {
+          toValue: 1,
+          duration: 550,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: true,
+        }),
       ]),
 
       // 2. Wordmark entrance
@@ -83,25 +119,28 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         Animated.timing(footerOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
         Animated.timing(footerY, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
-    ]).start(() => {
+    ]);
+
+    animSequence.start(() => {
       // Smooth fade out to main application
-      setTimeout(() => {
+      fadeTimer = setTimeout(() => {
         Animated.timing(containerOpacity, {
           toValue: 0,
           duration: 300,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }).start(() => {
-          pulseLoop.stop();
-          onFinish();
+          safeFinish();
         });
-      }, 650);
+      }, 500);
     });
 
     return () => {
+      if (fadeTimer) clearTimeout(fadeTimer);
       pulseLoop.stop();
+      animSequence.stop();
     };
-  }, [fontsLoaded]);
+  }, [fontsLoaded, safeFinish]);
 
   if (!fontsLoaded) return <View style={styles.fallbackContainer} />;
 

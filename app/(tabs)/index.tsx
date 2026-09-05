@@ -39,7 +39,7 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentInvoices, setRecentInvoices] = useState<RecentInvoice[]>([]);
-  const { business } = useBusiness();
+  const { business, refreshBusinesses } = useBusiness();
   const { setMode } = useAppMode();
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -102,7 +102,14 @@ export default function DashboardScreen() {
     }
   }, [business?.id]);
 
-  const onRefresh = () => { setRefreshing(true); loadData(); };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([loadData(), refreshBusinesses()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const getInitials = (name: string) => name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 

@@ -217,9 +217,9 @@ export default function OrderCreateScreen() {
           return {
             id: Math.random().toString(),
             product: pMatch || (di.name ? { id: '', name: di.name, rate: Number(di.rate || 0), gst_rate: Number(di.gst_rate || di.tax_rate || 18) } : null),
-            quantity: String(di.qty || di.quantity || 1),
+            quantity: String(Number(di.qty || di.quantity || 1)),
             rate: String(di.rate || pMatch?.rate || ''),
-            gstRate: String(di.gst_rate || di.tax_rate || pMatch?.gst_rate || '18'),
+            gstRate: String(Number(di.gst_rate || di.tax_rate || pMatch?.gst_rate || 18)),
             assetCodes: [],
             availableAssets: [],
             loadingAssets: false,

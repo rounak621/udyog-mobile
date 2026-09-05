@@ -55,7 +55,7 @@ export default function CreateItemScreen() {
           setName(item.name || '');
           setHsnCode(item.hsn_code || '');
           setRate(String(item.rate || ''));
-          setGstRate(String(item.gst_rate ?? 18));
+          setGstRate(String(Number(item.gst_rate ?? 18)));
           setUnit((item.unit || 'PCS').toUpperCase());
         }
       } catch (err) {

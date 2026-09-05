@@ -12,6 +12,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { useBusiness } from '../../context/BusinessContext';
 
 const THEMES = [
   { label: 'Corporate Standard (Black & White)', value: 'corporate_tax_invoice' },
@@ -33,6 +34,7 @@ const THEME_DISPLAY_NAMES: Record<string, string> = {
 
 export default function InvoiceSettingsScreen() {
   const { getToken } = useAuth();
+  const { refreshBusinesses } = useBusiness();
   const router = useRouter();
   
   const [loading, setLoading] = useState(true);
@@ -232,6 +234,7 @@ export default function InvoiceSettingsScreen() {
         show_discount: prefForm.show_discount,
         dual_address_enabled: prefForm.dual_address_enabled,
       });
+      await refreshBusinesses();
       Alert.alert('Success', 'App preferences saved');
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.detail || 'Failed to save preferences');

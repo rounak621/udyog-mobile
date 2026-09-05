@@ -195,9 +195,9 @@ export default function CreateRecurringBillScreen() {
               id: Math.random().toString(),
               item_id: item.item_id || null,
               name: item.item_name || '',
-              qty: String(item.quantity || '1'),
+              qty: String(Number(item.quantity || 1)),
               rate: String(item.rate || ''),
-              gst_rate: String(item.gst_rate ?? '18'),
+              gst_rate: String(Number(item.gst_rate ?? 18)),
               unit: item.unit || 'PCS',
               discount_percent: item.discount_percent ? String(item.discount_percent) : '',
               hsn_code: item.hsn_code || undefined,
@@ -394,6 +394,13 @@ export default function CreateRecurringBillScreen() {
 
     if (!selectedParty?.id) {
       Alert.alert('Missing Customer', 'Please select a customer for this automated bill.');
+      return;
+    }
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (startDate < todayStr && !isEditMode) {
+      Alert.alert('Invalid Start Date', 'Start date cannot be in the past. Please select today or a future date.');
       return;
     }
 
@@ -625,6 +632,7 @@ export default function CreateRecurringBillScreen() {
                     value={new Date(startDate)}
                     mode="date"
                     display="default"
+                    minimumDate={new Date()}
                     onChange={(event, selectedDate) => {
                       setShowStartDatePicker(false);
                       if (selectedDate) setStartDate(selectedDate.toISOString().split('T')[0]);
