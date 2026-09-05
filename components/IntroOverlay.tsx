@@ -1,13 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { View, Text, Animated, StyleSheet, Easing, Dimensions } from 'react-native';
+import { View, Animated, StyleSheet, Easing, Dimensions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { useFonts, Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium } from '@expo-google-fonts/poppins';
+import { useFonts, Poppins_700Bold, Poppins_500Medium } from '@expo-google-fonts/poppins';
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('screen');
 
 export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
-  const [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_600SemiBold, Poppins_500Medium });
+  const [fontsLoaded] = useFonts({ Poppins_700Bold, Poppins_500Medium });
 
   const hasFinishedRef = useRef(false);
   const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -45,9 +45,6 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
 
   const taglineOpacity = useRef(new Animated.Value(0)).current;
   const taglineY = useRef(new Animated.Value(10)).current;
-
-  const mayaCardOpacity = useRef(new Animated.Value(0)).current;
-  const mayaCardY = useRef(new Animated.Value(12)).current;
 
   const footerOpacity = useRef(new Animated.Value(0)).current;
   const footerY = useRef(new Animated.Value(8)).current;
@@ -111,13 +108,11 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         Animated.timing(taglineY, { toValue: 0, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
 
-      // 4. Maya is listening card & device icons
+      // 4. Device icons entrance
       Animated.delay(120),
       Animated.parallel([
-        Animated.timing(mayaCardOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
-        Animated.timing(mayaCardY, { toValue: 0, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-        Animated.timing(footerOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(footerY, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        Animated.timing(footerOpacity, { toValue: 1, duration: 320, useNativeDriver: true }),
+        Animated.timing(footerY, { toValue: 0, duration: 320, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       ]),
     ]);
 
@@ -148,7 +143,10 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
   const combinedGlowScale = Animated.multiply(glowEntranceScale, glowPulseAnim);
 
   return (
-    <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
+    <Animated.View
+      style={[styles.container, { opacity: containerOpacity }]}
+      pointerEvents="auto"
+    >
       {/* 1. Subtle Paper/Cream Warm Gradient Background */}
       <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
         <Defs>
@@ -237,31 +235,8 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
         </Animated.Text>
       </View>
 
-      {/* Bottom Section: Maya Widget + Phone/Desktop Icons */}
+      {/* Bottom Section: Phone + Desktop Device Icons */}
       <View style={styles.bottomSection}>
-        {/* 5. Premium "Maya is listening" Widget */}
-        <Animated.View
-          style={[
-            styles.mayaCard,
-            {
-              opacity: mayaCardOpacity,
-              transform: [{ translateY: mayaCardY }],
-            },
-          ]}
-        >
-          <View style={styles.mayaIconCircle}>
-            <Ionicons name="sparkles" size={16} color="#FFFFFF" />
-          </View>
-          <View style={styles.mayaTextWrap}>
-            <View style={styles.mayaTitleRow}>
-              <Text style={styles.mayaHeadline}>Maya is listening</Text>
-              <View style={styles.liveDot} />
-            </View>
-            <Text style={styles.mayaSubtext}>Hinglish mein bolo, bill ban jayega</Text>
-          </View>
-        </Animated.View>
-
-        {/* 6. Phone + Desktop Icon Pair */}
         <Animated.View
           style={[
             styles.deviceIconRow,
@@ -271,9 +246,9 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
             },
           ]}
         >
-          <Ionicons name="phone-portrait-outline" size={16} color="#94A3B8" />
+          <Ionicons name="phone-portrait-outline" size={30} color="#64748B" />
           <View style={styles.deviceDivider} />
-          <Ionicons name="desktop-outline" size={17} color="#94A3B8" />
+          <Ionicons name="desktop-outline" size={32} color="#64748B" />
         </Animated.View>
       </View>
     </Animated.View>
@@ -283,7 +258,9 @@ export default function IntroOverlay({ onFinish }: { onFinish: () => void }) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FAF5ED',
     zIndex: 999,
+    elevation: 999,
     justifyContent: 'space-between',
     alignItems: 'center',
   },
@@ -291,6 +268,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#FAF5ED',
     zIndex: 999,
+    elevation: 999,
   },
 
   // Main Center Section (Positioned comfortably above true center)
@@ -364,66 +342,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingHorizontal: 28,
-    paddingBottom: '10%',
-  },
-
-  // Premium Maya is Listening Card
-  mayaCard: {
-    width: '100%',
-    maxWidth: 340,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(249, 115, 22, 0.20)',
-    shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    marginBottom: 20,
-  },
-  mayaIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F97316',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  mayaTextWrap: {
-    flex: 1,
-  },
-  mayaTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  mayaHeadline: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13.5,
-    color: '#0F172A',
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22C55E',
-  },
-  mayaSubtext: {
-    fontFamily: 'Poppins_500Medium',
-    fontSize: 11.5,
-    color: '#64748B',
-    marginTop: 1,
+    paddingBottom: '12%',
   },
 
   // Phone + Desktop Device Icons
@@ -431,12 +350,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 16,
   },
   deviceDivider: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: '#CBD5E1',
   },
 });
