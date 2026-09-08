@@ -807,7 +807,7 @@ export default function OrderDetailScreen() {
                     <View style={{ marginTop: 10 }}>
                       <Text style={[styles.modalLabel, { fontSize: 12, marginBottom: 4 }]}>Payment Method</Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                        {['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'].map((method) => {
+                        {['CASH', 'UPI', 'BANK', 'CHEQUE'].map((method) => {
                           const isSelected = paymentMethod === method;
                           return (
                             <TouchableOpacity
@@ -816,7 +816,7 @@ export default function OrderDetailScreen() {
                               onPress={() => setPaymentMethod(method)}
                             >
                               <Text style={[styles.gstChipText, isSelected ? styles.gstChipTextActive : null]}>
-                                {method.replace('_', ' ')}
+                                {method === 'BANK' ? 'Bank' : method.replace('_', ' ')}
                               </Text>
                             </TouchableOpacity>
                           );

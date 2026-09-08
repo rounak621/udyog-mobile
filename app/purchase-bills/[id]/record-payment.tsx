@@ -21,7 +21,7 @@ export default function PurchaseBillRecordPaymentScreen() {
   const [loading, setLoading] = useState(true);
   const [bill, setBill] = useState<any>(null);
   const [businessId, setBusinessId] = useState('');
-  const [paymentMode, setPaymentMode] = useState<'CASH' | 'BANK_TRANSFER' | 'UPI' | 'CHEQUE'>('CASH');
+  const [paymentMode, setPaymentMode] = useState<'CASH' | 'BANK' | 'UPI' | 'CHEQUE'>('CASH');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -155,7 +155,7 @@ export default function PurchaseBillRecordPaymentScreen() {
             <View style={{ gap: 8 }}>
               {([
                 { value: 'CASH', label: 'Cash', icon: 'cash-outline' },
-                { value: 'BANK_TRANSFER', label: 'Bank Transfer', icon: 'business-outline' },
+                { value: 'BANK', label: 'Bank Transfer', icon: 'business-outline' },
                 { value: 'UPI', label: 'UPI', icon: 'phone-portrait-outline' },
                 { value: 'CHEQUE', label: 'Cheque', icon: 'document-text-outline' },
               ] as const).map(opt => {

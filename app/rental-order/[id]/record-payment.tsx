@@ -154,7 +154,7 @@ export default function RentalOrderRecordPaymentScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.inputLabel}>Payment Method</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-              {['CASH', 'UPI', 'BANK_TRANSFER', 'CHEQUE'].map((method) => {
+              {['CASH', 'UPI', 'BANK', 'CHEQUE'].map((method) => {
                 const isSelected = paymentMethod === method;
                 return (
                   <TouchableOpacity
@@ -163,7 +163,7 @@ export default function RentalOrderRecordPaymentScreen() {
                     onPress={() => setPaymentMethod(method)}
                   >
                     <Text style={[styles.methodChipText, isSelected ? styles.methodChipTextActive : null]}>
-                      {method.replace('_', ' ')}
+                      {method === 'BANK' ? 'Bank' : method.replace('_', ' ')}
                     </Text>
                   </TouchableOpacity>
                 );
