@@ -63,12 +63,13 @@ export default function CreateRecurringBillScreen() {
   const bottomPadding = useBottomPadding(24);
   const { getToken } = useAuth();
   const { business } = useBusiness();
-  const params = useLocalSearchParams<{ id?: string; customer_id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; customer_id?: string; maya_data?: string }>();
   const isEditMode = !!params.id;
 
   const [businessId, setBusinessId] = useState<string>('');
   const [businessState, setBusinessState] = useState<string>('');
   const [loadingInitial, setLoadingInitial] = useState(isEditMode);
+  const [masterDataLoaded, setMasterDataLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Customer State
@@ -119,6 +120,7 @@ export default function CreateRecurringBillScreen() {
 
   // Ref to track if initial mount load has completed
   const hasLoadedInitialRef = useRef(false);
+  const mayaDataAppliedRef = useRef(false);
 
   // PDF Preview State (Stateless raw bytes preview)
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -169,6 +171,7 @@ export default function CreateRecurringBillScreen() {
           ? itemsRes.data
           : itemsRes.data?.items || []
       );
+      setMasterDataLoaded(true);
 
       if (isInitial && params.customer_id) {
         const pre = loadedParties.find((p: any) => String(p.id) === String(params.customer_id));
@@ -226,6 +229,128 @@ export default function CreateRecurringBillScreen() {
     setShowCustomerPicker(false);
     setPartySearch('');
   };
+
+  // Pre-fill from Maya draft data if maya_data was passed in route params
+  useEffect(() => {
+    if (!params.maya_data || mayaDataAppliedRef.current || isEditMode) return;
+    if (parties.length === 0 && !masterDataLoaded) return;
+
+    try {
+      const draft = typeof params.maya_data === 'string' ? JSON.parse(params.maya_data) : params.maya_data;
+      if (!draft) return;
+      mayaDataAppliedRef.current = true;
+
+      // 1. Match customer by name or id (reusing logic from app/invoice/create.tsx)
+      const partyName = draft.customer_name || draft.party_name;
+      if (partyName && !selectedParty && parties.length > 0) {
+        const match = parties.find(
+          (p: any) =>
+            (draft.party_id && String(p.id) === String(draft.party_id)) ||
+            (p.name && p.name.toLowerCase().trim() === partyName.toLowerCase().trim())
+        );
+        if (match) {
+          selectCustomer(match, businessState);
+        }
+      }
+
+      // 2. Pre-fill line items
+      if (draft.items && draft.items.length > 0) {
+        const newLineItems: FormLineItem[] = draft.items.map((di: any) => {
+          const catalogMatch = itemsCatalog.find(
+            (it: any) => it.name?.toLowerCase().trim() === (di.name || '').toLowerCase().trim()
+          );
+          const rawRate =
+            di.rate !== undefined && di.rate !== null
+              ? di.rate
+              : di.unit_price !== undefined && di.unit_price !== null
+              ? di.unit_price
+              : catalogMatch?.price;
+          const rawQty =
+            di.qty !== undefined && di.qty !== null
+              ? di.qty
+              : di.quantity !== undefined && di.quantity !== null
+              ? di.quantity
+              : 1;
+          const rawGst =
+            di.tax_rate !== undefined && di.tax_rate !== null
+              ? di.tax_rate
+              : di.gst_rate !== undefined && di.gst_rate !== null
+              ? di.gst_rate
+              : (catalogMatch?.gst_rate ?? 18);
+
+          return {
+            id: Math.random().toString(),
+            item_id: catalogMatch?.id || di.item_id || null,
+            name: di.name || '',
+            qty: String(Number(rawQty) || 1),
+            rate: rawRate !== undefined && rawRate !== null ? String(rawRate) : '',
+            gst_rate: String(Number(rawGst) ?? 18),
+            unit: di.unit || catalogMatch?.unit || 'PCS',
+            discount_percent: di.discount_percent ? String(di.discount_percent) : '',
+            hsn_code: di.hsn_code || catalogMatch?.hsn_code || undefined,
+            description: di.description || undefined,
+            isCustom: !catalogMatch && !di.item_id,
+          };
+        });
+        setLineItems(newLineItems);
+        if (draft.items.some((i: any) => Number(i.discount_percent) > 0)) {
+          setShowDiscount(true);
+        }
+      }
+
+      // 3. Pre-fill frequency
+      if (draft.frequency) {
+        const freq = String(draft.frequency).toLowerCase().trim();
+        const validFrequencies: RecurringFrequency[] = ['monthly', 'quarterly', 'weekly', 'daily', 'custom'];
+        if (validFrequencies.includes(freq as RecurringFrequency)) {
+          setFrequency(freq as RecurringFrequency);
+        }
+      }
+
+      // 4. Pre-fill start_date with past-date guard
+      // If Maya returns a past date, fall back to today's date (automated bill start dates must be >= today)
+      const now = new Date();
+      const todayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      let chosenStartDate = todayStr;
+
+      if (draft.start_date) {
+        const parts = String(draft.start_date).split('T')[0].split('-').map(Number);
+        if (parts.length === 3 && !parts.some(isNaN)) {
+          const candidate = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+          if (candidate.getTime() >= todayLocal.getTime()) {
+            chosenStartDate = String(draft.start_date).split('T')[0];
+          } else {
+            chosenStartDate = todayStr;
+          }
+        }
+      }
+      setStartDate(chosenStartDate);
+
+      // 5. Pre-fill billing_day
+      if (draft.billing_day) {
+        const dayNum = parseInt(String(draft.billing_day), 10);
+        if (!isNaN(dayNum) && dayNum >= 1 && dayNum <= 31) {
+          setBillingDay(dayNum);
+        }
+      } else if (chosenStartDate) {
+        const dayNum = parseInt(chosenStartDate.split('-')[2], 10);
+        if (!isNaN(dayNum) && dayNum >= 1 && dayNum <= 31) {
+          setBillingDay(dayNum);
+        }
+      }
+
+      // 6. Pre-fill end_date and notes if present
+      if (draft.end_date) {
+        setEndDate(String(draft.end_date).split('T')[0]);
+      }
+      if (draft.notes) {
+        setNotes(String(draft.notes));
+      }
+    } catch (err) {
+      console.log('Maya data parse error in automated bills create:', err);
+    }
+  }, [params.maya_data, parties, itemsCatalog, businessState, masterDataLoaded, isEditMode]);
 
   // Line item manipulation
   const addLineItem = () => {

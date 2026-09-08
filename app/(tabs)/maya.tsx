@@ -372,6 +372,10 @@ export default function MayaScreen() {
         draft.end_date = String(new_value);
       } else if (field === 'rate_type') {
         draft.rate_type = String(new_value);
+      } else if (field === 'frequency') {
+        draft.frequency = String(new_value);
+      } else if (field === 'billing_day') {
+        draft.billing_day = Number(new_value);
       }
 
       if (Array.isArray(draft.items)) {
@@ -546,6 +550,8 @@ export default function MayaScreen() {
       if (draft) draft.is_rental = true;
     } else if (normalizedAction === 'draft_quotation') {
       draft = data.extracted_data || data.current_draft || null;
+    } else if (normalizedAction === 'draft_automated') {
+      draft = data.extracted_data || data.current_draft || null;
     } else if (normalizedAction === 'create_customer') {
       draft = data.extracted_data?.new_party || null;
     } else if (normalizedAction === 'create_item') {
@@ -713,6 +719,8 @@ export default function MayaScreen() {
         if (draft) draft.is_rental = true;
       } else if (normalizedAction === 'draft_quotation') {
         draft = data.extracted_data || data.current_draft || null;
+      } else if (normalizedAction === 'draft_automated') {
+        draft = data.extracted_data || data.current_draft || null;
       } else if (normalizedAction === 'create_customer') {
         draft = data.extracted_data?.new_party || null;
       } else if (normalizedAction === 'create_item') {
@@ -819,6 +827,14 @@ export default function MayaScreen() {
     if (!draft) return;
     router.push({
       pathname: '/rental-order/create',
+      params: { maya_data: JSON.stringify(draft) },
+    });
+  };
+
+  const handleCreateAutomatedBill = (draft: any) => {
+    if (!draft) return;
+    router.push({
+      pathname: '/automated-bills/create',
       params: { maya_data: JSON.stringify(draft) },
     });
   };
@@ -1261,6 +1277,7 @@ export default function MayaScreen() {
                   const hasInvoiceDraft = !!(msg.draft && msg.actionType === 'draft_invoice');
                   const hasRentalDraft = !!(msg.draft && msg.actionType === 'draft_rental');
                   const hasQuotationDraft = !!(msg.draft && msg.actionType === 'draft_quotation');
+                  const hasAutomatedDraft = !!(msg.draft && msg.actionType === 'draft_automated');
                   const hasCustomerDraft = !!(msg.draft && msg.actionType === 'create_customer');
                   const hasItemDraft = !!(msg.draft && msg.actionType === 'create_item');
                   const hasWhatsAppProposal = !!msg.whatsAppProposal;
@@ -1270,6 +1287,7 @@ export default function MayaScreen() {
                     hasInvoiceDraft ||
                     hasRentalDraft ||
                     hasQuotationDraft ||
+                    hasAutomatedDraft ||
                     hasCustomerDraft ||
                     hasItemDraft ||
                     hasWhatsAppProposal ||
@@ -1346,6 +1364,94 @@ export default function MayaScreen() {
                           <TouchableOpacity style={styles.draftBtnSolid} onPress={() => handleCreateRental(msg.draft)}>
                             <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
                             <Text style={styles.draftBtnSolidText}>Create Rental</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  };
+
+                  const renderAutomatedDraftCard = (isStandalone: boolean) => {
+                    const partyName = msg.draft.customer_name || msg.draft.party_name || 'Walk-in';
+                    const getInitials = (name: string) => {
+                      if (!name) return '??';
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                      return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
+                    };
+
+                    const getScheduleLabel = () => {
+                      const rawFreq = (msg.draft.frequency || 'monthly').toString().toLowerCase();
+                      const day = msg.draft.billing_day;
+                      let freqLabel = 'Monthly';
+                      if (rawFreq === 'daily') freqLabel = 'Daily';
+                      else if (rawFreq === 'weekly') freqLabel = 'Weekly';
+                      else if (rawFreq === 'quarterly') freqLabel = 'Quarterly';
+                      else if (rawFreq === 'custom' && msg.draft.interval_days) freqLabel = `Every ${msg.draft.interval_days} days`;
+                      else if (rawFreq === 'monthly') {
+                        freqLabel = day ? `Monthly on day ${day}` : 'Monthly';
+                      }
+                      const startDate = msg.draft.start_date || new Date().toISOString().split('T')[0];
+                      return `${freqLabel} • Starts ${startDate}`;
+                    };
+
+                    return (
+                      <View style={[styles.draftCard, isStandalone && { marginTop: 0 }]}>
+                        {/* Card Header */}
+                        <View style={styles.draftCardHeader}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, marginRight: 8 }}>
+                            <View style={styles.draftAvatar}>
+                              <Text style={styles.draftAvatarText}>{getInitials(partyName)}</Text>
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.draftPartyName} numberOfLines={1}>{partyName}</Text>
+                              <Text style={styles.draftDate} numberOfLines={1}>
+                                {getScheduleLabel()}
+                              </Text>
+                            </View>
+                          </View>
+                          <View style={[styles.draftBadge, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}>
+                            <Text style={[styles.draftBadgeText, { color: '#2563EB' }]}>AUTOMATED</Text>
+                          </View>
+                        </View>
+
+                        {/* Line Items */}
+                        <View style={{ marginVertical: 8 }}>
+                          {(msg.draft.items || []).map((item: any, j: number) => (
+                            <View key={j} style={styles.draftItemRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.draftItemName}>{item.name || 'Item'}</Text>
+                                <Text style={styles.draftItemDetail}>
+                                  {item.qty || item.quantity || 1} {item.unit || 'pcs'} x {fmt(item.rate || item.unit_price || 0)}
+                                </Text>
+                              </View>
+                              <Text style={styles.draftItemAmount}>
+                                {fmt((item.qty || item.quantity || 1) * (item.rate || item.unit_price || 0))}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+
+                        {/* Total row */}
+                        {msg.draft.total_amount ? (
+                          <View style={styles.draftTotalContainer}>
+                            <Text style={styles.draftTotalLabel}>Total / Cycle</Text>
+                            <Text style={styles.draftTotalValue}>{fmt(msg.draft.total_amount)}</Text>
+                          </View>
+                        ) : null}
+
+                        {/* Action Buttons */}
+                        <View style={styles.draftActionsRow}>
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCancelDraft(i)}>
+                            <Text style={styles.draftBtnOutlineText}>Cancel</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.draftBtnOutline} onPress={() => handleCreateAutomatedBill(msg.draft)}>
+                            <Text style={styles.draftBtnOutlineText}>Edit</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity style={styles.draftBtnSolid} onPress={() => handleCreateAutomatedBill(msg.draft)}>
+                            <Ionicons name="checkmark" size={14} color="#fff" style={{ marginRight: 4 }} />
+                            <Text style={styles.draftBtnSolidText}>Create Automated Bill</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1584,6 +1690,7 @@ export default function MayaScreen() {
                             )}
                             {hasInvoiceDraft && renderDraftCard(!hasText)}
                             {hasRentalDraft && renderRentalDraftCard(!hasText)}
+                            {hasAutomatedDraft && renderAutomatedDraftCard(!hasText)}
                             {hasCustomerDraft && renderCustomerCard(!hasText)}
                             {hasItemDraft && renderItemCard(!hasText)}
                             {hasQuotationDraft && (
