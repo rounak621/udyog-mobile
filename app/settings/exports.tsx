@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 export default function ExportsScreen() {
   const { getToken } = useAuth();
@@ -28,7 +29,7 @@ export default function ExportsScreen() {
         title: `${label}.xml`,
       });
     } catch (err: any) {
-      Alert.alert('Export Failed', err.response?.data?.detail || 'Could not export data');
+      Alert.alert('Export Failed', getApiErrorMessage(err, 'Could not export data'));
     } finally {
       setLoading(null);
     }

@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface RentalAsset {
   id: string;
@@ -82,7 +83,7 @@ export default function RentalAssetListScreen() {
       loadAssets();
     } catch (err: any) {
       console.log('Status update error:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to update asset status.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to update asset status.'));
     }
   };
 
@@ -95,7 +96,7 @@ export default function RentalAssetListScreen() {
       loadAssets();
     } catch (err: any) {
       console.log('Asset retire error:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to retire asset.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to retire asset.'));
     }
   };
 
@@ -108,7 +109,7 @@ export default function RentalAssetListScreen() {
       loadAssets();
     } catch (err: any) {
       console.log('Asset delete error:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to delete asset.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete asset.'));
     }
   };
 

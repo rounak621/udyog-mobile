@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, RefreshControl,
-  ActivityIndicator, BackHandler, Alert
+  ActivityIndicator, BackHandler, Alert, Linking
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Print from 'expo-print';
@@ -13,7 +13,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
-import { api, setAuthToken } from '../../services/api';
+import { api, setAuthToken } from "../../services/api"; import { getApiErrorMessage } from '../../utils/apiError';
 import DateRangePicker from '../../components/DateRangePicker';
 import { escapeHtml } from '../../utils/escapeHtml';
 
@@ -25,6 +25,7 @@ interface Invoice {
   taxable_amount: number;
   total_tax: number;
   total_amount: number;
+  paid_amount?: number;
   payment_status: string;
 }
 
@@ -63,6 +64,8 @@ export default function SalesReportScreen() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  const [businessId, setBusinessId] = useState<string | null>(null);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -71,6 +74,7 @@ export default function SalesReportScreen() {
       
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
+      setBusinessId(bId);
 
       let start = '';
       let end = '';
@@ -490,6 +494,49 @@ export default function SalesReportScreen() {
                     </Text>
                   </View>
                 </View>
+
+                {Math.max(0, inv.total_amount - ((inv as any).paid_amount || 0)) > 0 && (
+                  <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#DC2626' }}>
+                      Pending: {fmt(Math.max(0, inv.total_amount - ((inv as any).paid_amount || 0)))}
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={{ padding: 6, backgroundColor: '#DCFCE7', borderRadius: 6 }}
+                        onPress={() => {
+                          Alert.alert('Send via WhatsApp', `Send invoice PDF link to ${inv.customer_name}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'Send', onPress: () => Linking.openURL(`https://wa.me/?text=Hello ${inv.customer_name}, please find your invoice ${inv.invoice_number} for ₹${inv.total_amount}.`) }
+                          ]);
+                        }}
+                      >
+                        <Ionicons name="logo-whatsapp" size={16} color="#16A34A" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{ padding: 6, backgroundColor: '#FFEDD5', borderRadius: 6 }}
+                        onPress={() => {
+                          Alert.alert('Send Reminder', `Send payment reminder to ${inv.customer_name}?`, [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Send', onPress: async () => {
+                                try {
+                                  const token = await getToken();
+                                  setAuthToken(token);
+                                  await api.post(`/invoices/${inv.id}/send-payment-reminder?business_id=${businessId}`);
+                                  Alert.alert('Success', 'Reminder sent');
+                                } catch (e: any) {
+                                  Alert.alert('Error', getApiErrorMessage(e, 'Failed to send reminder'));
+                                }
+                              }
+                            }
+                          ]);
+                        }}
+                      >
+                        <Ionicons name="notifications-outline" size={16} color="#EA580C" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
               </View>
             );
           })

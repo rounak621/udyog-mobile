@@ -12,6 +12,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface InventoryItem {
   id: number;
@@ -100,7 +101,7 @@ export default function InventoryScreen() {
       setSelectedItem(null);
       loadInventory();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to submit stock adjustment');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to submit stock adjustment'));
     } finally {
       setSaving(false);
     }

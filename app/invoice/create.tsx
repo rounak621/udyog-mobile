@@ -22,6 +22,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Audio } from 'expo-av';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { checkIsOnline } from '../../services/network';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface LineItem {
   id: string;
@@ -130,7 +131,7 @@ export default function CreateInvoiceScreen() {
       if (!bId) return;
       
       const [custRes, itemRes] = await Promise.allSettled([
-        api.get(`/customers/?business_id=${bId}&limit=100`),
+        api.get(`/customers/?business_id=${bId}&limit=100&party_type=customer`),
         api.get(`/items/?business_id=${bId}&limit=100`),
       ]);
       
@@ -157,7 +158,13 @@ export default function CreateInvoiceScreen() {
         setIsGstApplicable(invData.is_gst_applicable !== false);
 
         const custId = invData.customer_id;
-        const match = partiesList.find(p => String(p.id) === String(custId));
+        let match = partiesList.find(p => String(p.id) === String(custId));
+        if (!match && invData.customer) {
+          partiesList = [...partiesList, invData.customer];
+          setParties(partiesList);
+          match = invData.customer;
+        }
+
         if (match) {
           setSelectedParty(match);
           const customerState = match.state || '';
@@ -263,7 +270,7 @@ export default function CreateInvoiceScreen() {
             gst_rate: String(Number(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || 18)),
             unit: di.unit || catalogMatch?.unit || 'PCS',
             discount_percent: '0',
-            hsn_code: di.hsn_code || catalogMatch?.hsn_code || '',
+            hsn_code: di.hsn_code || di.sac_code || catalogMatch?.hsn_code || '',
             description: di.description || '',
             isCustom: !catalogMatch,
           };
@@ -471,7 +478,7 @@ export default function CreateInvoiceScreen() {
       if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || (err.isAxiosError && !err.response)) {
         Alert.alert('Network Error', 'Network error — your invoice was not saved, please try again.');
       } else {
-        Alert.alert('Error', err.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'create'} invoice`);
+        Alert.alert('Error', getApiErrorMessage(err, `Failed to ${isEditMode ? 'update' : 'create'} invoice`));
       }
     } finally {
       setSaving(false);
@@ -535,7 +542,21 @@ export default function CreateInvoiceScreen() {
             <TouchableOpacity
               key={t.value}
               style={[styles.typeBtn, invoiceType === t.value && styles.typeBtnActive]}
-              onPress={() => !isEditMode && setInvoiceType(t.value as any)}
+              onPress={() => {
+                if (isEditMode) return;
+                if (t.value === 'INVOICE' && selectedParty && !selectedParty.gstin) {
+                  Alert.alert(
+                    'GSTIN Required',
+                    'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                    [
+                      { text: 'Switch to B2C', onPress: () => setInvoiceType(t.value as any) },
+                      { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+                    ]
+                  );
+                  return;
+                }
+                setInvoiceType(t.value as any);
+              }}
               disabled={isEditMode}
             >
               <Text style={[styles.typeBtnText, invoiceType === t.value && styles.typeBtnTextActive]}>{t.label}</Text>
@@ -552,7 +573,21 @@ export default function CreateInvoiceScreen() {
               <TouchableOpacity
                 key={String(t.value)}
                 style={[styles.typeBtn, isGstApplicable === t.value && styles.typeBtnActive]}
-                onPress={() => !isEditMode && setIsGstApplicable(t.value)}
+                onPress={() => {
+                  if (isEditMode) return;
+                  if (t.value === true && selectedParty && !selectedParty.gstin) {
+                    Alert.alert(
+                      'GSTIN Required',
+                      'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                      [
+                        { text: 'Switch to B2C', onPress: () => setIsGstApplicable(true) },
+                        { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+                      ]
+                    );
+                    return;
+                  }
+                  setIsGstApplicable(t.value);
+                }}
                 disabled={isEditMode}
               >
                 <Text style={[styles.typeBtnText, isGstApplicable === t.value && styles.typeBtnTextActive]}>{t.label}</Text>

@@ -121,11 +121,14 @@ export default function CAManagementScreen() {
   // Determine limit details
   const plan = business?.subscription_plan || 'basic';
   const planStr = typeof plan === 'object' && plan?.value ? plan.value : String(plan).toLowerCase();
-  const status = business?.subscription_status || 'trial';
-  const statusStr = typeof status === 'object' && status?.value ? status.value : String(status).toLowerCase();
-
-  // Enforce trial/Saral limit is 0, Vistaar/Enterprise is 2
-  const limit = (statusStr === 'trial' || planStr === 'basic' || planStr === 'pro' || planStr === 'premium' || planStr === 'saral') ? 0 : 2;
+  
+  // Use backend ca_connections_limit if available, else fallback to old logic
+  const limit = business?.ca_connections_limit !== undefined 
+    ? business.ca_connections_limit 
+    : (planStr === 'basic' || planStr === 'pro' || planStr === 'premium' || planStr === 'saral' ? 0 : 2);
+  
+  const activeConnections = cas.length;
+  const isAtLimit = activeConnections >= limit;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -171,15 +174,15 @@ export default function CAManagementScreen() {
                 />
                 <Text style={styles.bannerTitle}>
                   {limit > 0 
-                    ? `${cas.length} of ${limit} CAs added` 
+                    ? `${activeConnections} of ${limit} CAs used` 
                     : "CA Collaboration Access"
                   }
                 </Text>
               </View>
               <Text style={styles.bannerSub}>
                 {limit > 0 
-                  ? "Your Vistaar plan allows up to 2 active CAs to audit your records."
-                  : "CA access requires a Vistaar plan. Upgrade now to enable CA collaboration."
+                  ? `Your plan allows up to ${limit} active CAs to audit your records.`
+                  : "CA access requires a premium plan. Upgrade now to enable CA collaboration."
                 }
               </Text>
             </View>
@@ -212,8 +215,13 @@ export default function CAManagementScreen() {
 
             {/* Add CA Form or Upsell Block */}
             {limit > 0 ? (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, isAtLimit && { opacity: 0.6 }]}>
                 <Text style={styles.sectionTitle}>Add Chartered Accountant</Text>
+                {isAtLimit && (
+                  <Text style={{ fontSize: 13, color: Colors.danger, marginBottom: 12 }}>
+                    You have reached your limit of {limit} CA connections. Remove an existing CA to add a new one.
+                  </Text>
+                )}
                 <Text style={styles.inputLabel}>CA Email Address</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -224,12 +232,12 @@ export default function CAManagementScreen() {
                     placeholderTextColor="#94a3b8"
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    editable={!adding}
+                    editable={!adding && !isAtLimit}
                   />
                   <TouchableOpacity 
-                    style={[styles.addBtn, !emailInput.trim() && { opacity: 0.6 }]} 
+                    style={[styles.addBtn, (!emailInput.trim() || isAtLimit) && { opacity: 0.6 }]} 
                     onPress={handleAddCA}
-                    disabled={adding || !emailInput.trim()}
+                    disabled={adding || !emailInput.trim() || isAtLimit}
                   >
                     {adding ? (
                       <ActivityIndicator size="small" color="#fff" />

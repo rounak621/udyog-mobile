@@ -14,6 +14,7 @@ import { Colors, Spacing, Radius, UNITS } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { validateHSN } from '../../utils/validators';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 export default function CreateItemScreen() {
   const { getToken } = useAuth();
@@ -104,7 +105,7 @@ export default function CreateItemScreen() {
       }
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save item');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save item'));
     } finally {
       setSaving(false);
     }
@@ -128,7 +129,7 @@ export default function CreateItemScreen() {
                 { text: 'OK', onPress: () => router.replace('/items') }
               ]);
             } catch (err: any) {
-              Alert.alert('Error', err.response?.data?.detail || 'Failed to delete item');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete item'));
             }
           }
         }

@@ -152,7 +152,7 @@ export default function CreateQuotationScreen() {
 
       // Load customers and item catalog
       const [partiesRes, itemsRes] = await Promise.all([
-        api.get(`/customers/?business_id=${bId}`),
+        api.get(`/customers/?business_id=${bId}&party_type=customer`),
         api.get(`/items/?business_id=${bId}`),
       ]);
 
@@ -189,7 +189,11 @@ export default function CreateQuotationScreen() {
 
         // Map customer
         if (q.customer) {
-          const matchedParty = loadedParties.find((p: any) => String(p.id) === String(q.customer_id)) || q.customer;
+          let matchedParty = loadedParties.find((p: any) => String(p.id) === String(q.customer_id));
+          if (!matchedParty) {
+            matchedParty = q.customer;
+            setParties(prev => [...prev, matchedParty]);
+          }
           selectCustomer(matchedParty, bState);
         }
 

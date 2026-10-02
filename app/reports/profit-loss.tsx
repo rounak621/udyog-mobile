@@ -77,7 +77,7 @@ export default function ProfitLossReportScreen() {
   const expenses = data?.expenses || 0;
   const totalExpenses = cogs + expenses;
   const netProfit = data?.net_profit || 0;
-  const profitMargin = revenue > 0 ? ((netProfit / revenue) * 100).toFixed(1) : '0.0';
+  const profitMargin = revenue > 0 ? ((netProfit / revenue) * 100).toFixed(2) : '0.00';
 
   // Proportional bars calculation
   const totalCostForBar = totalExpenses || 1;
@@ -159,7 +159,7 @@ export default function ProfitLossReportScreen() {
               {/* COGS (Purchases) Bar */}
               <View style={styles.barItem}>
                 <View style={styles.barHeader}>
-                  <Text style={styles.barLabel}>Cost of Goods Sold</Text>
+                  <Text style={styles.barLabel}>Purchases</Text>
                   <Text style={styles.barValue}>{fmt(cogs)} ({cogsPercent}%)</Text>
                 </View>
                 <View style={styles.barBackground}>
@@ -188,7 +188,7 @@ export default function ProfitLossReportScreen() {
                 <Text style={styles.rowVal}>{fmt(revenue)}</Text>
               </View>
               <View style={styles.detailRow}>
-                <Text style={styles.rowName}>Cost of Goods Sold (COGS)</Text>
+                <Text style={styles.rowName}>Purchases</Text>
                 <Text style={[styles.rowVal, { color: Colors.danger }]}>-{fmt(cogs)}</Text>
               </View>
               <View style={[styles.detailRow, styles.subtotalRow]}>

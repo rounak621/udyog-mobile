@@ -13,6 +13,7 @@ import { FixedBottomBar } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { useBusiness } from '../../../context/BusinessContext';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 export default function RentalOrderRecordPaymentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,7 +76,7 @@ export default function RentalOrderRecordPaymentScreen() {
 
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to record payment.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to record payment.'));
     } finally {
       setSubmitting(false);
     }

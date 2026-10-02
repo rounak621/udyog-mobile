@@ -13,6 +13,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { validateHSN } from '../../utils/validators';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const RATE_TYPES = [
   { label: 'Daily', value: 'DAILY' },
@@ -109,7 +110,7 @@ export default function CreateProductScreen() {
       router.back();
     } catch (err: any) {
       console.log('Error saving product:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save product.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save product.'));
     } finally {
       setSaving(false);
     }
@@ -134,7 +135,7 @@ export default function CreateProductScreen() {
               router.back();
             } catch (err: any) {
               console.log('Error deleting product:', err);
-              Alert.alert('Error', err.response?.data?.detail || 'Failed to delete product.');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete product.'));
             }
           }
         }

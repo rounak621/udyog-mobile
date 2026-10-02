@@ -11,6 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 interface PurchaseBillItem {
   id: number;
@@ -152,7 +153,7 @@ export default function PurchaseBillDetailScreen() {
               Alert.alert('Success', 'Purchase bill deleted successfully');
               router.back();
             } catch (err: any) {
-              const errMsg = err.response?.data?.detail || 'Failed to delete purchase bill';
+              const errMsg = getApiErrorMessage(err, 'Failed to delete purchase bill');
               Alert.alert('Error', errMsg);
             }
           }
@@ -188,7 +189,7 @@ export default function PurchaseBillDetailScreen() {
       setBill(res.data);
       await loadPayments(businessId);
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.detail || 'Failed to revert payment');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to revert payment'));
     } finally {
       setReverting(false);
     }

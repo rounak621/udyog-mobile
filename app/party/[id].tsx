@@ -12,6 +12,7 @@ import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import * as FileSystem from 'expo-file-system/legacy';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -216,7 +217,7 @@ export default function PartyDetailScreen() {
               router.back();
             } catch (err: any) {
               if (err.response?.status === 409) {
-                const errMsg = err.response?.data?.detail || 'Cannot delete party: active invoices or purchase bills exist.';
+                const errMsg = getApiErrorMessage(err, 'Cannot delete party: active invoices or purchase bills exist.');
                 Alert.alert('Cannot Delete', errMsg);
               } else {
                 Alert.alert('Error', 'Failed to delete party. Please try again.');

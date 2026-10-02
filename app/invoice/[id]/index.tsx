@@ -15,6 +15,7 @@ import { api, setAuthToken, API_BASE_URL } from '../../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../../services/safHelper';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -125,7 +126,7 @@ export default function InvoiceDetailScreen() {
               await api.delete(`/invoices/${id}?business_id=${invoice.business_id}`);
               router.replace('/(tabs)/bills');
             } catch (err: any) {
-              Alert.alert('Error', err?.response?.data?.detail || 'Failed to delete invoice');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete invoice'));
             } finally {
               setDeleting(false);
             }
@@ -154,7 +155,7 @@ export default function InvoiceDetailScreen() {
       if (err.response?.status === 503) {
         Alert.alert('Notice', 'WhatsApp reminders — Coming soon!');
       } else {
-        Alert.alert('Error', err.response?.data?.detail || 'Failed to send reminder');
+        Alert.alert('Error', getApiErrorMessage(err, 'Failed to send reminder'));
       }
     } finally {
       setSendingReminder(false);
@@ -184,7 +185,7 @@ export default function InvoiceDetailScreen() {
       setRevertReason('');
       await loadInvoice();
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.detail || 'Failed to revert payment');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to revert payment'));
     } finally {
       setReverting(false);
     }
@@ -337,6 +338,9 @@ export default function InvoiceDetailScreen() {
             <View key={i} style={styles.itemRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName}>{item.item_name || item.name}</Text>
+                {item.description && item.description !== (item.item_name || item.name) && (
+                  <Text style={{ fontSize: 12, color: '#666', marginTop: 2, marginBottom: 2 }}>{item.description}</Text>
+                )}
                 <Text style={styles.itemSub} textBreakStrategy="simple">{item.quantity} {item.unit || 'pcs'} × {fmt(item.rate || item.unit_price)} · GST {item.gst_rate || 0}%</Text>
               </View>
               <Text style={styles.itemAmount} textBreakStrategy="simple">{fmt(item.line_total || item.amount || item.total)}</Text>

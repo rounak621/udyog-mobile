@@ -16,6 +16,7 @@ import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { validateHSN } from '../../utils/validators';
 import ImportFromBusinessModal from '../../components/ImportFromBusinessModal';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface Item {
   id: number;
@@ -182,7 +183,7 @@ export default function ItemsScreen() {
       Alert.alert('Bulk Add Complete', `Successfully added ${successCount} item(s).${failCount > 0 ? ` ${failCount} failed.` : ''}`);
       loadItems(0, false, search);
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Bulk add failed');
+      Alert.alert('Error', getApiErrorMessage(err, 'Bulk add failed'));
     } finally {
       setSavingBulk(false);
     }
