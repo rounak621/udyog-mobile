@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "android:staging:apk": "NODE_ENV=production ./android/gradlew -p android assembleStagingRelease",
+    "android:prod:apk": "NODE_ENV=production ./android/gradlew -p android assembleProductionRelease",
+    "android:prod:aab": "NODE_ENV=production ./android/gradlew -p android bundleProductionRelease"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.4.2",
@@ -16,6 +19,7 @@
     "@react-native-community/netinfo": "^11.4.1",
     "axios": "^1.17.0",
     "expo": "~54.0.34",
+    "expo-application": "~7.0.8",
     "expo-auth-session": "~7.0.11",
     "expo-av": "~16.0.8",
     "expo-constants": "~18.0.13",

@@ -12,6 +12,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
+import { APP_SCHEME } from '../../services/api';
 
 export default function LoginScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -60,7 +61,7 @@ export default function LoginScreen() {
     setGoogleLoading(true);
     try {
       const { createdSessionId, setActive: setActiveOAuth } = await startOAuthFlow({
-        redirectUrl: Linking.createURL('/(tabs)', { scheme: 'udyog' }),
+        redirectUrl: Linking.createURL('/(tabs)', { scheme: APP_SCHEME }),
       });
       if (createdSessionId) {
         await setActiveOAuth!({ session: createdSessionId });

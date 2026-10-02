@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "775231548097",
+    "project_id": "udyog-e119a",
+    "storage_bucket": "udyog-e119a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:775231548097:android:53e55a5d53420dca374240",
+        "android_client_info": {
+          "package_name": "com.udyog.udyogmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXmYBElvAXEcIcAKUQRF2Mb_jtqZzQnbI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

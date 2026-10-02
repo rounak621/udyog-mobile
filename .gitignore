@@ -42,10 +42,11 @@ yarn-error.*
 
 # generated native folders
 /ios
-/android
 
 # Google Services config files
 google-services.json
 **/google-services.json
+# Exception: production flavor source-set copy is tracked
+!android/app/src/production/google-services.json
 GoogleService-Info.plist
 **/GoogleService-Info.plist
