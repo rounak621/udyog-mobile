@@ -222,32 +222,7 @@ export default function Gstr1Screen() {
       });
     } catch (err: any) {
       console.log('GSTR1 export error:', err);
-      const detail = err.response?.data?.detail;
-      if (err.response?.status === 422 && detail) {
-        const blockingMsg = typeof detail === 'string'
-          ? detail
-          : detail.message || 'GSTR-1 generation blocked due to validation issues.';
-        const blockingIssues = detail.blocking_issues || [];
-        if (blockingIssues.length > 0) {
-          const issuesStr = blockingIssues.map((i: any) => `• ${i.detail || i.message}`).join('\n');
-          Alert.alert(
-            'GSTR-1 Validation Issues',
-            `${blockingMsg}\n\n${issuesStr}`,
-            [
-              { text: 'OK', style: 'cancel' },
-              {
-                text: 'Export Anyway',
-                style: 'destructive',
-                onPress: () => fetchJsonAndShare(true),
-              },
-            ]
-          );
-        } else {
-          Alert.alert('Validation Error', blockingMsg);
-        }
-      } else {
-        showApiError(err, 'Failed to export GSTR-1 JSON.');
-      }
+      showApiError(err, 'Failed to export GSTR-1 JSON.');
     } finally {
       setExporting(false);
     }

@@ -15,6 +15,7 @@ import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
 import { validateGSTIN } from '../utils/validators';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -83,24 +84,7 @@ export default function BusinessAddScreen() {
       // Navigate to tabs
       router.replace('/(tabs)');
     } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        const fieldNames: Record<string, string> = {
-          gst_number: 'GST Number',
-          name: 'Business Name',
-          state: 'State',
-        };
-        const messages = detail.map((e: any) => {
-          const field = e.loc?.[e.loc.length - 1];
-          const label = fieldNames[field] || field;
-          return `${label}: ${e.msg}`;
-        });
-        Alert.alert('Please Check Your Details', messages.join('\n'));
-      } else if (typeof detail === 'string') {
-        Alert.alert('Add Business Failed', detail);
-      } else {
-        Alert.alert('Add Business Failed', err.message || 'Something went wrong. Please try again.');
-      }
+      Alert.alert('Add Business Failed', getApiErrorMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }

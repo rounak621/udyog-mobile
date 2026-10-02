@@ -78,7 +78,7 @@ export default function InvoiceSettingsScreen() {
     terms_and_conditions: '',
     show_discount: false,
     dual_address_enabled: false,
-    hide_payment_status_line: false,
+    show_payment_status_on_pdf: false,
   });
 
   const [themeModalVisible, setThemeModalVisible] = useState(false);
@@ -98,7 +98,7 @@ export default function InvoiceSettingsScreen() {
           terms_and_conditions: b.terms_and_conditions || '',
           show_discount: !!b.show_discount,
           dual_address_enabled: !!b.dual_address_enabled,
-          hide_payment_status_line: !!b.hide_payment_status_line,
+          show_payment_status_on_pdf: !!b.show_payment_status_on_pdf,
         });
 
         // Load General/GST configuration
@@ -235,7 +235,7 @@ export default function InvoiceSettingsScreen() {
         terms_and_conditions: prefForm.terms_and_conditions,
         show_discount: prefForm.show_discount,
         dual_address_enabled: prefForm.dual_address_enabled,
-        hide_payment_status_line: prefForm.hide_payment_status_line,
+        show_payment_status_on_pdf: prefForm.show_payment_status_on_pdf,
       });
       await refreshBusinesses();
       Alert.alert('Success', 'App preferences saved');
@@ -605,16 +605,16 @@ export default function InvoiceSettingsScreen() {
             })}
           </View>
 
-          <Text style={[styles.label, { marginTop: 16 }]}>Hide Payment Status Line on PDF</Text>
-          <Text style={styles.subtitle}>If ON, the bottom line showing payment status and due dates will not be printed on PDFs.</Text>
+          <Text style={[styles.label, { marginTop: 16 }]}>Show Payment Status on PDF</Text>
+          <Text style={styles.subtitle}>Display Payment Received and Balance Due on GST/Sales invoice PDFs.</Text>
           <View style={styles.toggleRow}>
             {['On', 'Off'].map(opt => {
-              const isActive = (prefForm.hide_payment_status_line ? 'On' : 'Off') === opt;
+              const isActive = (prefForm.show_payment_status_on_pdf ? 'On' : 'Off') === opt;
               return (
                 <TouchableOpacity
                   key={opt}
                   style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
-                  onPress={() => setPrefForm(f => ({ ...f, hide_payment_status_line: opt === 'On' }))}
+                  onPress={() => setPrefForm(f => ({ ...f, show_payment_status_on_pdf: opt === 'On' }))}
                 >
                   <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
                 </TouchableOpacity>

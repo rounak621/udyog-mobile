@@ -11,7 +11,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
-import { showApiError } from '../../utils/apiError';
+import { showApiError, getApiErrorMessage } from '../../utils/apiError';
 import * as FileSystem from 'expo-file-system/legacy';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -23,6 +23,7 @@ interface Invoice {
   invoice_number: string;
   customer_name: string;
   total_amount: number;
+  paid_amount?: number;
   status: string;
   payment_status?: string;
   invoice_date: string;
@@ -49,6 +50,8 @@ export default function BillsScreen() {
   const [skip, setSkip] = useState(0);
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState<string | null>(null);
+  const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
   const LIMIT = 20;
 
   useEffect(() => {
@@ -221,6 +224,84 @@ export default function BillsScreen() {
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
+  const handleWhatsAppShare = (inv: Invoice) => {
+    Alert.alert(
+      'Send via WhatsApp',
+      `Send this invoice via WhatsApp to ${inv.customer_name || 'Customer'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            if (sendingWhatsAppId === inv.id) return;
+            setSendingWhatsAppId(inv.id);
+            try {
+              const token = await getToken();
+              setAuthToken(token);
+              let bId = businessId;
+              if (!bId) {
+                const bizRes = await api.get('/businesses/me');
+                bId = bizRes.data.id;
+                setBusinessId(bId);
+              }
+              await api.post(`/invoices/${inv.id}/send-whatsapp`, null, {
+                params: { business_id: bId },
+              });
+              Alert.alert('Success', 'Document sent via WhatsApp');
+            } catch (err: any) {
+              if (err.response?.status === 503) {
+                Alert.alert('Notice', 'WhatsApp reminders — Coming soon!');
+              } else {
+                Alert.alert('Error', getApiErrorMessage(err, 'Failed to send WhatsApp message'));
+              }
+            } finally {
+              setSendingWhatsAppId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSendReminder = (inv: Invoice) => {
+    Alert.alert(
+      'Send Reminder',
+      `Send payment reminder to ${inv.customer_name || 'Customer'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async () => {
+            if (sendingReminderId === inv.id) return;
+            setSendingReminderId(inv.id);
+            try {
+              const token = await getToken();
+              setAuthToken(token);
+              let bId = businessId;
+              if (!bId) {
+                const bizRes = await api.get('/businesses/me');
+                bId = bizRes.data.id;
+                setBusinessId(bId);
+              }
+              await api.post(`/invoices/${inv.id}/send-payment-reminder`, null, {
+                params: { business_id: bId },
+              });
+              Alert.alert('Success', 'Reminder sent');
+            } catch (err: any) {
+              if (err.response?.status === 503) {
+                Alert.alert('Notice', 'WhatsApp reminders — Coming soon!');
+              } else {
+                Alert.alert('Error', getApiErrorMessage(err, 'Failed to send reminder'));
+              }
+            } finally {
+              setSendingReminderId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const loadMore = () => {
     if (loading || loadingMore) return;
     if (invoices.length < total) {
@@ -319,33 +400,93 @@ export default function BillsScreen() {
           const isPaid = ps === 'PAID';
           const isPartial = ps === 'PARTIAL';
           const isDraft = ps === 'DRAFT' || inv.status === 'DRAFT';
+          const isCancelled = inv.status === 'CANCELLED';
+          const pendingAmount = Math.max(0, Number(inv.total_amount || 0) - Number(inv.paid_amount || 0));
+
           return (
             <TouchableOpacity style={styles.card} onPress={() => router.push(`/invoice/${inv.id}`)}>
-              <View style={styles.avatarCircleSmall}>
-                <Text style={styles.avatarSmallText}>{getInitials(inv.customer_name)}</Text>
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
-                <Text style={styles.cardSub} textBreakStrategy="simple">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
-              </View>
-              <View style={styles.cardRight}>
-                <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
-                <View style={[
-                  styles.badge,
-                  isPaid ? styles.paidBadge :
-                  isPartial ? styles.partialBadge :
-                  isDraft ? styles.draftBadge :
-                  styles.unpaidBadge
-                ]}>
-                  <Text style={[
-                    styles.badgeText,
-                    isPaid ? styles.paidText :
-                    isPartial ? styles.partialText :
-                    isDraft ? styles.draftText :
-                    styles.unpaidText
-                  ]}>{isDraft ? 'DRAFT' : ps}</Text>
+              <View style={styles.cardTopRow}>
+                <View style={styles.avatarCircleSmall}>
+                  <Text style={styles.avatarSmallText}>{getInitials(inv.customer_name)}</Text>
+                </View>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardName} numberOfLines={1}>{inv.customer_name || 'Unknown Party'}</Text>
+                  <Text style={styles.cardSub} textBreakStrategy="simple">{inv.invoice_number} · {inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</Text>
+                </View>
+                <View style={styles.cardRight}>
+                  <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
+                  <View style={[
+                    styles.badge,
+                    isPaid ? styles.paidBadge :
+                    isPartial ? styles.partialBadge :
+                    isDraft ? styles.draftBadge :
+                    styles.unpaidBadge
+                  ]}>
+                    <Text style={[
+                      styles.badgeText,
+                      isPaid ? styles.paidText :
+                      isPartial ? styles.partialText :
+                      isDraft ? styles.draftText :
+                      styles.unpaidText
+                    ]}>{isDraft ? 'DRAFT' : ps}</Text>
+                  </View>
                 </View>
               </View>
+
+              {!isCancelled && !isDraft && (
+                <View style={styles.cardActionRow}>
+                  {pendingAmount > 0 ? (
+                    <Text style={styles.pendingText}>
+                      Pending: {fmt(pendingAmount)}
+                    </Text>
+                  ) : (
+                    <Text style={styles.fullyPaidText}>
+                      Fully Paid
+                    </Text>
+                  )}
+                  <View style={styles.actionBtnGroup}>
+                    {/* WhatsApp Share */}
+                    <TouchableOpacity
+                      style={styles.actionWhatsAppBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleWhatsAppShare(inv);
+                      }}
+                      disabled={sendingWhatsAppId === inv.id}
+                    >
+                      {sendingWhatsAppId === inv.id ? (
+                        <ActivityIndicator size="small" color="#16A34A" />
+                      ) : (
+                        <>
+                          <Ionicons name="logo-whatsapp" size={14} color="#16A34A" />
+                          <Text style={styles.actionWhatsAppText}>Share</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    {/* Send Reminder (unpaid/partial only) */}
+                    {!isPaid && (
+                      <TouchableOpacity
+                        style={styles.actionReminderBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleSendReminder(inv);
+                        }}
+                        disabled={sendingReminderId === inv.id}
+                      >
+                        {sendingReminderId === inv.id ? (
+                          <ActivityIndicator size="small" color="#EA580C" />
+                        ) : (
+                          <>
+                            <Ionicons name="notifications-outline" size={14} color="#EA580C" />
+                            <Text style={styles.actionReminderText}>Remind</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
             </TouchableOpacity>
           );
         }}
@@ -505,7 +646,16 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#fff', fontWeight: '600' },
   loader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { paddingTop: 4, paddingHorizontal: 12, paddingBottom: 80, gap: 8 },
-  card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  card: { backgroundColor: Colors.card, borderRadius: Radius.md, padding: 12, borderWidth: 0.5, borderColor: Colors.border },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cardActionRow: { marginTop: 10, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  pendingText: { fontSize: 12, fontWeight: '700', color: Colors.danger },
+  fullyPaidText: { fontSize: 11, fontWeight: '600', color: Colors.success },
+  actionBtnGroup: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  actionWhatsAppBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#DCFCE7', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  actionWhatsAppText: { fontSize: 11, fontWeight: '600', color: '#16A34A' },
+  actionReminderBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FFEDD5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  actionReminderText: { fontSize: 11, fontWeight: '600', color: '#EA580C' },
   cardIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
   avatarCircleSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
   avatarSmallText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },

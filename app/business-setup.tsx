@@ -196,28 +196,7 @@ export default function BusinessSetupScreen() {
       // Navigate to tabs
       router.replace('/(tabs)');
     } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        const fieldNames: Record<string, string> = {
-          gst_number: 'GST Number',
-          phone: 'Phone Number',
-          email: 'Business Email',
-          name: 'Business Name',
-          city: 'City',
-          state: 'State',
-          address_line1: 'Business Address',
-        };
-        const messages = detail.map((e: any) => {
-          const field = e.loc?.[e.loc.length - 1];
-          const label = fieldNames[field] || field;
-          return `${label}: ${e.msg}`;
-        });
-        Alert.alert('Please Check Your Details', messages.join('\n'));
-      } else if (typeof detail === 'string') {
-        Alert.alert('Setup Failed', detail);
-      } else {
-        Alert.alert('Setup Failed', err.message || 'Something went wrong. Please try again.');
-      }
+      Alert.alert('Setup Failed', getApiErrorMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }
