@@ -162,10 +162,10 @@ export default function DayBookReportScreen() {
       return typeUpper.includes('PURCHASE') || typeUpper.includes('BILL');
     }
     if (activeChip === 'PAYMENT') {
-      return typeUpper.includes('SUPPLIER PAYMENT');
+      return typeUpper.includes('SUPPLIER PAYMENT') || typeUpper.includes('REFUND');
     }
     if (activeChip === 'RECEIPT') {
-      return typeUpper.includes('PAYMENT RECEIVED') || typeUpper.includes('RECEIPT');
+      return typeUpper.includes('PAYMENT RECEIVED') || typeUpper.includes('RECEIPT') || typeUpper.includes('ADVANCE');
     }
     if (activeChip === 'RENTAL') {
       return typeUpper.includes('RENTAL');
@@ -296,6 +296,8 @@ export default function DayBookReportScreen() {
             const isSale = t.type.toUpperCase().includes('SALES') || t.type.toUpperCase().includes('INVOICE');
             const isPur = t.type.toUpperCase().includes('PURCHASE') || t.type.toUpperCase().includes('BILL');
             const isRent = t.type.toUpperCase().includes('RENTAL');
+            const isAdv = t.type.toUpperCase().includes('ADVANCE');
+            const isRef = t.type.toUpperCase().includes('REFUND');
             let badgeBg = '#f5f3ff';
             let badgeText = '#7c3aed';
             if (isSale) {
@@ -307,6 +309,12 @@ export default function DayBookReportScreen() {
             } else if (isRent) {
               badgeBg = '#fff7ed';
               badgeText = Colors.primary;
+            } else if (isAdv) {
+              badgeBg = '#fff7ed';
+              badgeText = '#c2410c';
+            } else if (isRef) {
+              badgeBg = '#fef2f2';
+              badgeText = Colors.danger;
             }
 
             return (

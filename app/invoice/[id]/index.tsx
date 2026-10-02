@@ -46,6 +46,7 @@ export default function InvoiceDetailScreen() {
   const [revertPaymentId, setRevertPaymentId] = useState<string | null>(null);
   const [revertReason, setRevertReason] = useState('');
   const [reverting, setReverting] = useState(false);
+  const [availableAdvance, setAvailableAdvance] = useState(0);
 
   const loadInvoice = async () => {
     try {
@@ -53,6 +54,15 @@ export default function InvoiceDetailScreen() {
       setAuthToken(token);
       const res = await api.get(`/invoices/${id}`);
       setInvoice(res.data);
+
+      if (res.data?.customer_id) {
+        try {
+          const advRes = await api.get(`/payments/customer/${res.data.customer_id}/advance-balance?business_id=${res.data.business_id}`);
+          setAvailableAdvance(Number(advRes.data?.available_advance || 0));
+        } catch (e) {
+          // ignore error
+        }
+      }
     } catch (err) {
       console.log('Invoice detail error:', err);
     } finally {
@@ -512,10 +522,29 @@ export default function InvoiceDetailScreen() {
         </View>
 
         {!isPaid && (
-          <TouchableOpacity style={styles.paidBtn} onPress={() => router.push(`/invoice/${id}/record-payment`)}>
-            <Ionicons name="cash-outline" size={18} color="#fff" />
-            <Text style={styles.paidBtnText}>Record Payment</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 10 }}>
+            {availableAdvance > 0 && (
+              <View style={styles.advanceNoticeBox}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="wallet" size={16} color="#c2410c" />
+                  <Text style={styles.advanceNoticeText}>
+                    Party advance: <Text style={{ fontWeight: '700', color: '#c2410c' }}>{fmt(availableAdvance)}</Text>
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.payAdvanceBtn}
+                  onPress={() => router.push(`/invoice/${id}/record-payment?source=ADVANCE`)}
+                >
+                  <Text style={styles.payAdvanceBtnText}>Pay from Advance</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <TouchableOpacity style={styles.paidBtn} onPress={() => router.push(`/invoice/${id}/record-payment`)}>
+              <Ionicons name="cash-outline" size={18} color="#fff" />
+              <Text style={styles.paidBtnText}>Record Payment</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
 
@@ -673,5 +702,9 @@ const styles = StyleSheet.create({
   modalCancelBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, borderWidth: 0.5, borderColor: Colors.border },
   modalCancelBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   modalConfirmBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, backgroundColor: Colors.danger },
-  modalConfirmBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' }
+  modalConfirmBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  advanceNoticeBox: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: Radius.sm, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  advanceNoticeText: { fontSize: 12, color: '#9A3412', fontWeight: '500' },
+  payAdvanceBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FED7AA', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
+  payAdvanceBtnText: { fontSize: 12, fontWeight: '700', color: '#C2410C' },
 });
