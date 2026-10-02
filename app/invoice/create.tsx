@@ -68,6 +68,7 @@ export default function CreateInvoiceScreen() {
   // Invoice type state
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'NONGST' | 'SERVICE'>('INVOICE');
   const [isGstApplicable, setIsGstApplicable] = useState(true);
+  const [isB2cConfirmed, setIsB2cConfirmed] = useState(false);
 
   // Customer picker modal state
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -421,9 +422,26 @@ export default function CreateInvoiceScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (opts?: any) => {
+    const b2cOverride = opts?.b2cOverride === true;
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
     if (lineItems.some(i => !i.name || !i.rate)) { Alert.alert('Error', 'Please fill all item details'); return; }
+
+    const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
+    if (isGstInvoice && !selectedParty.gstin?.trim() && !isB2cConfirmed && !b2cOverride) {
+      Alert.alert(
+        'GSTIN Required',
+        'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+        [
+          { text: 'Switch to B2C', onPress: () => {
+            setIsB2cConfirmed(true);
+            handleSave({ b2cOverride: true });
+          }},
+          { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+        ]
+      );
+      return;
+    }
 
     const isOnline = await checkIsOnline();
     if (!isOnline) {
@@ -544,12 +562,15 @@ export default function CreateInvoiceScreen() {
               style={[styles.typeBtn, invoiceType === t.value && styles.typeBtnActive]}
               onPress={() => {
                 if (isEditMode) return;
-                if (t.value === 'INVOICE' && selectedParty && !selectedParty.gstin) {
+                if (t.value === 'INVOICE' && selectedParty && !selectedParty.gstin?.trim() && !isB2cConfirmed) {
                   Alert.alert(
                     'GSTIN Required',
                     'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
                     [
-                      { text: 'Switch to B2C', onPress: () => setInvoiceType(t.value as any) },
+                      { text: 'Switch to B2C', onPress: () => {
+                        setIsB2cConfirmed(true);
+                        setInvoiceType(t.value as any);
+                      }},
                       { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
                     ]
                   );
@@ -575,12 +596,15 @@ export default function CreateInvoiceScreen() {
                 style={[styles.typeBtn, isGstApplicable === t.value && styles.typeBtnActive]}
                 onPress={() => {
                   if (isEditMode) return;
-                  if (t.value === true && selectedParty && !selectedParty.gstin) {
+                  if (t.value === true && selectedParty && !selectedParty.gstin?.trim() && !isB2cConfirmed) {
                     Alert.alert(
                       'GSTIN Required',
                       'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
                       [
-                        { text: 'Switch to B2C', onPress: () => setIsGstApplicable(true) },
+                        { text: 'Switch to B2C', onPress: () => {
+                          setIsB2cConfirmed(true);
+                          setIsGstApplicable(true);
+                        }},
                         { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
                       ]
                     );
@@ -1041,6 +1065,21 @@ export default function CreateInvoiceScreen() {
                     setIsInterState(!!interState);
                     setShowCustomerPicker(false);
                     setPartySearch('');
+
+                    const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
+                    if (isGstInvoice && !item.gstin?.trim()) {
+                      setIsB2cConfirmed(false);
+                      Alert.alert(
+                        'GSTIN Required',
+                        'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                        [
+                          { text: 'Switch to B2C', onPress: () => setIsB2cConfirmed(true) },
+                          { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${item.id}`) }
+                        ]
+                      );
+                    } else {
+                      setIsB2cConfirmed(false);
+                    }
                   }}
                 >
                   <View style={{ flex: 1 }}>

@@ -337,10 +337,10 @@ export default function InvoiceDetailScreen() {
           {(invoice.line_items || invoice.items || []).map((item: any, i: number) => (
             <View key={i} style={styles.itemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{item.item_name || item.name}</Text>
-                {item.description && item.description !== (item.item_name || item.name) && (
+                <Text style={styles.itemName}>{item.item_name || item.item?.name || item.name || '—'}</Text>
+                {item.description ? (
                   <Text style={{ fontSize: 12, color: '#666', marginTop: 2, marginBottom: 2 }}>{item.description}</Text>
-                )}
+                ) : null}
                 <Text style={styles.itemSub} textBreakStrategy="simple">{item.quantity} {item.unit || 'pcs'} × {fmt(item.rate || item.unit_price)} · GST {item.gst_rate || 0}%</Text>
               </View>
               <Text style={styles.itemAmount} textBreakStrategy="simple">{fmt(item.line_total || item.amount || item.total)}</Text>

@@ -487,6 +487,9 @@ export default function RecurringBillDetailScreen() {
                       <Text style={styles.itemName} numberOfLines={2}>
                         {item.item_name || 'Item'}
                       </Text>
+                      {item.description ? (
+                        <Text style={{ fontSize: 12, color: '#666', marginTop: 2, marginBottom: 2 }}>{item.description}</Text>
+                      ) : null}
                       <Text style={styles.itemLineTotal}>{fmt(lineTotal)}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
