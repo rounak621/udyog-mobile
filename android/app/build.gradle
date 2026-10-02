@@ -32,7 +32,7 @@ react {
     //   The list of variants to that are debuggable. For those we're going to
     //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
-    // debuggableVariants = ["liteDebug", "prodDebug"]
+    // debuggableVariants = ["productionDebug", "stagingDebug"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -129,6 +129,18 @@ android {
             crunchPngs enablePngCrunchInRelease.toBoolean()
         }
     }
+    flavorDimensions "env"
+    productFlavors {
+        production {
+            dimension "env"
+            manifestPlaceholders = [appScheme: "udyog"]
+        }
+        staging {
+            dimension "env"
+            applicationIdSuffix ".staging"
+            manifestPlaceholders = [appScheme: "udyog-staging"]
+        }
+    }
     packagingOptions {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
@@ -138,6 +150,10 @@ android {
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
+}
+
+googleServices {
+    missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.WARN
 }
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
