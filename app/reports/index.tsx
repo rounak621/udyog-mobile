@@ -72,6 +72,7 @@ export default function ReportsScreen() {
 
   const reports = [
     { icon: 'trending-up-outline', title: 'Sales Report', sub: 'Invoice-wise sales summary', color: Colors.primary, route: '/reports/sales' },
+    { icon: 'wallet-outline', title: 'Payment Report', sub: 'Collections by payment mode & dues', color: '#0284c7', route: '/reports/payments' },
     { icon: 'trending-down-outline', title: 'Purchase Report', sub: 'Purchase bill summary', color: Colors.info, route: '/reports/purchase' },
     { icon: 'people-outline', title: 'Party Ledger', sub: 'Customer & supplier ledger', color: Colors.success, route: '/reports/ledger' },
     { icon: 'book-outline', title: 'Day Book', sub: 'Master ledger of all accounts', color: '#14b8a6', route: '/reports/day-book' },
@@ -82,6 +83,7 @@ export default function ReportsScreen() {
   const handlePressReport = (r: typeof reports[0]) => {
     const activeRoutes = [
       '/reports/sales',
+      '/reports/payments',
       '/reports/purchase',
       '/reports/profit-loss',
       '/reports/day-book',

@@ -15,6 +15,7 @@ import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { validateHSN } from '../../utils/validators';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { UnitPickerModal } from '../../components/UnitPickerModal';
 
 export default function CreateItemScreen() {
   const { getToken } = useAuth();
@@ -309,41 +310,14 @@ export default function CreateItemScreen() {
       )}
 
       {/* Unit Picker Modal */}
-      <Modal
+      <UnitPickerModal
         visible={showUnitPicker}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowUnitPicker(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Unit</Text>
-              <TouchableOpacity onPress={() => setShowUnitPicker(false)}>
-                <Ionicons name="close" size={24} color="#0F172A" />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              style={{ flex: 1 }}
-              data={UNITS}
-              keyExtractor={item => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setUnit(item);
-                    setShowUnitPicker(false);
-                  }}
-                >
-                  <Text style={styles.modalItemName}>{item}</Text>
-                  {unit === item && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-                </TouchableOpacity>
-              )}
-              keyboardShouldPersistTaps="handled"
-            />
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowUnitPicker(false)}
+        selectedUnit={unit}
+        currentValue={unit}
+        businessId={businessId || undefined}
+        onSelectUnit={(newUnit) => setUnit(newUnit)}
+      />
     </View>
   );
 }

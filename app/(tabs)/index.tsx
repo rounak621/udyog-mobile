@@ -247,19 +247,25 @@ export default function DashboardScreen() {
             <View style={styles.quickActionIcon}>
               <Ionicons name="add" size={20} color="#F97316" />
             </View>
-            <Text style={styles.quickActionLabel}>New Sale</Text>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>New Sale</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/party/create')}>
             <View style={styles.quickActionIcon}>
               <Ionicons name="people-outline" size={18} color="#F97316" />
             </View>
-            <Text style={styles.quickActionLabel}>New Party</Text>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>New Party</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/expenses' as any)}>
+            <View style={styles.quickActionIcon}>
+              <Ionicons name="wallet-outline" size={18} color="#F97316" />
+            </View>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>Expenses</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/inventory')}>
             <View style={styles.quickActionIcon}>
               <Ionicons name="cube-outline" size={18} color="#F97316" />
             </View>
-            <Text style={styles.quickActionLabel}>Inventory</Text>
+            <Text style={styles.quickActionLabel} numberOfLines={1}>Inventory</Text>
           </TouchableOpacity>
         </View>
 
@@ -375,10 +381,10 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 16, fontWeight: '800', color: '#0F172A', minHeight: 20 },
   statSub: { fontSize: 10, color: '#94A3B8', marginTop: 2, minHeight: 26, textAlign: 'center' },
 
-  quickActionsRow: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 20 },
-  quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 14, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
-  quickActionIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  quickActionLabel: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
+  quickActionsRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginBottom: 20 },
+  quickAction: { flex: 1, backgroundColor: '#fff', borderRadius: 16, padding: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3 },
+  quickActionIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  quickActionLabel: { fontSize: 12, fontWeight: '700', color: '#0F172A', textAlign: 'center' },
 
   section: { marginHorizontal: 16, marginBottom: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },

@@ -23,6 +23,7 @@ import { Audio } from 'expo-av';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { checkIsOnline } from '../../services/network';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { UnitPickerModal } from '../../components/UnitPickerModal';
 
 interface LineItem {
   id: string;
@@ -79,13 +80,6 @@ export default function CreateInvoiceScreen() {
 
   // Unit picker modal state
   const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
-  const [unitSearch, setUnitSearch] = useState('');
-
-  const filteredUnits = useMemo(() => {
-    if (!unitSearch.trim()) return UNITS;
-    const q = unitSearch.trim().toLowerCase();
-    return UNITS.filter(u => u.toLowerCase().includes(q));
-  }, [unitSearch]);
 
   // Success modal actions states
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
@@ -1101,82 +1095,19 @@ export default function CreateInvoiceScreen() {
       </Modal>
 
       {/* Unit Picker Modal */}
-      {showUnitPicker && (
-        <Modal
-          visible={!!showUnitPicker}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => {
-            setShowUnitPicker(null);
-            setUnitSearch('');
-          }}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <View style={[styles.modalContent, { height: '55%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Unit</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowUnitPicker(null);
-                    setUnitSearch('');
-                  }}
-                >
-                  <Ionicons name="close" size={24} color="#0F172A" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Search Box */}
-              <View style={styles.modalSearch}>
-                <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
-                <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Search unit (e.g. PCS, KGS)..."
-                  placeholderTextColor="#94A3B8"
-                  value={unitSearch}
-                  onChangeText={setUnitSearch}
-                  autoCapitalize="characters"
-                />
-                {unitSearch.length > 0 && (
-                  <TouchableOpacity onPress={() => setUnitSearch('')}>
-                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <FlatList
-                style={{ flex: 1 }}
-                data={filteredUnits}
-                keyExtractor={u => u}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item: unitOption }) => {
-                  const activeLine = lineItems.find(l => l.id === showUnitPicker);
-                  const isSelected = (activeLine?.unit || 'PCS').toUpperCase() === unitOption;
-                  return (
-                    <TouchableOpacity
-                      style={styles.modalItem}
-                      onPress={() => {
-                        if (showUnitPicker) {
-                          updateLineItem(showUnitPicker, 'unit', unitOption);
-                        }
-                        setShowUnitPicker(null);
-                        setUnitSearch('');
-                      }}
-                    >
-                      <Text style={[styles.modalItemName, isSelected && { color: '#F97316', fontWeight: '700' }]}>
-                        {unitOption}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark" size={18} color="#F97316" />}
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      )}
+      <UnitPickerModal
+        visible={!!showUnitPicker}
+        onClose={() => setShowUnitPicker(null)}
+        selectedUnit={lineItems.find(l => l.id === showUnitPicker)?.unit || 'PCS'}
+        currentValue={lineItems.find(l => l.id === showUnitPicker)?.unit}
+        businessId={businessId || undefined}
+        onSelectUnit={(newUnit) => {
+          if (showUnitPicker) {
+            updateLineItem(showUnitPicker, 'unit', newUnit);
+          }
+          setShowUnitPicker(null);
+        }}
+      />
 
 
 
