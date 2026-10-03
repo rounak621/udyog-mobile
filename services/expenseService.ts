@@ -1,5 +1,4 @@
 import { api } from './api';
-import * as FileSystem from 'expo-file-system/legacy';
 
 export type PaymentMode = 'CASH' | 'BANK' | 'UPI' | 'CHEQUE';
 
@@ -17,7 +16,6 @@ export interface Expense {
   sgst_amount?: number | null;
   igst_amount?: number | null;
   notes?: string | null;
-  receipt_url?: string | null;
   created_at: string;
   is_deleted: boolean;
 }
@@ -34,7 +32,6 @@ export interface ExpenseCreatePayload {
   sgst_amount?: number | null;
   igst_amount?: number | null;
   notes?: string | null;
-  receipt_url?: string | null;
 }
 
 export interface ExpenseUpdatePayload {
@@ -49,7 +46,6 @@ export interface ExpenseUpdatePayload {
   sgst_amount?: number | null;
   igst_amount?: number | null;
   notes?: string | null;
-  receipt_url?: string | null;
 }
 
 export interface ExpenseListResponse {
@@ -147,44 +143,6 @@ export const expenseService = {
         end_date: params?.endDate || undefined,
       },
     });
-    return res.data;
-  },
-
-  uploadReceipt: async (
-    businessId: string,
-    uri: string
-  ): Promise<{ url: string; filename: string; content_type: string }> => {
-    // Validate 5MB limit before sending
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (fileInfo.exists && (fileInfo as any).size && (fileInfo as any).size > 5 * 1024 * 1024) {
-        throw new Error('Receipt file size must be under 5MB.');
-      }
-    } catch (e: any) {
-      if (e.message && e.message.includes('5MB')) throw e;
-    }
-
-    const filename = uri.split('/').pop() || 'receipt.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const ext = match ? match[1].toLowerCase() : 'jpg';
-    let mime = 'image/jpeg';
-    if (ext === 'png') mime = 'image/png';
-    else if (ext === 'pdf') mime = 'application/pdf';
-
-    const formData = new FormData();
-    formData.append('file', {
-      uri,
-      name: filename,
-      type: mime,
-    } as any);
-
-    const res = await api.post(`/expenses/upload-receipt?business_id=${businessId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 30000,
-    });
-
     return res.data;
   },
 };

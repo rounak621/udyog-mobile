@@ -10,15 +10,12 @@ import {
   Alert,
   Switch,
   Platform,
-  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
-import * as WebBrowser from 'expo-web-browser';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
@@ -69,7 +66,6 @@ export default function CreateExpenseScreen() {
   const [businessId, setBusinessId] = useState<string>('');
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   // Form Fields
   const [expenseDate, setExpenseDate] = useState<string>(dateToYmd(new Date()));
@@ -91,9 +87,8 @@ export default function CreateExpenseScreen() {
   const [sgstAmount, setSgstAmount] = useState<string>('');
   const [igstAmount, setIgstAmount] = useState<string>('');
 
-  // Notes & Receipt
+  // Notes
   const [notes, setNotes] = useState<string>('');
-  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
   // Load initial data
   useEffect(() => {
@@ -134,7 +129,6 @@ export default function CreateExpenseScreen() {
             setSgstAmount(exp.sgst_amount ? String(exp.sgst_amount) : '');
           }
           setNotes(exp.notes || '');
-          setReceiptUrl(exp.receipt_url || null);
         }
       } catch (err) {
         console.log('Expense form load error:', err);
@@ -150,69 +144,6 @@ export default function CreateExpenseScreen() {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       setExpenseDate(dateToYmd(selectedDate));
-    }
-  };
-
-  const handlePickReceipt = async (useCamera: boolean) => {
-    try {
-      const permissionResult = useCamera
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permissionResult.granted) {
-        Alert.alert(
-          'Permission Required',
-          `Permission to access ${useCamera ? 'camera' : 'photo gallery'} is required.`
-        );
-        return;
-      }
-
-      const result = useCamera
-        ? await ImagePicker.launchCameraAsync({
-            mediaTypes: ['images'],
-            quality: 0.8,
-          })
-        : await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            quality: 0.8,
-          });
-
-      if (result.canceled || !result.assets || result.assets.length === 0) {
-        return;
-      }
-
-      const selectedAsset = result.assets[0];
-      if (!businessId) return;
-
-      setUploadingReceipt(true);
-      try {
-        const uploadRes = await expenseService.uploadReceipt(businessId, selectedAsset.uri);
-        setReceiptUrl(uploadRes.url);
-        Alert.alert('Success', 'Receipt uploaded successfully!');
-      } catch (err) {
-        Alert.alert('Upload Failed', getApiErrorMessage(err, 'Failed to upload receipt.'));
-      } finally {
-        setUploadingReceipt(false);
-      }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to pick image.');
-    }
-  };
-
-  const showAttachmentOptions = () => {
-    Alert.alert('Attach Receipt', 'Choose image source (max 5MB)', [
-      { text: 'Camera', onPress: () => handlePickReceipt(true) },
-      { text: 'Photo Library', onPress: () => handlePickReceipt(false) },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const handleOpenReceipt = async () => {
-    if (!receiptUrl) return;
-    try {
-      await WebBrowser.openBrowserAsync(receiptUrl);
-    } catch {
-      Alert.alert('Error', 'Could not open receipt URL.');
     }
   };
 
@@ -260,7 +191,6 @@ export default function CreateExpenseScreen() {
           ? parseFloat(igstAmount)
           : null,
       notes: notes.trim() || null,
-      receipt_url: receiptUrl || null,
     };
 
     setSaving(true);
@@ -558,49 +488,7 @@ export default function CreateExpenseScreen() {
           )}
         </View>
 
-        {/* Receipt Attachment */}
-        <View style={styles.cardSection}>
-          <Text style={styles.fieldLabel}>Receipt Attachment</Text>
-          {receiptUrl ? (
-            <View style={styles.receiptAttachedBox}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                <View style={styles.receiptIconThumb}>
-                  <Ionicons name="document-attach" size={24} color={Colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.receiptAttachedTitle} numberOfLines={1}>
-                    Receipt Attached
-                  </Text>
-                  <TouchableOpacity onPress={handleOpenReceipt}>
-                    <Text style={styles.receiptViewLink}>View Receipt ↗</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.receiptRemoveBtn}
-                onPress={() => setReceiptUrl(null)}
-              >
-                <Ionicons name="trash-outline" size={18} color={Colors.danger} />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.uploadBtn}
-              onPress={showAttachmentOptions}
-              disabled={uploadingReceipt}
-            >
-              {uploadingReceipt ? (
-                <ActivityIndicator size="small" color={Colors.primary} />
-              ) : (
-                <>
-                  <Ionicons name="cloud-upload-outline" size={24} color={Colors.primary} />
-                  <Text style={styles.uploadBtnText}>Attach Receipt (Camera / Gallery)</Text>
-                  <Text style={styles.uploadBtnSub}>Max 5MB (PNG, JPG, PDF)</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
+
 
         {/* Notes */}
         <View style={styles.fieldGroup}>
@@ -838,61 +726,7 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '700',
   },
-  uploadBtn: {
-    borderWidth: 1.5,
-    borderColor: '#FED7AA',
-    borderStyle: 'dashed',
-    borderRadius: Radius.md,
-    paddingVertical: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFBF7',
-    gap: 4,
-    marginTop: 6,
-  },
-  uploadBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginTop: 4,
-  },
-  uploadBtnSub: {
-    fontSize: 11,
-    color: Colors.textMuted,
-  },
-  receiptAttachedBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    padding: 10,
-    marginTop: 6,
-  },
-  receiptIconThumb: {
-    width: 38,
-    height: 38,
-    borderRadius: Radius.sm,
-    backgroundColor: '#FFF7ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  receiptAttachedTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  receiptViewLink: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#2563EB',
-    marginTop: 2,
-  },
-  receiptRemoveBtn: {
-    padding: 8,
-  },
+
   saveBtn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,

@@ -16,7 +16,6 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import * as WebBrowser from 'expo-web-browser';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -246,15 +245,6 @@ export default function ExpensesListScreen() {
     );
   };
 
-  const handleOpenReceipt = async (url?: string | null) => {
-    if (!url) return;
-    try {
-      await WebBrowser.openBrowserAsync(url);
-    } catch {
-      Alert.alert('Error', 'Could not open receipt.');
-    }
-  };
-
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
@@ -282,7 +272,7 @@ export default function ExpensesListScreen() {
           onPress={() => setActiveTab('all')}
         >
           <Ionicons
-            name="receipt-outline"
+            name="wallet-outline"
             size={16}
             color={activeTab === 'all' ? Colors.primary : Colors.textMuted}
           />
@@ -545,15 +535,6 @@ export default function ExpensesListScreen() {
                     <View style={styles.categoryBadge}>
                       <Text style={styles.categoryBadgeText}>{item.category}</Text>
                     </View>
-                    {item.receipt_url ? (
-                      <TouchableOpacity
-                        style={styles.receiptTag}
-                        onPress={() => handleOpenReceipt(item.receipt_url)}
-                      >
-                        <Ionicons name="attach" size={13} color="#2563EB" />
-                        <Text style={styles.receiptTagText}>Receipt</Text>
-                      </TouchableOpacity>
-                    ) : null}
                   </View>
                   <Text style={styles.vendorName} numberOfLines={1}>
                     {item.vendor_name || 'General Expense'}
@@ -605,15 +586,7 @@ export default function ExpensesListScreen() {
 
               {/* Actions */}
               <View style={styles.cardActions}>
-                {item.receipt_url ? (
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => handleOpenReceipt(item.receipt_url)}
-                  >
-                    <Ionicons name="eye-outline" size={14} color="#2563EB" />
-                    <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>View Receipt</Text>
-                  </TouchableOpacity>
-                ) : <View style={{ flex: 1 }} />}
+                <View style={{ flex: 1 }} />
 
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
@@ -644,7 +617,7 @@ export default function ExpensesListScreen() {
         ListEmptyComponent={
           activeTab === 'all' && !loading ? (
             <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={44} color={Colors.textMuted} />
+              <Ionicons name="wallet-outline" size={44} color={Colors.textMuted} />
               <Text style={styles.emptyTitle}>No Expenses Found</Text>
               <Text style={styles.emptySubtitle}>
                 {search || selectedCategory
@@ -961,22 +934,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#C2410C',
   },
-  receiptTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  receiptTagText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#2563EB',
-  },
   vendorName: {
     fontSize: 14,
     fontWeight: '700',
@@ -1038,15 +995,6 @@ const styles = StyleSheet.create({
     borderTopColor: '#F1F5F9',
     paddingTop: 10,
     marginTop: 10,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  actionBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   editBtn: {
     flexDirection: 'row',
