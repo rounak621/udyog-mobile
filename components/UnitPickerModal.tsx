@@ -8,12 +8,13 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Colors, Radius, Spacing } from '../constants/theme';
+import { Colors, Radius } from '../constants/theme';
 import { unitService } from '../services/unitService';
 import { getApiErrorMessage } from '../utils/apiError';
 
@@ -34,19 +35,38 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
   businessId,
   currentValue,
 }) => {
+  const insets = useSafeAreaInsets();
   const [units, setUnits] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [inlineError, setInlineError] = useState('');
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Fetch units whenever modal opens
   useEffect(() => {
     if (visible) {
       setSearch('');
-      setShowAddModal(false);
+      setIsCreating(false);
       setNewUnitName('');
+      setInlineError('');
       loadUnits();
     }
   }, [visible, businessId]);
@@ -110,175 +130,97 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
     return combinedUnits.filter(u => u.toLowerCase().includes(q));
   }, [combinedUnits, search]);
 
-  const exactMatchExists = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return false;
-    return combinedUnits.some(u => u.toLowerCase() === q);
-  }, [combinedUnits, search]);
+  const handleClose = () => {
+    setIsCreating(false);
+    setNewUnitName('');
+    setInlineError('');
+    setSearch('');
+    Keyboard.dismiss();
+    onClose();
+  };
 
-  const handleCreateCustomUnit = async (nameToAdd?: string) => {
-    const raw = (nameToAdd || newUnitName || search).trim();
-    if (!raw) {
-      Alert.alert('Invalid Unit', 'Please enter a valid unit name.');
+  const handleCancel = () => {
+    setIsCreating(false);
+    setNewUnitName('');
+    setInlineError('');
+    Keyboard.dismiss();
+  };
+
+  const handleSave = async () => {
+    const trimmed = newUnitName.trim();
+    if (!trimmed) {
+      setInlineError('Please enter a unit name.');
       return;
     }
 
-    // Canonical casing if already exists
-    const match = combinedUnits.find(u => u.toLowerCase() === raw.toLowerCase());
-    if (match) {
-      onSelectUnit(match);
-      onClose();
+    // Canonical check: if unit already exists in combined list (case-insensitive)
+    const existing = combinedUnits.find(
+      u => u.toUpperCase().trim() === trimmed.toUpperCase()
+    );
+    if (existing) {
+      onSelectUnit(existing);
+      handleClose();
       return;
     }
 
-    setCreating(true);
+    setSaving(true);
+    setInlineError('');
     try {
       if (businessId) {
-        await unitService.createUnit(businessId, raw);
+        await unitService.createUnit(businessId, trimmed);
       }
-      setUnits(prev => [raw, ...prev]);
-      onSelectUnit(raw);
-      setShowAddModal(false);
-      setNewUnitName('');
-      onClose();
+      setUnits(prev => [trimmed, ...prev]);
+      onSelectUnit(trimmed);
+      handleClose();
     } catch (err) {
-      // Even if network fails, allow selecting it locally so work isn't blocked
-      Alert.alert(
-        'Server Save Warning',
-        getApiErrorMessage(err, 'Custom unit selected locally, but could not be saved to server.')
-      );
-      setUnits(prev => [raw, ...prev]);
-      onSelectUnit(raw);
-      setShowAddModal(false);
-      setNewUnitName('');
-      onClose();
+      setInlineError(getApiErrorMessage(err, 'Failed to save unit. Please try again.'));
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
   };
 
   return (
     <Modal
       visible={visible}
+      animationType="slide"
       transparent
-      animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.modalOverlay}
       >
-        <View style={styles.container}>
+        <View style={styles.sheetContainer}>
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>
-                {showAddModal ? 'New Custom Unit' : 'Select Unit'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {showAddModal
-                  ? 'Create and save unit for this business'
-                  : 'Choose standard or custom unit'}
-              </Text>
+              <Text style={styles.title}>Select Unit</Text>
+              <Text style={styles.subtitle}>Choose standard or custom unit</Text>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                if (showAddModal) {
-                  setShowAddModal(false);
-                  setNewUnitName('');
-                } else {
-                  onClose();
-                }
-              }}
-              style={styles.closeBtn}
-            >
+            <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* If creating custom unit, show creation input prominently at top (always above keyboard) */}
-          {showAddModal ? (
-            <View style={styles.addModalContainer}>
-              <Text style={styles.addModalTitle}>Custom Unit Name</Text>
-              <View style={styles.addInputRow}>
-                <TextInput
-                  style={styles.addInput}
-                  placeholder="Unit name (e.g. BUNDLE, SHIFT)"
-                  placeholderTextColor={Colors.textMuted}
-                  value={newUnitName}
-                  onChangeText={setNewUnitName}
-                  autoCapitalize="characters"
-                  autoFocus
-                />
-                <TouchableOpacity
-                  style={[styles.saveUnitBtn, creating && { opacity: 0.6 }]}
-                  onPress={() => handleCreateCustomUnit(newUnitName)}
-                  disabled={creating}
-                >
-                  {creating ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.saveUnitBtnText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelUnitBtn}
-                  onPress={() => {
-                    setShowAddModal(false);
-                    setNewUnitName('');
-                  }}
-                  disabled={creating}
-                >
-                  <Text style={styles.cancelUnitBtnText}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <>
-              {/* Search Bar (at top, fully above keyboard) */}
-              <View style={styles.searchBar}>
-                <Ionicons name="search" size={18} color={Colors.textMuted} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search or enter unit (e.g. PCS, BOX)..."
-                  placeholderTextColor={Colors.textMuted}
-                  value={search}
-                  onChangeText={setSearch}
-                  autoCapitalize="characters"
-                />
-                {search.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 4 }}>
-                    <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
+          {/* Search Bar */}
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color={Colors.textMuted} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search or enter unit (e.g. PCS, BOX)..."
+              placeholderTextColor={Colors.textMuted}
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="characters"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 4 }}>
+                <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
 
-              {/* Add custom unit prompt button when search doesn't match */}
-              {search.trim().length > 0 && !exactMatchExists && (
-                <TouchableOpacity
-                  style={styles.quickAddRow}
-                  onPress={() => handleCreateCustomUnit(search.trim())}
-                  disabled={creating}
-                >
-                  <View style={styles.quickAddIconWrap}>
-                    <Ionicons name="add" size={18} color="#C2410C" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.quickAddTitle}>Add "{search.trim().toUpperCase()}"</Text>
-                    <Text style={styles.quickAddSub}>Create and use this custom unit</Text>
-                  </View>
-                  {creating ? (
-                    <ActivityIndicator size="small" color="#C2410C" />
-                  ) : (
-                    <Ionicons name="chevron-forward" size={16} color="#C2410C" />
-                  )}
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* Unit List */}
+          {/* Middle: Alphabetical Unit List (Always in the tree) */}
           {loading ? (
             <View style={styles.centerBox}>
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -298,7 +240,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
                     style={[styles.unitRow, isSelected && styles.unitRowSelected]}
                     onPress={() => {
                       onSelectUnit(item);
-                      onClose();
+                      handleClose();
                     }}
                   >
                     <Text style={[styles.unitText, isSelected && styles.unitTextSelected]}>
@@ -313,32 +255,80 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
               ListEmptyComponent={
                 <View style={styles.emptyBox}>
                   <Text style={styles.emptyText}>No matching units found.</Text>
-                  {!showAddModal && (
-                    <TouchableOpacity
-                      style={styles.addCustomBtn}
-                      onPress={() => setShowAddModal(true)}
-                    >
-                      <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                      <Text style={styles.addCustomBtnText}>Add Custom Unit</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               }
             />
           )}
 
-          {/* Bottom Custom Unit Action Bar (only when not in add mode) */}
-          {!showAddModal && (
-            <View style={styles.footer}>
+          {/* Bottom Footer */}
+          <View
+            style={[
+              styles.footer,
+              { paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) },
+            ]}
+          >
+            {!isCreating ? (
               <TouchableOpacity
-                style={styles.footerBtn}
-                onPress={() => setShowAddModal(true)}
+                style={styles.createBtn}
+                onPress={() => {
+                  if (!newUnitName && search.trim()) {
+                    setNewUnitName(search.trim());
+                  }
+                  setInlineError('');
+                  setIsCreating(true);
+                }}
+                activeOpacity={0.7}
               >
                 <Ionicons name="add" size={18} color={Colors.primary} />
-                <Text style={styles.footerBtnText}>Add Custom Unit</Text>
+                <Text style={styles.createBtnText}>+ Create custom unit</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            ) : (
+              <View style={styles.createForm}>
+                <Text style={styles.formLabel}>Custom unit name</Text>
+                <TextInput
+                  style={[styles.formInput, inlineError ? styles.formInputError : null]}
+                  placeholder="Unit name (e.g. BUNDLE, SHIFT)"
+                  placeholderTextColor={Colors.textMuted}
+                  value={newUnitName}
+                  onChangeText={(val) => {
+                    setNewUnitName(val);
+                    if (inlineError) setInlineError('');
+                  }}
+                  autoCapitalize="characters"
+                  autoFocus
+                  editable={!saving}
+                />
+                {inlineError ? (
+                  <View style={styles.errorRow}>
+                    <Ionicons name="alert-circle" size={14} color="#DC2626" />
+                    <Text style={styles.errorText}>{inlineError}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.formActionRow}>
+                  <TouchableOpacity
+                    style={styles.cancelBtn}
+                    onPress={handleCancel}
+                    disabled={saving}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+                    onPress={handleSave}
+                    disabled={saving}
+                    activeOpacity={0.7}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save Unit</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -346,25 +336,18 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
+    justifyContent: 'flex-end',
   },
-  container: {
+  sheetContainer: {
     backgroundColor: '#fff',
-    borderRadius: Radius.lg || 16,
-    width: '100%',
-    maxWidth: 420,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '85%',
-    flexShrink: 1,
+    width: '100%',
     overflow: 'hidden',
-  },
-  flatList: {
-    flex: 1,
-    flexShrink: 1,
   },
   header: {
     flexDirection: 'row',
@@ -409,34 +392,9 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginLeft: 8,
   },
-  quickAddRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1,
-    borderColor: '#FED7AA',
-    borderRadius: Radius.sm,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 10,
-    gap: 10,
-  },
-  quickAddIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFEDD5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickAddTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#9A3412',
-  },
-  quickAddSub: {
-    fontSize: 11,
-    color: '#C2410C',
+  flatList: {
+    flex: 1,
+    flexShrink: 1,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -476,92 +434,95 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
   },
-  addCustomBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: Radius.sm,
-  },
-  addCustomBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#fff',
-  },
   footer: {
-    padding: 14,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     borderTopWidth: 0.5,
     borderTopColor: Colors.border,
     backgroundColor: '#F8FAFC',
   },
-  footerBtn: {
+  createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 8,
-  },
-  footerBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  addModalContainer: {
-    padding: 14,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
+    paddingVertical: 12,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: '#FED7AA',
-    borderRadius: Radius.md,
     backgroundColor: '#FFF7ED',
   },
-  addModalTitle: {
+  createBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#EA580C',
+  },
+  createForm: {
+    gap: 8,
+  },
+  formLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9A3412',
-    marginBottom: 8,
+    color: Colors.textSecondary,
+    marginBottom: 2,
   },
-  addInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  addInput: {
-    flex: 1,
-    height: 40,
+  formInput: {
+    height: 44,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: Colors.border,
     borderRadius: Radius.sm,
     backgroundColor: '#fff',
     paddingHorizontal: 12,
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.text,
+    width: '100%',
   },
-  saveUnitBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 14,
-    height: 40,
-    borderRadius: Radius.sm,
+  formInputError: {
+    borderColor: '#DC2626',
+    backgroundColor: '#FEF2F2',
+  },
+  errorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  formActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveUnitBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  cancelUnitBtn: {
-    paddingHorizontal: 10,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelUnitBtnText: {
-    fontSize: 13,
+  cancelBtnText: {
+    fontSize: 14,
     fontWeight: '600',
     color: Colors.textSecondary,
+  },
+  saveBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
 });
