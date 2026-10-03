@@ -8,9 +8,9 @@ import {
   FlatList,
   StyleSheet,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Keyboard,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -36,6 +36,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
   currentValue,
 }) => {
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [units, setUnits] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,17 +44,20 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
   const [newUnitName, setNewUnitName] = useState('');
   const [saving, setSaving] = useState(false);
   const [inlineError, setInlineError] = useState('');
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
 
+  // Explicit, edge-to-edge independent keyboard listener
   useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
-    );
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, e => {
+      setKbHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKbHeight(0);
+    });
+
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -130,6 +134,15 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
     return combinedUnits.filter(u => u.toLowerCase().includes(q));
   }, [combinedUnits, search]);
 
+  // Dynamically reduce sheet height when keyboard is open to fit screen
+  const sheetHeight = useMemo(() => {
+    const eightyPercent = Math.round(windowHeight * 0.8);
+    if (kbHeight > 0) {
+      return Math.min(eightyPercent, windowHeight - kbHeight - insets.top - 16);
+    }
+    return eightyPercent;
+  }, [windowHeight, kbHeight, insets.top]);
+
   const handleClose = () => {
     setIsCreating(false);
     setNewUnitName('');
@@ -186,11 +199,8 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
       transparent
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.modalOverlay}
-      >
-        <View style={styles.sheetContainer}>
+      <View style={[styles.modalOverlay, { paddingBottom: kbHeight }]}>
+        <View style={[styles.sheetContainer, { height: sheetHeight }]}>
           {/* Header */}
           <View style={styles.header}>
             <View>
@@ -264,7 +274,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
           <View
             style={[
               styles.footer,
-              { paddingBottom: isKeyboardVisible ? 12 : Math.max(insets.bottom, 16) },
+              { paddingBottom: kbHeight > 0 ? 8 : insets.bottom },
             ]}
           >
             {!isCreating ? (
@@ -330,7 +340,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
@@ -345,7 +355,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '85%',
+    height: '80%',
     width: '100%',
     overflow: 'hidden',
   },
