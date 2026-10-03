@@ -68,19 +68,37 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
     }
   };
 
-  // Combine fetched units with currentValue and selectedUnit (Requirement 4)
+  // Combine fetched units with currentValue and selectedUnit, sorted alphabetically (case-insensitive)
   const combinedUnits = useMemo(() => {
-    const list = [...units];
-    const seen = new Set(list.map(u => u.toUpperCase().trim()));
+    const map = new Map<string, string>(); // upperCaseKey -> originalCasing
 
-    if (currentValue && currentValue.trim() && !seen.has(currentValue.toUpperCase().trim())) {
-      list.unshift(currentValue.trim());
-      seen.add(currentValue.toUpperCase().trim());
+    // 1. Existing / fetched units
+    for (const u of units) {
+      const trimmed = (u || '').trim();
+      if (trimmed && !map.has(trimmed.toUpperCase())) {
+        map.set(trimmed.toUpperCase(), trimmed);
+      }
     }
 
-    if (selectedUnit && selectedUnit.trim() && !seen.has(selectedUnit.toUpperCase().trim())) {
-      list.unshift(selectedUnit.trim());
+    // 2. currentValue (if line item has an existing unit not in server list)
+    if (currentValue && currentValue.trim()) {
+      const trimmed = currentValue.trim();
+      if (!map.has(trimmed.toUpperCase())) {
+        map.set(trimmed.toUpperCase(), trimmed);
+      }
     }
+
+    // 3. selectedUnit (if selected unit not in server list)
+    if (selectedUnit && selectedUnit.trim()) {
+      const trimmed = selectedUnit.trim();
+      if (!map.has(trimmed.toUpperCase())) {
+        map.set(trimmed.toUpperCase(), trimmed);
+      }
+    }
+
+    // 4. Sort alphabetically (case-insensitive), mixing standard and custom units naturally
+    const list = Array.from(map.values());
+    list.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
 
     return list;
   }, [units, currentValue, selectedUnit]);
@@ -118,8 +136,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
       if (businessId) {
         await unitService.createUnit(businessId, raw);
       }
-      const updated = [raw, ...units];
-      setUnits(updated);
+      setUnits(prev => [raw, ...prev]);
       onSelectUnit(raw);
       setShowAddModal(false);
       setNewUnitName('');
@@ -130,6 +147,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
         'Server Save Warning',
         getApiErrorMessage(err, 'Custom unit selected locally, but could not be saved to server.')
       );
+      setUnits(prev => [raw, ...prev]);
       onSelectUnit(raw);
       setShowAddModal(false);
       setNewUnitName('');
@@ -148,120 +166,41 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
     >
       <KeyboardAvoidingView
         style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Select Unit</Text>
-              <Text style={styles.subtitle}>Choose standard or custom unit</Text>
+              <Text style={styles.title}>
+                {showAddModal ? 'New Custom Unit' : 'Select Unit'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {showAddModal
+                  ? 'Create and save unit for this business'
+                  : 'Choose standard or custom unit'}
+              </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                if (showAddModal) {
+                  setShowAddModal(false);
+                  setNewUnitName('');
+                } else {
+                  onClose();
+                }
+              }}
+              style={styles.closeBtn}
+            >
               <Ionicons name="close" size={22} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
-          {/* Search Bar */}
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color={Colors.textMuted} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search or enter unit (e.g. PCS, BOX)..."
-              placeholderTextColor={Colors.textMuted}
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="characters"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 4 }}>
-                <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Add custom unit prompt button when search doesn't match */}
-          {search.trim().length > 0 && !exactMatchExists && (
-            <TouchableOpacity
-              style={styles.quickAddRow}
-              onPress={() => handleCreateCustomUnit(search.trim())}
-              disabled={creating}
-            >
-              <View style={styles.quickAddIconWrap}>
-                <Ionicons name="add" size={18} color="#C2410C" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.quickAddTitle}>Add "{search.trim().toUpperCase()}"</Text>
-                <Text style={styles.quickAddSub}>Create and use this custom unit</Text>
-              </View>
-              {creating ? (
-                <ActivityIndicator size="small" color="#C2410C" />
-              ) : (
-                <Ionicons name="chevron-forward" size={16} color="#C2410C" />
-              )}
-            </TouchableOpacity>
-          )}
-
-          {/* Unit List */}
-          {loading ? (
-            <View style={styles.centerBox}>
-              <ActivityIndicator size="small" color={Colors.primary} />
-            </View>
-          ) : (
-            <FlatList
-              data={filteredUnits}
-              keyExtractor={(item, idx) => `${item}_${idx}`}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.listContent}
-              renderItem={({ item }) => {
-                const isSelected =
-                  (selectedUnit || '').toUpperCase().trim() === item.toUpperCase().trim();
-                return (
-                  <TouchableOpacity
-                    style={[styles.unitRow, isSelected && styles.unitRowSelected]}
-                    onPress={() => {
-                      onSelectUnit(item);
-                      onClose();
-                    }}
-                  >
-                    <Text style={[styles.unitText, isSelected && styles.unitTextSelected]}>
-                      {item}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-                    )}
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>No matching units found.</Text>
-                  <TouchableOpacity
-                    style={styles.addCustomBtn}
-                    onPress={() => setShowAddModal(true)}
-                  >
-                    <Ionicons name="add-circle-outline" size={18} color="#fff" />
-                    <Text style={styles.addCustomBtnText}>Add Custom Unit</Text>
-                  </TouchableOpacity>
-                </View>
-              }
-            />
-          )}
-
-          {/* Bottom Custom Unit Action Bar */}
-          {!showAddModal ? (
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={styles.footerBtn}
-                onPress={() => setShowAddModal(true)}
-              >
-                <Ionicons name="add" size={18} color={Colors.primary} />
-                <Text style={styles.footerBtnText}>Add Custom Unit</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
+          {/* If creating custom unit, show creation input prominently at top (always above keyboard) */}
+          {showAddModal ? (
             <View style={styles.addModalContainer}>
-              <Text style={styles.addModalTitle}>New Custom Unit</Text>
+              <Text style={styles.addModalTitle}>Custom Unit Name</Text>
               <View style={styles.addInputRow}>
                 <TextInput
                   style={styles.addInput}
@@ -295,6 +234,110 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
                 </TouchableOpacity>
               </View>
             </View>
+          ) : (
+            <>
+              {/* Search Bar (at top, fully above keyboard) */}
+              <View style={styles.searchBar}>
+                <Ionicons name="search" size={18} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search or enter unit (e.g. PCS, BOX)..."
+                  placeholderTextColor={Colors.textMuted}
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCapitalize="characters"
+                />
+                {search.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Add custom unit prompt button when search doesn't match */}
+              {search.trim().length > 0 && !exactMatchExists && (
+                <TouchableOpacity
+                  style={styles.quickAddRow}
+                  onPress={() => handleCreateCustomUnit(search.trim())}
+                  disabled={creating}
+                >
+                  <View style={styles.quickAddIconWrap}>
+                    <Ionicons name="add" size={18} color="#C2410C" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.quickAddTitle}>Add "{search.trim().toUpperCase()}"</Text>
+                    <Text style={styles.quickAddSub}>Create and use this custom unit</Text>
+                  </View>
+                  {creating ? (
+                    <ActivityIndicator size="small" color="#C2410C" />
+                  ) : (
+                    <Ionicons name="chevron-forward" size={16} color="#C2410C" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {/* Unit List */}
+          {loading ? (
+            <View style={styles.centerBox}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+          ) : (
+            <FlatList
+              style={styles.flatList}
+              data={filteredUnits}
+              keyExtractor={(item, idx) => `${item}_${idx}`}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.listContent}
+              renderItem={({ item }) => {
+                const isSelected =
+                  (selectedUnit || '').toUpperCase().trim() === item.toUpperCase().trim();
+                return (
+                  <TouchableOpacity
+                    style={[styles.unitRow, isSelected && styles.unitRowSelected]}
+                    onPress={() => {
+                      onSelectUnit(item);
+                      onClose();
+                    }}
+                  >
+                    <Text style={[styles.unitText, isSelected && styles.unitTextSelected]}>
+                      {item}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyText}>No matching units found.</Text>
+                  {!showAddModal && (
+                    <TouchableOpacity
+                      style={styles.addCustomBtn}
+                      onPress={() => setShowAddModal(true)}
+                    >
+                      <Ionicons name="add-circle-outline" size={18} color="#fff" />
+                      <Text style={styles.addCustomBtnText}>Add Custom Unit</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              }
+            />
+          )}
+
+          {/* Bottom Custom Unit Action Bar (only when not in add mode) */}
+          {!showAddModal && (
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={styles.footerBtn}
+                onPress={() => setShowAddModal(true)}
+              >
+                <Ionicons name="add" size={18} color={Colors.primary} />
+                <Text style={styles.footerBtnText}>Add Custom Unit</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </KeyboardAvoidingView>
@@ -308,15 +351,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   container: {
     backgroundColor: '#fff',
     borderRadius: Radius.lg || 16,
     width: '100%',
     maxWidth: 420,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    flexShrink: 1,
     overflow: 'hidden',
+  },
+  flatList: {
+    flex: 1,
+    flexShrink: 1,
   },
   header: {
     flexDirection: 'row',
@@ -462,8 +510,12 @@ const styles = StyleSheet.create({
   },
   addModalContainer: {
     padding: 14,
-    borderTopWidth: 0.5,
-    borderTopColor: Colors.border,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    borderRadius: Radius.md,
     backgroundColor: '#FFF7ED',
   },
   addModalTitle: {
