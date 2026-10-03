@@ -64,6 +64,7 @@ export default function CreateInvoiceScreen() {
   ]);
   const [notes, setNotes] = useState('');
   const [consignmentAddress, setConsignmentAddress] = useState('');
+  const [customRoundOff, setCustomRoundOff] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   
   // Invoice type state
@@ -151,6 +152,11 @@ export default function CreateInvoiceScreen() {
         setConsignmentAddress(invData.consignment_address || '');
         setShowDiscount(!!invData.show_discount);
         setIsGstApplicable(invData.is_gst_applicable !== false);
+        if (invData.round_off !== undefined && invData.round_off !== null) {
+          setCustomRoundOff(String(Number(invData.round_off).toFixed(2)));
+        } else {
+          setCustomRoundOff(null);
+        }
 
         const custId = invData.customer_id;
         let match = partiesList.find(p => String(p.id) === String(custId));
@@ -357,10 +363,13 @@ export default function CreateInvoiceScreen() {
   });
 
   const exactTotal = subtotal + totalCGST + totalSGST + totalIGST;
-  const roundedTotal = Math.round(exactTotal);
-  const roundOff = parseFloat((roundedTotal - exactTotal).toFixed(2));
+  const autoRoundOff = parseFloat((Math.round(exactTotal) - exactTotal).toFixed(2));
+  const effectiveRoundOff = customRoundOff !== null && customRoundOff !== '' && !isNaN(Number(customRoundOff))
+    ? parseFloat(customRoundOff)
+    : autoRoundOff;
+  const total = parseFloat((exactTotal + effectiveRoundOff).toFixed(2));
+  const roundOff = effectiveRoundOff;
   const tax = totalCGST + totalSGST + totalIGST; // keep existing `tax` variable for anywhere else in the file that references it
-  const total = roundedTotal; // this becomes the new authoritative preview total
 
   const playSuccessSound = async () => {
     try {
@@ -465,6 +474,9 @@ export default function CreateInvoiceScreen() {
         consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || null) : null,
         is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
         notes: notes.trim() || null,
+        round_off: customRoundOff !== null && customRoundOff !== '' && !isNaN(Number(customRoundOff))
+          ? Number(customRoundOff)
+          : undefined,
       };
 
       if (!isEditMode) {
@@ -959,9 +971,66 @@ export default function CreateInvoiceScreen() {
             </View>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', alignSelf: 'flex-end', flexShrink: 1 }} textBreakStrategy="simple">₹{tax.toLocaleString('en-IN')}</Text>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: '#9ca3af' }}>Round Off</Text>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#9ca3af' }}>₹{roundOff.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>Round Off</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  const currentVal = customRoundOff !== null ? customRoundOff : autoRoundOff.toFixed(2);
+                  const num = parseFloat(currentVal);
+                  if (!isNaN(num)) {
+                    const flipped = (-num).toFixed(2);
+                    setCustomRoundOff(flipped);
+                  }
+                }}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  backgroundColor: '#FED7AA',
+                  borderRadius: 6,
+                  borderWidth: 0.5,
+                  borderColor: '#FDBA74',
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#9A3412' }}>±</Text>
+              </TouchableOpacity>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#FED7AA',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                minWidth: 80,
+              }}>
+                <Text style={{ fontSize: 13, color: '#92400E', marginRight: 2 }}>₹</Text>
+                <TextInput
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: '#92400E',
+                    textAlign: 'right',
+                    flex: 1,
+                    padding: 0,
+                    minHeight: 28,
+                  }}
+                  keyboardType="numbers-and-punctuation"
+                  value={customRoundOff !== null ? customRoundOff : autoRoundOff.toFixed(2)}
+                  onChangeText={(val) => setCustomRoundOff(val)}
+                  onBlur={() => {
+                    if (customRoundOff === '' || customRoundOff === null || isNaN(Number(customRoundOff))) {
+                      setCustomRoundOff(null);
+                    } else {
+                      setCustomRoundOff(parseFloat(customRoundOff).toFixed(2));
+                    }
+                  }}
+                  selectTextOnFocus
+                />
+              </View>
+            </View>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>

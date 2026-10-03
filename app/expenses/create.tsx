@@ -115,6 +115,12 @@ export default function CreateExpenseScreen() {
           const exp = await expenseService.getExpense(bId, params.id);
           setExpenseDate(exp.date);
           setCategory(exp.category);
+          if (exp.category) {
+            setCategoriesList(prev => {
+              const exists = prev.some(c => c.toLowerCase() === exp.category.toLowerCase());
+              return exists ? prev : [exp.category, ...prev];
+            });
+          }
           setAmount(String(exp.amount));
           setPaymentMode(exp.payment_mode);
           setVendorName(exp.vendor_name || '');
@@ -139,6 +145,21 @@ export default function CreateExpenseScreen() {
     };
     init();
   }, [params.id, isEditMode, getToken]);
+
+  const handleConfirmCustomCategory = () => {
+    const trimmed = customCategory.trim();
+    if (!trimmed) {
+      Alert.alert('Validation Error', 'Please enter a category name.');
+      return;
+    }
+    setCategoriesList(prev => {
+      const exists = prev.some(c => c.toLowerCase() === trimmed.toLowerCase());
+      return exists ? prev : [trimmed, ...prev];
+    });
+    setCategory(trimmed);
+    setCustomCategory('');
+    setShowCustomCatInput(false);
+  };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -197,11 +218,17 @@ export default function CreateExpenseScreen() {
     try {
       if (isEditMode && params.id) {
         await expenseService.updateExpense(businessId, params.id, payload);
+        try {
+          await expenseService.getCategories(businessId);
+        } catch {}
         Alert.alert('Success', 'Expense updated successfully.', [
           { text: 'OK', onPress: () => router.back() },
         ]);
       } else {
         await expenseService.createExpense(businessId, payload);
+        try {
+          await expenseService.getCategories(businessId);
+        } catch {}
         Alert.alert('Success', 'Expense recorded successfully.', [
           { text: 'OK', onPress: () => router.back() },
         ]);
@@ -293,14 +320,24 @@ export default function CreateExpenseScreen() {
           </View>
 
           {showCustomCatInput ? (
-            <TextInput
-              style={styles.textInput}
-              placeholder="Enter custom category name..."
-              placeholderTextColor={Colors.textMuted}
-              value={customCategory}
-              onChangeText={setCustomCategory}
-              autoFocus
-            />
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <TextInput
+                style={[styles.textInput, { flex: 1 }]}
+                placeholder="Enter custom category name..."
+                placeholderTextColor={Colors.textMuted}
+                value={customCategory}
+                onChangeText={setCustomCategory}
+                onSubmitEditing={handleConfirmCustomCategory}
+                returnKeyType="done"
+                autoFocus
+              />
+              <TouchableOpacity
+                style={styles.confirmCatBtn}
+                onPress={handleConfirmCustomCategory}
+              >
+                <Text style={styles.confirmCatBtnText}>Add</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <ScrollView
               horizontal
@@ -616,6 +653,19 @@ const styles = StyleSheet.create({
     height: 46,
     fontSize: 14,
     color: Colors.text,
+  },
+  confirmCatBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    height: 46,
+    borderRadius: Radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmCatBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
   },
   categoryScroll: {
     gap: 8,
