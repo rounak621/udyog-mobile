@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   Keyboard,
+  Dimensions,
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,13 +47,15 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
   const [inlineError, setInlineError] = useState('');
   const [kbHeight, setKbHeight] = useState(0);
 
-  // Explicit, edge-to-edge independent keyboard listener
+  // Explicit, edge-to-edge independent keyboard listener computing lift from keyboard top edge
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const showSub = Keyboard.addListener(showEvent, e => {
-      setKbHeight(e.endCoordinates.height);
+      const screenH = Dimensions.get('screen').height;
+      const lift = Math.max(0, screenH - e.endCoordinates.screenY);
+      setKbHeight(lift);
     });
     const hideSub = Keyboard.addListener(hideEvent, () => {
       setKbHeight(0);
@@ -136,9 +139,10 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
 
   // Dynamically reduce sheet height when keyboard is open to fit screen
   const sheetHeight = useMemo(() => {
-    const eightyPercent = Math.round(windowHeight * 0.8);
+    const screenH = Dimensions.get('screen').height || windowHeight;
+    const eightyPercent = Math.round(screenH * 0.8);
     if (kbHeight > 0) {
-      return Math.min(eightyPercent, windowHeight - kbHeight - insets.top - 16);
+      return Math.min(eightyPercent, screenH - kbHeight - insets.top - 16);
     }
     return eightyPercent;
   }, [windowHeight, kbHeight, insets.top]);
@@ -230,7 +234,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
             )}
           </View>
 
-          {/* Middle: Alphabetical Unit List (Always in the tree) */}
+          {/* Middle: Alphabetical Unit List (Always in the tree; shrinks as needed) */}
           {loading ? (
             <View style={styles.centerBox}>
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -270,7 +274,7 @@ export const UnitPickerModal: React.FC<UnitPickerModalProps> = ({
             />
           )}
 
-          {/* Bottom Footer */}
+          {/* Bottom Footer: never cuts off */}
           <View
             style={[
               styles.footer,
@@ -368,6 +372,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.border,
+    flexShrink: 0,
   },
   title: {
     fontSize: 17,
@@ -395,6 +400,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 12,
     height: 44,
+    flexShrink: 0,
   },
   searchInput: {
     flex: 1,
@@ -450,6 +456,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: Colors.border,
     backgroundColor: '#F8FAFC',
+    flexShrink: 0,
   },
   createBtn: {
     flexDirection: 'row',
@@ -469,6 +476,7 @@ const styles = StyleSheet.create({
   },
   createForm: {
     gap: 8,
+    flexShrink: 0,
   },
   formLabel: {
     fontSize: 12,
