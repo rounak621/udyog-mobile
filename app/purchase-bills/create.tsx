@@ -15,6 +15,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import * as ImagePicker from 'expo-image-picker';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface LineItem {
   id: string;
@@ -211,7 +212,7 @@ export default function CreatePurchaseBillScreen() {
       console.log('AI scan error:', err);
       Alert.alert(
         'Scan Failed',
-        err.response?.data?.detail || 'AI extraction failed. Please try again or fill in manually.'
+        getApiErrorMessage(err, 'AI extraction failed. Please try again or fill in manually.')
       );
     } finally {
       setScanning(false);
@@ -431,7 +432,7 @@ export default function CreatePurchaseBillScreen() {
       }
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save purchase bill');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save purchase bill'));
     } finally {
       setSaving(false);
     }

@@ -26,6 +26,7 @@ import { api, setAuthToken } from '../../services/api';
 import { quotationService, QuotationLineItem } from '../../services/quotation';
 import { showApiError } from '../../utils/apiError';
 import { checkIsOnline } from '../../services/network';
+import { UnitPickerModal } from '../../components/UnitPickerModal';
 import { useBusiness } from '../../context/BusinessContext';
 import { hasVistaarPlusAccess } from '../../utils/planAccess';
 
@@ -91,15 +92,8 @@ export default function CreateQuotationScreen() {
   ]);
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
   const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
-  const [unitSearch, setUnitSearch] = useState('');
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
   const [showDiscount, setShowDiscount] = useState(false);
-
-  const filteredUnits = useMemo(() => {
-    if (!unitSearch.trim()) return UNITS;
-    const q = unitSearch.trim().toLowerCase();
-    return UNITS.filter(u => u.toLowerCase().includes(q));
-  }, [unitSearch]);
 
   // Ref to track if initial mount load has completed
   const hasLoadedInitialRef = useRef(false);
@@ -152,7 +146,7 @@ export default function CreateQuotationScreen() {
 
       // Load customers and item catalog
       const [partiesRes, itemsRes] = await Promise.all([
-        api.get(`/customers/?business_id=${bId}`),
+        api.get(`/customers/?business_id=${bId}&party_type=customer`),
         api.get(`/items/?business_id=${bId}`),
       ]);
 
@@ -189,7 +183,11 @@ export default function CreateQuotationScreen() {
 
         // Map customer
         if (q.customer) {
-          const matchedParty = loadedParties.find((p: any) => String(p.id) === String(q.customer_id)) || q.customer;
+          let matchedParty = loadedParties.find((p: any) => String(p.id) === String(q.customer_id));
+          if (!matchedParty) {
+            matchedParty = q.customer;
+            setParties(prev => [...prev, matchedParty]);
+          }
           selectCustomer(matchedParty, bState);
         }
 
@@ -1014,87 +1012,19 @@ export default function CreateQuotationScreen() {
       )}
 
       {/* Unit Picker Modal */}
-      {showUnitPicker && (
-        <Modal
-          visible={!!showUnitPicker}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => {
-            setShowUnitPicker(null);
-            setUnitSearch('');
-          }}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <View style={[styles.modalContent, { height: '55%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Unit</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowUnitPicker(null);
-                    setUnitSearch('');
-                  }}
-                >
-                  <Ionicons name="close" size={24} color={Colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Search Box */}
-              <View style={styles.modalSearchBox}>
-                <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
-                <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Search unit (e.g. PCS, KGS)..."
-                  placeholderTextColor={Colors.textMuted}
-                  value={unitSearch}
-                  onChangeText={setUnitSearch}
-                  autoCapitalize="characters"
-                />
-                {unitSearch.length > 0 && (
-                  <TouchableOpacity onPress={() => setUnitSearch('')}>
-                    <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <FlatList
-                style={{ flex: 1 }}
-                data={filteredUnits}
-                keyExtractor={u => u}
-                renderItem={({ item: unitOption }) => {
-                  const activeLine = lineItems.find(l => l.id === showUnitPicker);
-                  const isSelected = (activeLine?.unit || 'PCS').toUpperCase() === unitOption;
-                  return (
-                    <TouchableOpacity
-                      style={styles.modalItem}
-                      onPress={() => {
-                        if (showUnitPicker) {
-                          updateLineItem(showUnitPicker, 'unit', unitOption);
-                        }
-                        setShowUnitPicker(null);
-                        setUnitSearch('');
-                      }}
-                    >
-                      <Text style={[styles.modalItemName, isSelected && { color: Colors.primary, fontWeight: '700' }]}>
-                        {unitOption}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-                    </TouchableOpacity>
-                  );
-                }}
-                ListEmptyComponent={
-                  <View style={{ padding: 20, alignItems: 'center' }}>
-                    <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No matching units found.</Text>
-                  </View>
-                }
-                keyboardShouldPersistTaps="handled"
-              />
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      )}
+      <UnitPickerModal
+        visible={!!showUnitPicker}
+        onClose={() => setShowUnitPicker(null)}
+        selectedUnit={lineItems.find(l => l.id === showUnitPicker)?.unit || 'PCS'}
+        currentValue={lineItems.find(l => l.id === showUnitPicker)?.unit}
+        businessId={businessId || business?.id}
+        onSelectUnit={(unit) => {
+          if (showUnitPicker) {
+            updateLineItem(showUnitPicker, 'unit', unit);
+          }
+          setShowUnitPicker(null);
+        }}
+      />
     </View>
   );
 }

@@ -18,6 +18,7 @@ import { MayaWhatsAppCard, WhatsAppProposalData } from '../../components/maya/Ma
 import { MayaQuotationCard } from '../../components/maya/MayaQuotationCard';
 import { MayaConvertQuotationCard, ConvertQuotationProposalData } from '../../components/maya/MayaConvertQuotationCard';
 import { quotationService } from '../../services/quotation';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -780,7 +781,7 @@ export default function MayaScreen() {
 
       triggerNavigationWithDelay(data);
     } catch (err: any) {
-      const detail = err.response?.data?.detail || 'Could not process request';
+      const detail = getApiErrorMessage(err, 'Could not process request');
       setMessages(prev => [
         ...prev,
         { role: 'assistant', text: `Error: ${detail}`, time: getTimeString() },
@@ -908,7 +909,7 @@ export default function MayaScreen() {
         playMayaTTS(successMsg, isTtsEnabledRef.current);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Party create karne mein error aaya';
+      const msg = getApiErrorMessage(err, 'Party create karne mein error aaya');
       Alert.alert('Error', msg);
     }
   };
@@ -939,7 +940,7 @@ export default function MayaScreen() {
         playMayaTTS(successMsg, isTtsEnabledRef.current);
       }
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Item create karne mein error aaya';
+      const msg = getApiErrorMessage(err, 'Item create karne mein error aaya');
       Alert.alert('Error', msg);
     }
   };
@@ -1010,7 +1011,7 @@ export default function MayaScreen() {
         message: err.message,
         stack: err.stack,
       });
-      const msg = err.response?.data?.detail || 'WhatsApp message bhejne mein error aaya.';
+      const msg = getApiErrorMessage(err, 'WhatsApp message bhejne mein error aaya.');
       Alert.alert('Error', msg);
     } finally {
       isSendingWhatsAppRef.current = false;
@@ -1112,7 +1113,7 @@ export default function MayaScreen() {
 
       playMayaTTS(successMsg, isTtsEnabledRef.current);
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Quotation create karne mein error aaya.';
+      const msg = getApiErrorMessage(err, 'Quotation create karne mein error aaya.');
       Alert.alert('Error', msg);
     } finally {
       isCreatingQuotationRef.current = false;
@@ -1163,7 +1164,7 @@ export default function MayaScreen() {
 
       playMayaTTS(successMsg, isTtsEnabledRef.current);
     } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Quotation convert karne mein error aaya.';
+      const msg = getApiErrorMessage(err, 'Quotation convert karne mein error aaya.');
       Alert.alert('Error', msg);
     } finally {
       isConvertingQuotationRef.current = false;

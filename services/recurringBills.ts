@@ -39,6 +39,8 @@ export interface RecurringBillTemplate {
 }
 
 export interface CreateRecurringBillPayload {
+  invoice_type?: string;
+  is_gst_applicable?: boolean;
   customer_id: string;
   line_items: {
     item_id?: number | null;
@@ -63,6 +65,8 @@ export interface CreateRecurringBillPayload {
 }
 
 export interface UpdateRecurringBillPayload {
+  invoice_type?: string;
+  is_gst_applicable?: boolean;
   customer_id?: string;
   line_items?: {
     item_id?: number | null;
@@ -96,6 +100,8 @@ export interface RecurringBillGenerationLog {
 }
 
 export interface PreviewRecurringBillPayload {
+  invoice_type?: string;
+  is_gst_applicable?: boolean;
   customer_id: string;
   line_items: {
     item_id?: number | null;

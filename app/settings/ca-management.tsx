@@ -9,7 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
-import { showApiError } from '../../utils/apiError';
+import { showApiError, getApiErrorMessage } from '../../utils/apiError';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AssignedCA {
@@ -26,6 +26,8 @@ export default function CAManagementScreen() {
 
   const [business, setBusiness] = useState<any>(null);
   const [cas, setCas] = useState<AssignedCA[]>([]);
+  const [caLimit, setCaLimit] = useState<number>(0);
+  const [overLimit, setOverLimit] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [emailInput, setEmailInput] = useState('');
@@ -43,7 +45,37 @@ export default function CAManagementScreen() {
 
       // Fetch assigned CAs
       const casRes = await api.get(`/ca/business/${bId}/assigned-cas`);
-      setCas(Array.isArray(casRes.data) ? casRes.data : []);
+      const casData = casRes.data;
+      const casList = Array.isArray(casData) ? casData : (Array.isArray(casData?.cas) ? casData.cas : []);
+      setCas(casList);
+
+      let limitVal: number | null = typeof casData?.ca_limit === 'number' ? casData.ca_limit : null;
+      let overLimitVal: boolean | null = typeof casData?.over_limit === 'boolean' ? casData.over_limit : null;
+
+      try {
+        const usageRes = await api.get(`/ca/business/${bId}/ca-usage`);
+        if (typeof usageRes.data?.ca_limit === 'number') {
+          limitVal = usageRes.data.ca_limit;
+        }
+        if (typeof usageRes.data?.over_limit === 'boolean') {
+          overLimitVal = usageRes.data.over_limit;
+        }
+      } catch (e) {
+        // ca-usage optional fallback
+      }
+
+      if (limitVal === null) {
+        const plan = bizRes.data?.subscription_plan || 'basic';
+        const planStr = typeof plan === 'object' && plan?.value ? plan.value : String(plan).toLowerCase();
+        limitVal = (planStr === 'basic' || planStr === 'pro' || planStr === 'premium' || planStr === 'saral') ? 0 : 2;
+      }
+
+      if (overLimitVal === null) {
+        overLimitVal = casList.length > limitVal;
+      }
+
+      setCaLimit(limitVal);
+      setOverLimit(overLimitVal);
     } catch (err) {
       console.log('CA list fetch error:', err);
       showApiError(err, 'Failed to load CA list');
@@ -77,10 +109,9 @@ export default function CAManagementScreen() {
     } catch (err: any) {
       console.log('Add CA error:', err);
       const status = err.response?.status;
-      const detail = err.response?.data?.detail;
 
       if (status === 403) {
-        Alert.alert('Limit Reached', detail || 'CA limit reached for your plan. Upgrade to Vistaar to add more CAs.');
+        Alert.alert('Limit Reached', getApiErrorMessage(err, 'CA limit reached for your plan. Upgrade your plan to add more CAs.'));
       } else {
         showApiError(err, 'Failed to assign CA. Please try again.');
       }
@@ -118,14 +149,8 @@ export default function CAManagementScreen() {
     );
   };
 
-  // Determine limit details
-  const plan = business?.subscription_plan || 'basic';
-  const planStr = typeof plan === 'object' && plan?.value ? plan.value : String(plan).toLowerCase();
-  const status = business?.subscription_status || 'trial';
-  const statusStr = typeof status === 'object' && status?.value ? status.value : String(status).toLowerCase();
-
-  // Enforce trial/Saral limit is 0, Vistaar/Enterprise is 2
-  const limit = (statusStr === 'trial' || planStr === 'basic' || planStr === 'pro' || planStr === 'premium' || planStr === 'saral') ? 0 : 2;
+  const activeConnections = cas.length;
+  const isAtLimit = overLimit || (caLimit > 0 && activeConnections >= caLimit) || caLimit === 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
@@ -161,25 +186,38 @@ export default function CAManagementScreen() {
           </View>
         ) : (
           <View style={{ gap: 16 }}>
+            {/* Over Limit Alert Banner */}
+            {overLimit && (
+              <View style={{ backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: Radius.md, padding: 12, gap: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="warning-outline" size={18} color="#D97706" />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>CA Limit Exceeded</Text>
+                </View>
+                <Text style={{ fontSize: 12, color: '#B45309', lineHeight: 18 }}>
+                  You currently have {cas.length} CAs assigned, which exceeds your plan limit of {caLimit} {caLimit === 1 ? 'CA' : 'CAs'}. Existing CA links remain active, but you cannot assign new CAs without upgrading your plan or removing excess CAs.
+                </Text>
+              </View>
+            )}
+
             {/* Limit Banner */}
             <View style={styles.bannerCard}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <Ionicons 
-                  name={limit > 0 ? "shield-checkmark" : "lock-closed"} 
+                  name={caLimit > 0 ? "shield-checkmark" : "lock-closed"} 
                   size={20} 
-                  color={limit > 0 ? Colors.success : Colors.primary} 
+                  color={overLimit ? '#D97706' : (caLimit > 0 ? Colors.success : Colors.primary)} 
                 />
                 <Text style={styles.bannerTitle}>
-                  {limit > 0 
-                    ? `${cas.length} of ${limit} CAs added` 
+                  {caLimit > 0 
+                    ? `${activeConnections} of ${caLimit} CAs used` 
                     : "CA Collaboration Access"
                   }
                 </Text>
               </View>
               <Text style={styles.bannerSub}>
-                {limit > 0 
-                  ? "Your Vistaar plan allows up to 2 active CAs to audit your records."
-                  : "CA access requires a Vistaar plan. Upgrade now to enable CA collaboration."
+                {caLimit > 0 
+                  ? `Your plan allows up to ${caLimit} active CAs to audit your records.`
+                  : "CA access requires a premium plan. Upgrade now to enable CA collaboration."
                 }
               </Text>
             </View>
@@ -211,9 +249,14 @@ export default function CAManagementScreen() {
             </View>
 
             {/* Add CA Form or Upsell Block */}
-            {limit > 0 ? (
-              <View style={styles.sectionCard}>
+            {caLimit > 0 ? (
+              <View style={[styles.sectionCard, isAtLimit && { opacity: 0.6 }]}>
                 <Text style={styles.sectionTitle}>Add Chartered Accountant</Text>
+                {isAtLimit && (
+                  <Text style={{ fontSize: 13, color: Colors.danger, marginBottom: 12 }}>
+                    You have reached your limit of {caLimit} CA connections. Remove an existing CA to add a new one.
+                  </Text>
+                )}
                 <Text style={styles.inputLabel}>CA Email Address</Text>
                 <View style={styles.inputContainer}>
                   <TextInput
@@ -224,12 +267,12 @@ export default function CAManagementScreen() {
                     placeholderTextColor="#94a3b8"
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    editable={!adding}
+                    editable={!adding && !isAtLimit}
                   />
                   <TouchableOpacity 
-                    style={[styles.addBtn, !emailInput.trim() && { opacity: 0.6 }]} 
+                    style={[styles.addBtn, (!emailInput.trim() || isAtLimit) && { opacity: 0.6 }]} 
                     onPress={handleAddCA}
-                    disabled={adding || !emailInput.trim()}
+                    disabled={adding || !emailInput.trim() || isAtLimit}
                   >
                     {adding ? (
                       <ActivityIndicator size="small" color="#fff" />

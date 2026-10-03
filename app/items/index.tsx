@@ -16,6 +16,9 @@ import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { validateHSN } from '../../utils/validators';
 import ImportFromBusinessModal from '../../components/ImportFromBusinessModal';
+import { getApiErrorMessage } from '../../utils/apiError';
+import { UnitPickerModal } from '../../components/UnitPickerModal';
+import { unitService } from '../../services/unitService';
 
 interface Item {
   id: number;
@@ -62,6 +65,8 @@ export default function ItemsScreen() {
   const [bulkHsnError, setBulkHsnError] = useState<string | null>(null);
   const [bulkGstRate, setBulkGstRate] = useState('18');
   const [bulkUnit, setBulkUnit] = useState('PCS');
+  const [showUnitPicker, setShowUnitPicker] = useState(false);
+  const [availableUnits, setAvailableUnits] = useState<string[]>(UNITS);
   const [bulkRows, setBulkRows] = useState<BulkRow[]>([
     createEmptyRow(),
     createEmptyRow(),
@@ -83,6 +88,7 @@ export default function ItemsScreen() {
       const bizRes = await api.get('/businesses/me');
       const bId = bizRes.data.id;
       setBusinessId(bId);
+      unitService.getUnits(bId).then(u => setAvailableUnits(u)).catch(() => {});
       
       let url = `/items/?business_id=${bId}&include_inactive=false&limit=${PAGE_SIZE}&skip=${currentSkip}`;
       if (searchTerm.trim()) {
@@ -182,7 +188,7 @@ export default function ItemsScreen() {
       Alert.alert('Bulk Add Complete', `Successfully added ${successCount} item(s).${failCount > 0 ? ` ${failCount} failed.` : ''}`);
       loadItems(0, false, search);
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Bulk add failed');
+      Alert.alert('Error', getApiErrorMessage(err, 'Bulk add failed'));
     } finally {
       setSavingBulk(false);
     }
@@ -361,17 +367,25 @@ export default function ItemsScreen() {
                 </View>
 
                 <Text style={styles.fieldLabel}>Unit</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.unitChipRow}>
-                  {UNITS.map(u => (
-                    <TouchableOpacity
-                      key={u}
-                      style={[styles.chip, bulkUnit === u && styles.chipActive]}
-                      onPress={() => setBulkUnit(u)}
-                    >
-                      <Text style={[styles.chipText, bulkUnit === u && styles.chipTextActive]}>{u}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.unitChipRow} style={{ flex: 1 }}>
+                    {availableUnits.slice(0, 10).map(u => (
+                      <TouchableOpacity
+                        key={u}
+                        style={[styles.chip, bulkUnit === u && styles.chipActive]}
+                        onPress={() => setBulkUnit(u)}
+                      >
+                        <Text style={[styles.chipText, bulkUnit === u && styles.chipTextActive]}>{u}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <TouchableOpacity
+                    style={[styles.chip, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
+                    onPress={() => setShowUnitPicker(true)}
+                  >
+                    <Text style={[styles.chipText, { color: Colors.primary, fontWeight: '700' }]}>+ Custom</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* ITEM ROWS */}
@@ -437,6 +451,18 @@ export default function ItemsScreen() {
           </View>
         </View>
       </Modal>
+
+      <UnitPickerModal
+        visible={showUnitPicker}
+        onClose={() => setShowUnitPicker(false)}
+        selectedUnit={bulkUnit}
+        currentValue={bulkUnit}
+        businessId={businessId || undefined}
+        onSelectUnit={(u) => {
+          setBulkUnit(u);
+          setAvailableUnits(prev => prev.includes(u) ? prev : [u, ...prev]);
+        }}
+      />
 
       {businessId && (
         <ImportFromBusinessModal

@@ -16,6 +16,7 @@ import { api, setAuthToken } from '../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { validateGSTIN, validatePhone } from '../../utils/validators';
 import { useBusiness } from '../../context/BusinessContext';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -182,7 +183,7 @@ export default function BusinessSettingsScreen() {
       await refreshBusinesses();
       Alert.alert('Success', 'Business details updated');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -232,7 +233,7 @@ export default function BusinessSettingsScreen() {
       setPendingImageHeight(normalized.height);
       setPendingCropType('logo');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to select image'));
     }
   };
 
@@ -248,7 +249,7 @@ export default function BusinessSettingsScreen() {
       await refreshBusinesses();
       Alert.alert('Success', 'Logo removed successfully');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to remove logo');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to remove logo'));
     } finally {
       setUploadingLogo(false);
     }
@@ -298,7 +299,7 @@ export default function BusinessSettingsScreen() {
       setPendingImageHeight(normalized.height);
       setPendingCropType('signature');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to select image');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to select image'));
     }
   };
 
@@ -338,7 +339,7 @@ export default function BusinessSettingsScreen() {
       await refreshBusinesses();
       Alert.alert('Success', `${isLogo ? 'Logo' : 'Signature'} uploaded successfully`);
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || `Failed to upload ${type}`);
+      Alert.alert('Error', getApiErrorMessage(err, `Failed to upload ${type}`));
     } finally {
       setUploading(false);
     }
@@ -374,7 +375,7 @@ export default function BusinessSettingsScreen() {
       await refreshBusinesses();
       Alert.alert('Success', 'Signature removed successfully');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to remove signature');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to remove signature'));
     } finally {
       setUploadingSignature(false);
     }

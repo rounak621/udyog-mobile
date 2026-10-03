@@ -35,6 +35,7 @@ import { showApiError } from '../../utils/apiError';
 import { checkIsOnline } from '../../services/network';
 import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
 import { useBusiness } from '../../context/BusinessContext';
+import { UnitPickerModal } from '../../components/UnitPickerModal';
 
 interface FormLineItem {
   id: string;
@@ -92,6 +93,9 @@ export default function CreateRecurringBillScreen() {
   const [whatsappAutoSend, setWhatsappAutoSend] = useState(true);
   const [notes, setNotes] = useState('');
 
+  const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'NONGST' | 'SERVICE'>('INVOICE');
+  const [isGstApplicable, setIsGstApplicable] = useState(true);
+
   // Line Items
   const [itemsCatalog, setItemsCatalog] = useState<any[]>([]);
   const [lineItems, setLineItems] = useState<FormLineItem[]>([
@@ -109,14 +113,7 @@ export default function CreateRecurringBillScreen() {
   ]);
   const [showItemDropdown, setShowItemDropdown] = useState<string | null>(null);
   const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
-  const [unitSearch, setUnitSearch] = useState('');
   const [showDiscount, setShowDiscount] = useState(false);
-
-  const filteredUnits = useMemo(() => {
-    if (!unitSearch.trim()) return UNITS;
-    const q = unitSearch.trim().toLowerCase();
-    return UNITS.filter(u => u.toLowerCase().includes(q));
-  }, [unitSearch]);
 
   // Ref to track if initial mount load has completed
   const hasLoadedInitialRef = useRef(false);
@@ -158,7 +155,7 @@ export default function CreateRecurringBillScreen() {
       setBusinessState(bState);
 
       const [partiesRes, itemsRes] = await Promise.all([
-        api.get(`/customers/?business_id=${bId}`),
+        api.get(`/customers/?business_id=${bId}&party_type=customer`),
         api.get(`/items/?business_id=${bId}`),
       ]);
 
@@ -188,8 +185,14 @@ export default function CreateRecurringBillScreen() {
         setAutoSendEnabled(!!t.auto_send_enabled);
         if (t.whatsapp_auto_send !== undefined) setWhatsappAutoSend(!!t.whatsapp_auto_send);
         setNotes(t.notes || '');
+        if ((t as any).invoice_type) setInvoiceType((t as any).invoice_type);
+        if ((t as any).is_gst_applicable !== undefined) setIsGstApplicable(!!(t as any).is_gst_applicable);
 
-        const matchedParty = loadedParties.find((p: any) => String(p.id) === String(t.customer_id));
+        let matchedParty = loadedParties.find((p: any) => String(p.id) === String(t.customer_id));
+        if (!matchedParty && (t as any).customer) {
+          matchedParty = (t as any).customer;
+          setParties(prev => [...prev, matchedParty]);
+        }
         if (matchedParty) selectCustomer(matchedParty, bState);
 
         if (t.line_items && t.line_items.length > 0) {
@@ -473,6 +476,8 @@ export default function CreateRecurringBillScreen() {
         customer_id: selectedParty.id,
         start_date: startDate,
         notes: notes.trim() || null,
+        invoice_type: invoiceType,
+        is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
         line_items: lineItems.map(l => ({
           item_id: l.item_id || null,
           item_name: l.name.trim() || 'Item',
@@ -555,6 +560,8 @@ export default function CreateRecurringBillScreen() {
         auto_send_enabled: autoSendEnabled,
         whatsapp_auto_send: whatsappAutoSend,
         notes: notes.trim() ? notes.trim().slice(0, 300) : null,
+        invoice_type: invoiceType,
+        is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
         line_items: lineItems.map(l => ({
           item_id: l.item_id || null,
           item_name: l.name.trim(),
@@ -663,6 +670,33 @@ export default function CreateRecurringBillScreen() {
               </View>
             )}
           </TouchableOpacity>
+        </View>
+
+        {/* Invoice Type Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionHeader}>INVOICE TYPE</Text>
+          <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 4, marginHorizontal: 16 }}>
+            {[
+              { label: 'GST Invoice', value: 'INVOICE' },
+              { label: 'Non-GST', value: 'NONGST' },
+              { label: 'Service', value: 'SERVICE' }
+            ].map(t => (
+              <TouchableOpacity
+                key={t.value}
+                style={[{ flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 6 }, invoiceType === t.value && { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}
+                disabled={isEditMode}
+                onPress={() => setInvoiceType(t.value as any)}
+              >
+                <Text style={[{ fontSize: 13, fontWeight: '500', color: Colors.textSecondary }, invoiceType === t.value && { color: Colors.primary, fontWeight: '600' }]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {invoiceType === 'SERVICE' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, marginHorizontal: 16, backgroundColor: Colors.card, padding: 12, borderRadius: Radius.md, borderWidth: 0.5, borderColor: Colors.border }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.text }}>Apply GST on Service?</Text>
+              <Switch value={isGstApplicable} onValueChange={setIsGstApplicable} disabled={isEditMode} />
+            </View>
+          )}
         </View>
 
         {/* Scheduling Section */}
@@ -1237,87 +1271,19 @@ export default function CreateRecurringBillScreen() {
       )}
 
       {/* Unit Picker Modal */}
-      {showUnitPicker && (
-        <Modal
-          visible={!!showUnitPicker}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => {
-            setShowUnitPicker(null);
-            setUnitSearch('');
-          }}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <View style={[styles.modalContent, { height: '55%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Unit</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowUnitPicker(null);
-                    setUnitSearch('');
-                  }}
-                >
-                  <Ionicons name="close" size={24} color={Colors.text} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Search Box */}
-              <View style={styles.modalSearchBox}>
-                <Ionicons name="search-outline" size={18} color={Colors.textMuted} />
-                <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Search unit (e.g. PCS, KGS)..."
-                  placeholderTextColor={Colors.textMuted}
-                  value={unitSearch}
-                  onChangeText={setUnitSearch}
-                  autoCapitalize="characters"
-                />
-                {unitSearch.length > 0 && (
-                  <TouchableOpacity onPress={() => setUnitSearch('')}>
-                    <Ionicons name="close-circle" size={16} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <FlatList
-                style={{ flex: 1 }}
-                data={filteredUnits}
-                keyExtractor={u => u}
-                renderItem={({ item: unitOption }) => {
-                  const activeLine = lineItems.find(l => l.id === showUnitPicker);
-                  const isSelected = (activeLine?.unit || 'PCS').toUpperCase() === unitOption;
-                  return (
-                    <TouchableOpacity
-                      style={styles.modalItem}
-                      onPress={() => {
-                        if (showUnitPicker) {
-                          updateLineItem(showUnitPicker, 'unit', unitOption);
-                        }
-                        setShowUnitPicker(null);
-                        setUnitSearch('');
-                      }}
-                    >
-                      <Text style={[styles.modalItemName, isSelected && { color: Colors.primary, fontWeight: '700' }]}>
-                        {unitOption}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark" size={18} color={Colors.primary} />}
-                    </TouchableOpacity>
-                  );
-                }}
-                ListEmptyComponent={
-                  <View style={{ padding: 20, alignItems: 'center' }}>
-                    <Text style={{ color: Colors.textMuted, fontSize: 13 }}>No matching units found.</Text>
-                  </View>
-                }
-                keyboardShouldPersistTaps="handled"
-              />
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      )}
+      <UnitPickerModal
+        visible={!!showUnitPicker}
+        onClose={() => setShowUnitPicker(null)}
+        selectedUnit={lineItems.find(l => l.id === showUnitPicker)?.unit || 'PCS'}
+        currentValue={lineItems.find(l => l.id === showUnitPicker)?.unit}
+        businessId={businessId || business?.id}
+        onSelectUnit={(unit) => {
+          if (showUnitPicker) {
+            updateLineItem(showUnitPicker, 'unit', unit);
+          }
+          setShowUnitPicker(null);
+        }}
+      />
 
       {/* PDF Preview Modal — Preview only, NO download button per web spec */}
       <Modal

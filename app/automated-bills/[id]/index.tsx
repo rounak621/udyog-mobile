@@ -41,6 +41,7 @@ export default function RecurringBillDetailScreen() {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [visibleLogsCount, setVisibleLogsCount] = useState(10);
 
   // PDF Preview State (Stateless raw bytes, NO download button)
   const [showPdfPreview, setShowPdfPreview] = useState(false);
@@ -486,6 +487,9 @@ export default function RecurringBillDetailScreen() {
                       <Text style={styles.itemName} numberOfLines={2}>
                         {item.item_name || 'Item'}
                       </Text>
+                      {item.description ? (
+                        <Text style={{ fontSize: 12, color: '#666', marginTop: 2, marginBottom: 2 }}>{item.description}</Text>
+                      ) : null}
                       <Text style={styles.itemLineTotal}>{fmt(lineTotal)}</Text>
                     </View>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
@@ -526,9 +530,9 @@ export default function RecurringBillDetailScreen() {
             </View>
           ) : (
             <View style={styles.card}>
-              {logs.map((log, index) => {
+              {logs.slice(0, visibleLogsCount).map((log, index) => {
                 const isSuccess = log.status === 'success';
-                const isLast = index === logs.length - 1;
+                const isLast = index === Math.min(logs.length, visibleLogsCount) - 1;
 
                 return (
                   <View key={log.id || index}>
@@ -562,6 +566,24 @@ export default function RecurringBillDetailScreen() {
                   </View>
                 );
               })}
+              {visibleLogsCount < logs.length && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    paddingTop: 12,
+                    borderTopWidth: 1,
+                    borderTopColor: '#f1f5f9',
+                    marginTop: 8
+                  }}
+                  onPress={() => setVisibleLogsCount(prev => prev + 10)}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: Colors.textSecondary }}>Show More</Text>
+                  <Ionicons name="chevron-down" size={16} color={Colors.textSecondary} />
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>

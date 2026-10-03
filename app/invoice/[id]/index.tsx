@@ -15,6 +15,7 @@ import { api, setAuthToken, API_BASE_URL } from '../../../services/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../../services/safHelper';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -45,6 +46,7 @@ export default function InvoiceDetailScreen() {
   const [revertPaymentId, setRevertPaymentId] = useState<string | null>(null);
   const [revertReason, setRevertReason] = useState('');
   const [reverting, setReverting] = useState(false);
+  const [availableAdvance, setAvailableAdvance] = useState(0);
 
   const loadInvoice = async () => {
     try {
@@ -52,6 +54,15 @@ export default function InvoiceDetailScreen() {
       setAuthToken(token);
       const res = await api.get(`/invoices/${id}`);
       setInvoice(res.data);
+
+      if (res.data?.customer_id) {
+        try {
+          const advRes = await api.get(`/payments/customer/${res.data.customer_id}/advance-balance?business_id=${res.data.business_id}`);
+          setAvailableAdvance(Number(advRes.data?.available_advance || 0));
+        } catch (e) {
+          // ignore error
+        }
+      }
     } catch (err) {
       console.log('Invoice detail error:', err);
     } finally {
@@ -125,7 +136,7 @@ export default function InvoiceDetailScreen() {
               await api.delete(`/invoices/${id}?business_id=${invoice.business_id}`);
               router.replace('/(tabs)/bills');
             } catch (err: any) {
-              Alert.alert('Error', err?.response?.data?.detail || 'Failed to delete invoice');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete invoice'));
             } finally {
               setDeleting(false);
             }
@@ -154,7 +165,7 @@ export default function InvoiceDetailScreen() {
       if (err.response?.status === 503) {
         Alert.alert('Notice', 'WhatsApp reminders — Coming soon!');
       } else {
-        Alert.alert('Error', err.response?.data?.detail || 'Failed to send reminder');
+        Alert.alert('Error', getApiErrorMessage(err, 'Failed to send reminder'));
       }
     } finally {
       setSendingReminder(false);
@@ -184,7 +195,7 @@ export default function InvoiceDetailScreen() {
       setRevertReason('');
       await loadInvoice();
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.detail || 'Failed to revert payment');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to revert payment'));
     } finally {
       setReverting(false);
     }
@@ -336,7 +347,10 @@ export default function InvoiceDetailScreen() {
           {(invoice.line_items || invoice.items || []).map((item: any, i: number) => (
             <View key={i} style={styles.itemRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.itemName}>{item.item_name || item.name}</Text>
+                <Text style={styles.itemName}>{item.item_name || item.item?.name || item.name || '—'}</Text>
+                {item.description ? (
+                  <Text style={{ fontSize: 12, color: '#666', marginTop: 2, marginBottom: 2 }}>{item.description}</Text>
+                ) : null}
                 <Text style={styles.itemSub} textBreakStrategy="simple">{item.quantity} {item.unit || 'pcs'} × {fmt(item.rate || item.unit_price)} · GST {item.gst_rate || 0}%</Text>
               </View>
               <Text style={styles.itemAmount} textBreakStrategy="simple">{fmt(item.line_total || item.amount || item.total)}</Text>
@@ -508,10 +522,29 @@ export default function InvoiceDetailScreen() {
         </View>
 
         {!isPaid && (
-          <TouchableOpacity style={styles.paidBtn} onPress={() => router.push(`/invoice/${id}/record-payment`)}>
-            <Ionicons name="cash-outline" size={18} color="#fff" />
-            <Text style={styles.paidBtnText}>Record Payment</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 10 }}>
+            {availableAdvance > 0 && (
+              <View style={styles.advanceNoticeBox}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="wallet" size={16} color="#c2410c" />
+                  <Text style={styles.advanceNoticeText}>
+                    Party advance: <Text style={{ fontWeight: '700', color: '#c2410c' }}>{fmt(availableAdvance)}</Text>
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.payAdvanceBtn}
+                  onPress={() => router.push(`/invoice/${id}/record-payment?source=ADVANCE`)}
+                >
+                  <Text style={styles.payAdvanceBtnText}>Pay from Advance</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <TouchableOpacity style={styles.paidBtn} onPress={() => router.push(`/invoice/${id}/record-payment`)}>
+              <Ionicons name="cash-outline" size={18} color="#fff" />
+              <Text style={styles.paidBtnText}>Record Payment</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
 
@@ -669,5 +702,9 @@ const styles = StyleSheet.create({
   modalCancelBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, borderWidth: 0.5, borderColor: Colors.border },
   modalCancelBtnText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
   modalConfirmBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, backgroundColor: Colors.danger },
-  modalConfirmBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' }
+  modalConfirmBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },
+  advanceNoticeBox: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: Radius.sm, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  advanceNoticeText: { fontSize: 12, color: '#9A3412', fontWeight: '500' },
+  payAdvanceBtn: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FED7AA', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
+  payAdvanceBtnText: { fontSize: 12, fontWeight: '700', color: '#C2410C' },
 });

@@ -208,10 +208,22 @@ export default function LedgerDetailScreen() {
                       
                       <View style={{ flex: 1, gap: 4 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {line.narration.toLowerCase().includes('payment') ? (
-                            <View style={[styles.typeBadge, styles.badgePayment]}>
-                              <Ionicons name="cash" size={10} color="#16a34a" />
-                              <Text style={[styles.typeBadgeText, { color: '#16a34a' }]}>Payment</Text>
+                          {line.narration.toLowerCase().includes('payment') || line.narration.toLowerCase().includes('advance') ? (
+                            <View style={[
+                              styles.typeBadge,
+                              line.narration.toLowerCase().includes('refund') ? styles.badgeRefund : styles.badgePayment
+                            ]}>
+                              <Ionicons
+                                name={line.narration.toLowerCase().includes('refund') ? 'arrow-undo' : 'cash'}
+                                size={10}
+                                color={line.narration.toLowerCase().includes('refund') ? '#dc2626' : '#16a34a'}
+                              />
+                              <Text style={[
+                                styles.typeBadgeText,
+                                { color: line.narration.toLowerCase().includes('refund') ? '#dc2626' : '#16a34a' }
+                              ]}>
+                                {line.narration.toLowerCase().includes('refund') ? 'Refund' : line.narration.toLowerCase().includes('advance') ? 'Advance' : 'Payment'}
+                              </Text>
                             </View>
                           ) : docLink ? (
                             <View style={[styles.typeBadge, docLink.type === 'SALE' ? styles.badgeSale : styles.badgePurchase]}>
@@ -288,6 +300,7 @@ const styles = StyleSheet.create({
   badgeSale: { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' },
   badgePurchase: { backgroundColor: '#f0f9ff', borderColor: '#bae6fd' },
   badgePayment: { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+  badgeRefund: { backgroundColor: '#fef2f2', borderColor: '#fecaca' },
   typeBadgeText: { fontSize: 9.5, fontWeight: '700', textTransform: 'uppercase', includeFontPadding: false },
   linkIndicator: { fontSize: 10, color: Colors.primary, fontWeight: '600', includeFontPadding: false }
 });

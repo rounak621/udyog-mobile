@@ -6,40 +6,34 @@ import { Alert } from 'react-native';
  * checks `err.response?.data?.detail` first, handles FastAPI array details,
  * network failures, and falls back to a descriptive default message.
  */
-export function getApiErrorMessage(err: any, fallbackMessage = 'An unexpected error occurred'): string {
-  if (!err) {
-    return fallbackMessage;
-  }
+export function getApiErrorMessage(err: any, fallbackMessage = 'Something went wrong'): string {
+  if (!err) return fallbackMessage;
 
   // Network offline / unreachable error
   if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || (err.isAxiosError && !err.response)) {
     return 'Network error. Please check your internet connection and try again.';
   }
 
-  // Timeout error
   if (err.code === 'ECONNABORTED' || err.message?.toLowerCase().includes('timeout')) {
     return 'Request timed out. Please check your connection and try again.';
   }
 
-  // FastAPI detail field (can be string or array of validation errors)
   const detail = err.response?.data?.detail;
-  if (typeof detail === 'string' && detail.trim().length > 0) {
-    return detail;
+  if (detail !== undefined && detail !== null) {
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.length > 0 ? (detail[0]?.msg || JSON.stringify(detail[0])) : JSON.stringify(detail);
+    }
+    if (typeof detail === 'object') {
+      return JSON.stringify(detail);
+    }
   }
 
-  if (Array.isArray(detail) && detail.length > 0) {
-    return detail
-      .map((item: any) => (typeof item === 'string' ? item : item?.msg || JSON.stringify(item)))
-      .join(', ');
-  }
-
-  // Generic message field
   const message = err.response?.data?.message;
   if (typeof message === 'string' && message.trim().length > 0) {
     return message;
   }
 
-  // Fallback to error message if present and meaningful
   if (typeof err.message === 'string' && err.message.trim().length > 0 && !err.message.includes('[object Object]')) {
     return err.message;
   }

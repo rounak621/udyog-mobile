@@ -13,6 +13,7 @@ import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const THEMES = [
   { label: 'Corporate Standard (Black & White)', value: 'corporate_tax_invoice' },
@@ -71,13 +72,13 @@ export default function InvoiceSettingsScreen() {
     next_number: '1'
   });
 
-  // App Preferences Form State
   const [prefForm, setPrefForm] = useState({
     invoice_theme: 'corporate_tax_invoice',
     declaration_label: 'Terms & Conditions',
     terms_and_conditions: '',
     show_discount: false,
     dual_address_enabled: false,
+    show_payment_status_on_pdf: false,
   });
 
   const [themeModalVisible, setThemeModalVisible] = useState(false);
@@ -97,6 +98,7 @@ export default function InvoiceSettingsScreen() {
           terms_and_conditions: b.terms_and_conditions || '',
           show_discount: !!b.show_discount,
           dual_address_enabled: !!b.dual_address_enabled,
+          show_payment_status_on_pdf: !!b.show_payment_status_on_pdf,
         });
 
         // Load General/GST configuration
@@ -173,7 +175,7 @@ export default function InvoiceSettingsScreen() {
       });
       Alert.alert('Success', 'Invoice numbering saved');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save numbering');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save numbering'));
     } finally {
       setSavingNum(false);
     }
@@ -195,7 +197,7 @@ export default function InvoiceSettingsScreen() {
       });
       Alert.alert('Success', 'Service invoice numbering saved');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save Service numbering');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save Service numbering'));
     } finally {
       setSavingService(false);
     }
@@ -216,7 +218,7 @@ export default function InvoiceSettingsScreen() {
       });
       Alert.alert('Success', 'Non-GST invoice numbering saved');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save Non-GST numbering');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save Non-GST numbering'));
     } finally {
       setSavingNongst(false);
     }
@@ -233,11 +235,12 @@ export default function InvoiceSettingsScreen() {
         terms_and_conditions: prefForm.terms_and_conditions,
         show_discount: prefForm.show_discount,
         dual_address_enabled: prefForm.dual_address_enabled,
+        show_payment_status_on_pdf: prefForm.show_payment_status_on_pdf,
       });
       await refreshBusinesses();
       Alert.alert('Success', 'App preferences saved');
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save preferences');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save preferences'));
     } finally {
       setSavingPref(false);
     }
@@ -595,6 +598,23 @@ export default function InvoiceSettingsScreen() {
                   key={opt}
                   style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
                   onPress={() => setPrefForm(f => ({ ...f, dual_address_enabled: opt === 'On' }))}
+                >
+                  <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <Text style={[styles.label, { marginTop: 16 }]}>Show Payment Status on PDF</Text>
+          <Text style={styles.subtitle}>Display Payment Received and Balance Due on GST/Sales invoice PDFs.</Text>
+          <View style={styles.toggleRow}>
+            {['On', 'Off'].map(opt => {
+              const isActive = (prefForm.show_payment_status_on_pdf ? 'On' : 'Off') === opt;
+              return (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.toggleBtn, isActive && styles.toggleBtnActive]}
+                  onPress={() => setPrefForm(f => ({ ...f, show_payment_status_on_pdf: opt === 'On' }))}
                 >
                   <Text style={[styles.toggleBtnText, isActive && styles.toggleBtnTextActive]}>{opt}</Text>
                 </TouchableOpacity>

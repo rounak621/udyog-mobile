@@ -18,6 +18,7 @@ import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { showApiError } from '../../../utils/apiError';
 import { useBusiness } from '../../../context/BusinessContext';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 interface RentalOrderItem {
   id: string;
@@ -142,7 +143,7 @@ export default function OrderDetailScreen() {
               Alert.alert('Success', 'Order cancelled successfully.');
               loadOrderDetails();
             } catch (err: any) {
-              Alert.alert('Error', err.response?.data?.detail || 'Failed to cancel order.');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to cancel order.'));
             } finally {
               setSubmitting(false);
             }
@@ -278,7 +279,7 @@ export default function OrderDetailScreen() {
               Alert.alert('Success', 'Late fees waived successfully.');
               loadOrderDetails();
             } catch (err: any) {
-              Alert.alert('Error', err.response?.data?.detail || 'Failed to waive late fees.');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to waive late fees.'));
             } finally {
               setSubmitting(false);
             }
@@ -328,10 +329,13 @@ export default function OrderDetailScreen() {
         condition: selectedCondition,
         damage_notes: (selectedCondition === 'DAMAGED' || selectedCondition === 'WRITE_OFF') ? damageNotes.trim() || null : null,
         damage_deduction: (selectedCondition === 'DAMAGED' || selectedCondition === 'WRITE_OFF') ? parseFloat(damageDeduction) || 0 : 0,
-        waive_late_fee: waiveLateFee,
-        payment_amount: parsedPaymentAmount,
-        payment_method: parsedPaymentAmount !== 0 ? paymentMethod : 'CASH'
+        waive_late_fee: waiveLateFee
       };
+
+      if (parsedPaymentAmount !== null && parsedPaymentAmount !== 0) {
+        payload.payment_amount = parsedPaymentAmount;
+        payload.payment_method = paymentMethod;
+      }
 
       await api.post(`/rental-orders/${order.id}/return?business_id=${business.id}`, payload);
       Alert.alert('Success', 'Return recorded successfully.');
@@ -348,7 +352,7 @@ export default function OrderDetailScreen() {
 
       loadOrderDetails();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to record return.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to record return.'));
     } finally {
       setSubmitting(false);
     }

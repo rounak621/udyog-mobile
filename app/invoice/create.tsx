@@ -22,6 +22,8 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { Audio } from 'expo-av';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { checkIsOnline } from '../../services/network';
+import { getApiErrorMessage } from '../../utils/apiError';
+import { UnitPickerModal } from '../../components/UnitPickerModal';
 
 interface LineItem {
   id: string;
@@ -62,11 +64,13 @@ export default function CreateInvoiceScreen() {
   ]);
   const [notes, setNotes] = useState('');
   const [consignmentAddress, setConsignmentAddress] = useState('');
+  const [customRoundOff, setCustomRoundOff] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   
   // Invoice type state
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'NONGST' | 'SERVICE'>('INVOICE');
   const [isGstApplicable, setIsGstApplicable] = useState(true);
+  const [isB2cConfirmed, setIsB2cConfirmed] = useState(false);
 
   // Customer picker modal state
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
@@ -77,13 +81,6 @@ export default function CreateInvoiceScreen() {
 
   // Unit picker modal state
   const [showUnitPicker, setShowUnitPicker] = useState<string | null>(null);
-  const [unitSearch, setUnitSearch] = useState('');
-
-  const filteredUnits = useMemo(() => {
-    if (!unitSearch.trim()) return UNITS;
-    const q = unitSearch.trim().toLowerCase();
-    return UNITS.filter(u => u.toLowerCase().includes(q));
-  }, [unitSearch]);
 
   // Success modal actions states
   const [createdInvoice, setCreatedInvoice] = useState<any>(null);
@@ -130,7 +127,7 @@ export default function CreateInvoiceScreen() {
       if (!bId) return;
       
       const [custRes, itemRes] = await Promise.allSettled([
-        api.get(`/customers/?business_id=${bId}&limit=100`),
+        api.get(`/customers/?business_id=${bId}&limit=100&party_type=customer`),
         api.get(`/items/?business_id=${bId}&limit=100`),
       ]);
       
@@ -155,9 +152,20 @@ export default function CreateInvoiceScreen() {
         setConsignmentAddress(invData.consignment_address || '');
         setShowDiscount(!!invData.show_discount);
         setIsGstApplicable(invData.is_gst_applicable !== false);
+        if (invData.round_off !== undefined && invData.round_off !== null) {
+          setCustomRoundOff(String(Number(invData.round_off).toFixed(2)));
+        } else {
+          setCustomRoundOff(null);
+        }
 
         const custId = invData.customer_id;
-        const match = partiesList.find(p => String(p.id) === String(custId));
+        let match = partiesList.find(p => String(p.id) === String(custId));
+        if (!match && invData.customer) {
+          partiesList = [...partiesList, invData.customer];
+          setParties(partiesList);
+          match = invData.customer;
+        }
+
         if (match) {
           setSelectedParty(match);
           const customerState = match.state || '';
@@ -263,7 +271,7 @@ export default function CreateInvoiceScreen() {
             gst_rate: String(Number(di.tax_rate || di.gst_rate || catalogMatch?.gst_rate || 18)),
             unit: di.unit || catalogMatch?.unit || 'PCS',
             discount_percent: '0',
-            hsn_code: di.hsn_code || catalogMatch?.hsn_code || '',
+            hsn_code: di.hsn_code || di.sac_code || catalogMatch?.hsn_code || '',
             description: di.description || '',
             isCustom: !catalogMatch,
           };
@@ -355,10 +363,13 @@ export default function CreateInvoiceScreen() {
   });
 
   const exactTotal = subtotal + totalCGST + totalSGST + totalIGST;
-  const roundedTotal = Math.round(exactTotal);
-  const roundOff = parseFloat((roundedTotal - exactTotal).toFixed(2));
+  const autoRoundOff = parseFloat((Math.round(exactTotal) - exactTotal).toFixed(2));
+  const effectiveRoundOff = customRoundOff !== null && customRoundOff !== '' && !isNaN(Number(customRoundOff))
+    ? parseFloat(customRoundOff)
+    : autoRoundOff;
+  const total = parseFloat((exactTotal + effectiveRoundOff).toFixed(2));
+  const roundOff = effectiveRoundOff;
   const tax = totalCGST + totalSGST + totalIGST; // keep existing `tax` variable for anywhere else in the file that references it
-  const total = roundedTotal; // this becomes the new authoritative preview total
 
   const playSuccessSound = async () => {
     try {
@@ -414,9 +425,26 @@ export default function CreateInvoiceScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (opts?: any) => {
+    const b2cOverride = opts?.b2cOverride === true;
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
     if (lineItems.some(i => !i.name || !i.rate)) { Alert.alert('Error', 'Please fill all item details'); return; }
+
+    const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
+    if (isGstInvoice && !selectedParty.gstin?.trim() && !isB2cConfirmed && !b2cOverride) {
+      Alert.alert(
+        'GSTIN Required',
+        'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+        [
+          { text: 'Switch to B2C', onPress: () => {
+            setIsB2cConfirmed(true);
+            handleSave({ b2cOverride: true });
+          }},
+          { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+        ]
+      );
+      return;
+    }
 
     const isOnline = await checkIsOnline();
     if (!isOnline) {
@@ -446,6 +474,9 @@ export default function CreateInvoiceScreen() {
         consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || null) : null,
         is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
         notes: notes.trim() || null,
+        round_off: customRoundOff !== null && customRoundOff !== '' && !isNaN(Number(customRoundOff))
+          ? Number(customRoundOff)
+          : undefined,
       };
 
       if (!isEditMode) {
@@ -471,7 +502,7 @@ export default function CreateInvoiceScreen() {
       if (err.code === 'ERR_NETWORK' || err.message === 'Network Error' || (err.isAxiosError && !err.response)) {
         Alert.alert('Network Error', 'Network error — your invoice was not saved, please try again.');
       } else {
-        Alert.alert('Error', err.response?.data?.detail || `Failed to ${isEditMode ? 'update' : 'create'} invoice`);
+        Alert.alert('Error', getApiErrorMessage(err, `Failed to ${isEditMode ? 'update' : 'create'} invoice`));
       }
     } finally {
       setSaving(false);
@@ -535,7 +566,24 @@ export default function CreateInvoiceScreen() {
             <TouchableOpacity
               key={t.value}
               style={[styles.typeBtn, invoiceType === t.value && styles.typeBtnActive]}
-              onPress={() => !isEditMode && setInvoiceType(t.value as any)}
+              onPress={() => {
+                if (isEditMode) return;
+                if (t.value === 'INVOICE' && selectedParty && !selectedParty.gstin?.trim() && !isB2cConfirmed) {
+                  Alert.alert(
+                    'GSTIN Required',
+                    'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                    [
+                      { text: 'Switch to B2C', onPress: () => {
+                        setIsB2cConfirmed(true);
+                        setInvoiceType(t.value as any);
+                      }},
+                      { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+                    ]
+                  );
+                  return;
+                }
+                setInvoiceType(t.value as any);
+              }}
               disabled={isEditMode}
             >
               <Text style={[styles.typeBtnText, invoiceType === t.value && styles.typeBtnTextActive]}>{t.label}</Text>
@@ -552,7 +600,24 @@ export default function CreateInvoiceScreen() {
               <TouchableOpacity
                 key={String(t.value)}
                 style={[styles.typeBtn, isGstApplicable === t.value && styles.typeBtnActive]}
-                onPress={() => !isEditMode && setIsGstApplicable(t.value)}
+                onPress={() => {
+                  if (isEditMode) return;
+                  if (t.value === true && selectedParty && !selectedParty.gstin?.trim() && !isB2cConfirmed) {
+                    Alert.alert(
+                      'GSTIN Required',
+                      'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                      [
+                        { text: 'Switch to B2C', onPress: () => {
+                          setIsB2cConfirmed(true);
+                          setIsGstApplicable(true);
+                        }},
+                        { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+                      ]
+                    );
+                    return;
+                  }
+                  setIsGstApplicable(t.value);
+                }}
                 disabled={isEditMode}
               >
                 <Text style={[styles.typeBtnText, isGstApplicable === t.value && styles.typeBtnTextActive]}>{t.label}</Text>
@@ -906,9 +971,66 @@ export default function CreateInvoiceScreen() {
             </View>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', alignSelf: 'flex-end', flexShrink: 1 }} textBreakStrategy="simple">₹{tax.toLocaleString('en-IN')}</Text>
           </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: '#9ca3af' }}>Round Off</Text>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#9ca3af' }}>₹{roundOff.toFixed(2)}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: '#92400E' }}>Round Off</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  const currentVal = customRoundOff !== null ? customRoundOff : autoRoundOff.toFixed(2);
+                  const num = parseFloat(currentVal);
+                  if (!isNaN(num)) {
+                    const flipped = (-num).toFixed(2);
+                    setCustomRoundOff(flipped);
+                  }
+                }}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  backgroundColor: '#FED7AA',
+                  borderRadius: 6,
+                  borderWidth: 0.5,
+                  borderColor: '#FDBA74',
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#9A3412' }}>±</Text>
+              </TouchableOpacity>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#fff',
+                borderWidth: 1,
+                borderColor: '#FED7AA',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                minWidth: 80,
+              }}>
+                <Text style={{ fontSize: 13, color: '#92400E', marginRight: 2 }}>₹</Text>
+                <TextInput
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: '#92400E',
+                    textAlign: 'right',
+                    flex: 1,
+                    padding: 0,
+                    minHeight: 28,
+                  }}
+                  keyboardType="numbers-and-punctuation"
+                  value={customRoundOff !== null ? customRoundOff : autoRoundOff.toFixed(2)}
+                  onChangeText={(val) => setCustomRoundOff(val)}
+                  onBlur={() => {
+                    if (customRoundOff === '' || customRoundOff === null || isNaN(Number(customRoundOff))) {
+                      setCustomRoundOff(null);
+                    } else {
+                      setCustomRoundOff(parseFloat(customRoundOff).toFixed(2));
+                    }
+                  }}
+                  selectTextOnFocus
+                />
+              </View>
+            </View>
           </View>
           <View style={{ height: 1, backgroundColor: '#FED7AA', marginBottom: 12 }} />
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -1006,6 +1128,21 @@ export default function CreateInvoiceScreen() {
                     setIsInterState(!!interState);
                     setShowCustomerPicker(false);
                     setPartySearch('');
+
+                    const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
+                    if (isGstInvoice && !item.gstin?.trim()) {
+                      setIsB2cConfirmed(false);
+                      Alert.alert(
+                        'GSTIN Required',
+                        'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                        [
+                          { text: 'Switch to B2C', onPress: () => setIsB2cConfirmed(true) },
+                          { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${item.id}`) }
+                        ]
+                      );
+                    } else {
+                      setIsB2cConfirmed(false);
+                    }
                   }}
                 >
                   <View style={{ flex: 1 }}>
@@ -1027,82 +1164,19 @@ export default function CreateInvoiceScreen() {
       </Modal>
 
       {/* Unit Picker Modal */}
-      {showUnitPicker && (
-        <Modal
-          visible={!!showUnitPicker}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => {
-            setShowUnitPicker(null);
-            setUnitSearch('');
-          }}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.modalOverlay}
-          >
-            <View style={[styles.modalContent, { height: '55%' }]}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Unit</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowUnitPicker(null);
-                    setUnitSearch('');
-                  }}
-                >
-                  <Ionicons name="close" size={24} color="#0F172A" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Search Box */}
-              <View style={styles.modalSearch}>
-                <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 6 }} />
-                <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Search unit (e.g. PCS, KGS)..."
-                  placeholderTextColor="#94A3B8"
-                  value={unitSearch}
-                  onChangeText={setUnitSearch}
-                  autoCapitalize="characters"
-                />
-                {unitSearch.length > 0 && (
-                  <TouchableOpacity onPress={() => setUnitSearch('')}>
-                    <Ionicons name="close-circle" size={16} color="#94A3B8" />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <FlatList
-                style={{ flex: 1 }}
-                data={filteredUnits}
-                keyExtractor={u => u}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item: unitOption }) => {
-                  const activeLine = lineItems.find(l => l.id === showUnitPicker);
-                  const isSelected = (activeLine?.unit || 'PCS').toUpperCase() === unitOption;
-                  return (
-                    <TouchableOpacity
-                      style={styles.modalItem}
-                      onPress={() => {
-                        if (showUnitPicker) {
-                          updateLineItem(showUnitPicker, 'unit', unitOption);
-                        }
-                        setShowUnitPicker(null);
-                        setUnitSearch('');
-                      }}
-                    >
-                      <Text style={[styles.modalItemName, isSelected && { color: '#F97316', fontWeight: '700' }]}>
-                        {unitOption}
-                      </Text>
-                      {isSelected && <Ionicons name="checkmark" size={18} color="#F97316" />}
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
-      )}
+      <UnitPickerModal
+        visible={!!showUnitPicker}
+        onClose={() => setShowUnitPicker(null)}
+        selectedUnit={lineItems.find(l => l.id === showUnitPicker)?.unit || 'PCS'}
+        currentValue={lineItems.find(l => l.id === showUnitPicker)?.unit}
+        businessId={businessId || undefined}
+        onSelectUnit={(newUnit) => {
+          if (showUnitPicker) {
+            updateLineItem(showUnitPicker, 'unit', newUnit);
+          }
+          setShowUnitPicker(null);
+        }}
+      />
 
 
 

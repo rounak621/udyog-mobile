@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, ActivityIndicator, Alert
+  TouchableOpacity, ActivityIndicator, Alert,
+  Modal, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -12,6 +13,7 @@ import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import * as FileSystem from 'expo-file-system/legacy';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -26,6 +28,37 @@ export default function PartyDetailScreen() {
   const [party, setParty] = useState<any>(null);
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Advance Balance State
+  const [advanceBalance, setAdvanceBalance] = useState<{
+    available_advance: number;
+    total_advance_received: number;
+    total_advance_applied: number;
+    total_advance_refunded: number;
+  }>({
+    available_advance: 0,
+    total_advance_received: 0,
+    total_advance_applied: 0,
+    total_advance_refunded: 0,
+  });
+
+  // Modals State
+  const [isAdvanceModalOpen, setIsAdvanceModalOpen] = useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+
+  // Receive Advance Form State
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [advanceMode, setAdvanceMode] = useState<'BANK' | 'UPI' | 'CASH' | 'CHEQUE' | 'OTHER'>('BANK');
+  const [advanceNotes, setAdvanceNotes] = useState('');
+  const [submittingAdvance, setSubmittingAdvance] = useState(false);
+
+  // Refund Advance Form State
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundDate, setRefundDate] = useState(new Date().toISOString().split('T')[0]);
+  const [refundMode, setRefundMode] = useState<'BANK' | 'UPI' | 'CASH' | 'CHEQUE' | 'OTHER'>('BANK');
+  const [refundNotes, setRefundNotes] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'khata' | 'bills'>('khata');
@@ -110,10 +143,11 @@ export default function PartyDetailScreen() {
       const pt = String(partyData?.party_type || 'customer').toLowerCase();
       const isSupplier = pt === 'supplier' || pt === 'both';
 
-      const [invRes, pbRes, rentalRes] = await Promise.allSettled([
+      const [invRes, pbRes, rentalRes, advRes] = await Promise.allSettled([
         api.get(`/invoices/?business_id=${bId}&customer_id=${id}&limit=1000&skip=0`),
         isSupplier ? api.get(`/purchase-bills/?business_id=${bId}&supplier_id=${id}`) : Promise.resolve({ data: [] }),
         api.get(`/rental-orders/?business_id=${bId}&customer_id=${id}`),
+        api.get(`/payments/customer/${id}/advance-balance?business_id=${bId}`),
       ]);
 
       let invoiceList: any[] = [];
@@ -132,6 +166,18 @@ export default function PartyDetailScreen() {
       if (rentalRes.status === 'fulfilled') {
         const rentalData = rentalRes.value.data;
         rentalList = Array.isArray(rentalData) ? rentalData : Array.isArray(rentalData?.items) ? rentalData.items : Array.isArray(rentalData?.orders) ? rentalData.orders : [];
+      }
+
+      if (advRes.status === 'fulfilled') {
+        const advData = (advRes.value as any)?.data;
+        if (advData) {
+          setAdvanceBalance({
+            available_advance: Number(advData.available_advance || 0),
+            total_advance_received: Number(advData.total_advance_received || 0),
+            total_advance_applied: Number(advData.total_advance_applied || 0),
+            total_advance_refunded: Number(advData.total_advance_refunded || 0),
+          });
+        }
       }
 
       const combined = [
@@ -216,7 +262,7 @@ export default function PartyDetailScreen() {
               router.back();
             } catch (err: any) {
               if (err.response?.status === 409) {
-                const errMsg = err.response?.data?.detail || 'Cannot delete party: active invoices or purchase bills exist.';
+                const errMsg = getApiErrorMessage(err, 'Cannot delete party: active invoices or purchase bills exist.');
                 Alert.alert('Cannot Delete', errMsg);
               } else {
                 Alert.alert('Error', 'Failed to delete party. Please try again.');
@@ -226,6 +272,72 @@ export default function PartyDetailScreen() {
         }
       ]
     );
+  };
+
+  const handleReceiveAdvance = async () => {
+    const numAmount = parseFloat(advanceAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid positive amount.');
+      return;
+    }
+    setSubmittingAdvance(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      await api.post(`/payments/receive-advance?business_id=${bId}`, {
+        party_id: id,
+        payment_date: advanceDate,
+        amount: numAmount,
+        payment_mode: advanceMode,
+        notes: advanceNotes.trim() || null,
+      });
+      setIsAdvanceModalOpen(false);
+      setAdvanceAmount('');
+      setAdvanceNotes('');
+      Alert.alert('Success', 'Advance payment recorded successfully.');
+      load();
+    } catch (err: any) {
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to record advance payment.'));
+    } finally {
+      setSubmittingAdvance(false);
+    }
+  };
+
+  const handleRefundAdvance = async () => {
+    const numAmount = parseFloat(refundAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid positive amount.');
+      return;
+    }
+    if (numAmount > advanceBalance.available_advance + 0.01) {
+      Alert.alert('Limit Exceeded', `Refund amount cannot exceed available advance (₹${advanceBalance.available_advance.toFixed(2)}).`);
+      return;
+    }
+    setSubmittingRefund(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+      await api.post(`/payments/refund-advance?business_id=${bId}`, {
+        party_id: id,
+        refund_date: refundDate,
+        amount: numAmount,
+        payment_mode: refundMode,
+        notes: refundNotes.trim() || null,
+      });
+      setIsRefundModalOpen(false);
+      setRefundAmount('');
+      setRefundNotes('');
+      Alert.alert('Success', 'Advance refund recorded successfully.');
+      load();
+    } catch (err: any) {
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to record refund.'));
+    } finally {
+      setSubmittingRefund(false);
+    }
   };
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
@@ -299,6 +411,85 @@ export default function PartyDetailScreen() {
             );
           })()}
         </View>
+
+        {/* Advance Actions & Banner */}
+        {(() => {
+          const pt = String(party.party_type || 'customer').toLowerCase();
+          const canReceiveAdvance = pt !== 'supplier';
+          const hasAdvance = advanceBalance.available_advance > 0;
+
+          if (!canReceiveAdvance && !hasAdvance) return null;
+
+          return (
+            <View style={{ gap: 10 }}>
+              {/* Advance Action Buttons */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {canReceiveAdvance && (
+                  <TouchableOpacity
+                    style={[styles.advanceActionBtn, { flex: 1 }]}
+                    onPress={() => {
+                      setAdvanceAmount('');
+                      setAdvanceDate(new Date().toISOString().split('T')[0]);
+                      setAdvanceMode('BANK');
+                      setAdvanceNotes('');
+                      setIsAdvanceModalOpen(true);
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={17} color="#c2410c" />
+                    <Text style={styles.advanceActionBtnText}>Receive Advance</Text>
+                  </TouchableOpacity>
+                )}
+                {hasAdvance && (
+                  <TouchableOpacity
+                    style={[styles.advanceActionBtn, { flex: 1, backgroundColor: '#fff', borderColor: '#fed7aa' }]}
+                    onPress={() => {
+                      setRefundAmount(advanceBalance.available_advance.toFixed(2));
+                      setRefundDate(new Date().toISOString().split('T')[0]);
+                      setRefundMode('BANK');
+                      setRefundNotes('');
+                      setIsRefundModalOpen(true);
+                    }}
+                  >
+                    <Ionicons name="arrow-undo-outline" size={17} color="#c2410c" />
+                    <Text style={styles.advanceActionBtnText}>Refund Advance</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Advance Available Banner (matches web PartyDetail) */}
+              {hasAdvance && (
+                <View style={styles.advanceBannerCard}>
+                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={styles.advanceIconWrap}>
+                      <Ionicons name="wallet" size={18} color="#EA580C" />
+                    </View>
+                    <View>
+                      <Text style={styles.advanceBannerLabel}>Advance Available</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 }}>
+                        <Text style={styles.advanceBannerValue}>{fmt(advanceBalance.available_advance)}</Text>
+                        <View style={styles.crPill}>
+                          <Text style={styles.crPillText}>CR</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.refundBtnSmall}
+                    onPress={() => {
+                      setRefundAmount(advanceBalance.available_advance.toFixed(2));
+                      setRefundDate(new Date().toISOString().split('T')[0]);
+                      setRefundMode('BANK');
+                      setRefundNotes('');
+                      setIsRefundModalOpen(true);
+                    }}
+                  >
+                    <Text style={styles.refundBtnSmallText}>Refund</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Details Card */}
         <View style={styles.card}>
@@ -543,6 +734,248 @@ export default function PartyDetailScreen() {
           </View>
         )}
       </SafeScrollView>
+
+      {/* Receive Advance Modal */}
+      <Modal
+        visible={isAdvanceModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsAdvanceModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Receive Advance</Text>
+                <Text style={styles.modalSubtitle}>Party: <Text style={{ fontWeight: '700', color: Colors.text }}>{party?.name}</Text></Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsAdvanceModalOpen(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Advance Amount */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Advance Amount *</Text>
+                <View style={styles.currencyInputWrap}>
+                  <Text style={styles.currencyPrefix}>₹</Text>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder="0.00"
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="numeric"
+                    value={advanceAmount}
+                    onChangeText={setAdvanceAmount}
+                  />
+                </View>
+              </View>
+
+              {/* Date */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Date *</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={advanceDate}
+                  onChangeText={setAdvanceDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Payment Mode */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Payment Mode *</Text>
+                <View style={styles.modeRow}>
+                  {([
+                    { key: 'BANK', label: 'Bank Transfer' },
+                    { key: 'UPI', label: 'UPI' },
+                    { key: 'CASH', label: 'Cash' },
+                    { key: 'CHEQUE', label: 'Cheque' },
+                    { key: 'OTHER', label: 'Other' },
+                  ] as const).map(m => (
+                    <TouchableOpacity
+                      key={m.key}
+                      style={[styles.modeChip, advanceMode === m.key && styles.modeChipActive]}
+                      onPress={() => setAdvanceMode(m.key)}
+                    >
+                      <Text style={[styles.modeChipText, advanceMode === m.key && styles.modeChipTextActive]}>
+                        {m.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Notes */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Notes (Optional)</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 70, textAlignVertical: 'top' }]}
+                  multiline
+                  value={advanceNotes}
+                  onChangeText={setAdvanceNotes}
+                  placeholder="e.g. Upfront advance for upcoming construction deliveries"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setIsAdvanceModalOpen(false)}
+                  disabled={submittingAdvance}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitBtn, submittingAdvance && { opacity: 0.6 }]}
+                  onPress={handleReceiveAdvance}
+                  disabled={submittingAdvance}
+                >
+                  {submittingAdvance ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Receive Advance</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Refund Advance Modal */}
+      <Modal
+        visible={isRefundModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsRefundModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Refund Advance</Text>
+                <Text style={styles.modalSubtitle}>Party: <Text style={{ fontWeight: '700', color: Colors.text }}>{party?.name}</Text></Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsRefundModalOpen(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={Colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {/* Available Advance Info Box */}
+              <View style={styles.modalInfoBox}>
+                <Text style={styles.modalInfoLabel}>AVAILABLE ADVANCE</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Text style={styles.modalInfoVal}>{fmt(advanceBalance.available_advance)}</Text>
+                  <TouchableOpacity
+                    onPress={() => setRefundAmount(advanceBalance.available_advance.toFixed(2))}
+                    style={{ paddingVertical: 2, paddingHorizontal: 6 }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#ea580c', textDecorationLine: 'underline' }}>Max</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Refund Amount */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Amount to Refund *</Text>
+                <View style={styles.currencyInputWrap}>
+                  <Text style={styles.currencyPrefix}>₹</Text>
+                  <TextInput
+                    style={styles.currencyInput}
+                    placeholder={advanceBalance.available_advance.toFixed(2)}
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="numeric"
+                    value={refundAmount}
+                    onChangeText={setRefundAmount}
+                  />
+                </View>
+              </View>
+
+              {/* Date */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Refund Date *</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  value={refundDate}
+                  onChangeText={setRefundDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Payment Mode */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Refund Mode *</Text>
+                <View style={styles.modeRow}>
+                  {([
+                    { key: 'BANK', label: 'Bank Transfer' },
+                    { key: 'UPI', label: 'UPI' },
+                    { key: 'CASH', label: 'Cash' },
+                    { key: 'CHEQUE', label: 'Cheque' },
+                    { key: 'OTHER', label: 'Other' },
+                  ] as const).map(m => (
+                    <TouchableOpacity
+                      key={m.key}
+                      style={[styles.modeChip, refundMode === m.key && styles.modeChipActive]}
+                      onPress={() => setRefundMode(m.key)}
+                    >
+                      <Text style={[styles.modeChipText, refundMode === m.key && styles.modeChipTextActive]}>
+                        {m.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Notes */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Notes (Optional)</Text>
+                <TextInput
+                  style={[styles.modalTextInput, { height: 70, textAlignVertical: 'top' }]}
+                  multiline
+                  value={refundNotes}
+                  onChangeText={setRefundNotes}
+                  placeholder="Reason for refund (e.g. Unused advance returned to customer)"
+                  placeholderTextColor={Colors.textMuted}
+                />
+              </View>
+
+              {/* Action Buttons */}
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setIsRefundModalOpen(false)}
+                  disabled={submittingRefund}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitBtn, submittingRefund && { opacity: 0.6 }]}
+                  onPress={handleRefundAdvance}
+                  disabled={submittingRefund}
+                >
+                  {submittingRefund ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Confirm Refund</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -610,4 +1043,42 @@ const styles = StyleSheet.create({
   debitText: { color: '#DC2626' },
   creditText: { color: '#16A34A' },
   ledgerBalance: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
+
+  // Advance action buttons & banner
+  advanceActionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: Radius.md, borderWidth: 1, borderColor: '#FED7AA', backgroundColor: '#FFF7ED' },
+  advanceActionBtnText: { fontSize: 13, fontWeight: '700', color: '#C2410C' },
+  advanceBannerCard: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: Radius.md, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  advanceIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFEDD5', alignItems: 'center', justifyContent: 'center' },
+  advanceBannerLabel: { fontSize: 11, fontWeight: '600', color: '#9A3412', textTransform: 'uppercase', letterSpacing: 0.5 },
+  advanceBannerValue: { fontSize: 18, fontWeight: '800', color: '#EA580C' },
+  crPill: { backgroundColor: '#FFEDD5', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 4 },
+  crPillText: { fontSize: 10, fontWeight: '700', color: '#9A3412' },
+  refundBtnSmall: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#FED7AA', paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.sm },
+  refundBtnSmallText: { fontSize: 12, fontWeight: '700', color: '#C2410C' },
+
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, borderBottomWidth: 0.5, borderBottomColor: Colors.border, paddingBottom: 12 },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: Colors.text },
+  modalSubtitle: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
+  modalInfoBox: { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA', borderRadius: Radius.sm, padding: 12, marginBottom: 14 },
+  modalInfoLabel: { fontSize: 10, fontWeight: '700', color: '#9A3412', letterSpacing: 0.5 },
+  modalInfoVal: { fontSize: 18, fontWeight: '800', color: '#EA580C' },
+  inputGroup: { marginBottom: 14 },
+  inputLabel: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 6 },
+  currencyInputWrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, backgroundColor: '#f8fafc', paddingHorizontal: 12 },
+  currencyPrefix: { fontSize: 15, fontWeight: '600', color: Colors.textMuted, marginRight: 6 },
+  currencyInput: { flex: 1, height: 44, fontSize: 15, color: Colors.text, fontWeight: '600' },
+  modalTextInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.sm, backgroundColor: '#f8fafc', paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: Colors.text },
+  modeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  modeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.sm, borderWidth: 1, borderColor: Colors.border, backgroundColor: '#f8fafc' },
+  modeChipActive: { borderColor: Colors.primary, backgroundColor: '#FFF7ED' },
+  modeChipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  modeChipTextActive: { color: Colors.primary, fontWeight: '700' },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 18, marginBottom: 10 },
+  cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  submitBtn: { flex: 1, paddingVertical: 12, borderRadius: Radius.md, backgroundColor: Colors.primary, alignItems: 'center' },
+  submitBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

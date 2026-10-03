@@ -13,6 +13,7 @@ import { useBottomPadding, FixedBottomBar } from '../../components/ui/SafeLayout
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { validateGSTIN, validatePhone } from '../../utils/validators';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -110,7 +111,7 @@ export default function CreatePartyScreen() {
       setGstPreview(res.data);
     } catch (err: any) {
       console.log('GST verify error:', err);
-      const msg = err.response?.data?.detail || 'Invalid GST number or verification failed.';
+      const msg = getApiErrorMessage(err, 'Invalid GST number or verification failed.');
       setGstError(msg);
     } finally {
       setFetchingGst(false);
@@ -188,7 +189,7 @@ export default function CreatePartyScreen() {
       }
       router.back();
     } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to save party');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to save party'));
     } finally {
       setSaving(false);
     }

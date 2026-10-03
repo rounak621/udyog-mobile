@@ -14,6 +14,7 @@ import { Colors } from '../constants/theme';
 import { api, setAuthToken } from '../services/api';
 import { useBusiness } from '../context/BusinessContext';
 import { validateGSTIN, validatePhone } from '../utils/validators';
+import { getApiErrorMessage } from '../utils/apiError';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -107,7 +108,7 @@ export default function BusinessSetupScreen() {
       setGstPreview(res.data);
     } catch (err: any) {
       console.log('GST verify error in setup:', err);
-      const msg = err.response?.data?.detail || 'Invalid GST number or verification failed.';
+      const msg = getApiErrorMessage(err, 'Invalid GST number or verification failed.');
       setGstError(msg);
     } finally {
       setVerifyingGst(false);
@@ -195,28 +196,7 @@ export default function BusinessSetupScreen() {
       // Navigate to tabs
       router.replace('/(tabs)');
     } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        const fieldNames: Record<string, string> = {
-          gst_number: 'GST Number',
-          phone: 'Phone Number',
-          email: 'Business Email',
-          name: 'Business Name',
-          city: 'City',
-          state: 'State',
-          address_line1: 'Business Address',
-        };
-        const messages = detail.map((e: any) => {
-          const field = e.loc?.[e.loc.length - 1];
-          const label = fieldNames[field] || field;
-          return `${label}: ${e.msg}`;
-        });
-        Alert.alert('Please Check Your Details', messages.join('\n'));
-      } else if (typeof detail === 'string') {
-        Alert.alert('Setup Failed', detail);
-      } else {
-        Alert.alert('Setup Failed', err.message || 'Something went wrong. Please try again.');
-      }
+      Alert.alert('Setup Failed', getApiErrorMessage(err, 'Something went wrong. Please try again.'));
     } finally {
       setSaving(false);
     }

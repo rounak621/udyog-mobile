@@ -19,6 +19,7 @@ import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 interface Customer {
   id: string;
@@ -164,7 +165,7 @@ export default function OrderCreateScreen() {
         setAuthToken(token);
 
         const [custRes, prodRes] = await Promise.all([
-          api.get(`/customers/?business_id=${business.id}`),
+          api.get(`/customers/?business_id=${business.id}&party_type=customer`),
           api.get(`/rental-products/?business_id=${business.id}`)
         ]);
 
@@ -450,7 +451,7 @@ export default function OrderCreateScreen() {
       setShowSuccess(true);
     } catch (err: any) {
       console.log('Error creating rental order:', err);
-      Alert.alert('Error', err.response?.data?.detail || 'Failed to create rental order.');
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to create rental order.'));
     } finally {
       setSubmitting(false);
     }

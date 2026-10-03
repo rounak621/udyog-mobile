@@ -12,6 +12,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
 import Svg, { Circle } from 'react-native-svg';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 const PLANS = [
   {
@@ -208,7 +209,7 @@ export default function SubscriptionScreen() {
               );
               await loadData();
             } catch (err: any) {
-              Alert.alert('Error', err?.response?.data?.detail || 'Failed to cancel subscription');
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to cancel subscription'));
             } finally {
               setCancelLoading(false);
             }
