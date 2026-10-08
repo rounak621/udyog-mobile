@@ -324,6 +324,11 @@ export default function QuotationDetailScreen() {
             {quotation.quotation_number}
           </Text>
           <Text style={styles.headerSub}>Estimate / Quotation</Text>
+          {quotation.created_by_name ? (
+            <Text style={{ fontSize: 11, color: Colors.textMuted, marginTop: 1 }}>
+              Created by {quotation.created_by_name}
+            </Text>
+          ) : null}
         </View>
         <View style={[styles.badge, statusBadge.badge]}>
           <Text style={[styles.badgeText, statusBadge.text]}>{statusBadge.label}</Text>
@@ -495,10 +500,10 @@ export default function QuotationDetailScreen() {
 
         {/* Line Items Table */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ITEMS ({quotation.items?.length || 0})</Text>
+          <Text style={styles.sectionTitle}>ITEMS ({Array.isArray(quotation.items) ? quotation.items.length : 0})</Text>
           <View style={styles.card}>
-            {(quotation.items || []).map((item, index) => {
-              const isLast = index === (quotation.items?.length || 0) - 1;
+            {(Array.isArray(quotation.items) ? quotation.items : []).map((item, index) => {
+              const isLast = index === (Array.isArray(quotation.items) ? quotation.items.length : 0) - 1;
               return (
                 <View key={item.id || index}>
                   <View style={{ paddingVertical: 8 }}>

@@ -2,7 +2,7 @@ import { createContext, useContext, useState, ReactNode, useCallback, useEffect 
 import { api, setAuthToken } from '../services/api';
 import { useAuth } from '@clerk/clerk-expo';
 
-interface Business {
+export interface Business {
   id: string;
   name: string;
   gst_number: string | null;
@@ -11,6 +11,19 @@ interface Business {
   subscription_plan?: string | null;
   subscription_status?: string | null;
   dual_address_enabled?: boolean;
+  my_role?: 'OWNER' | 'STAFF' | 'CA' | string;
+  my_preset?: string | null;
+  my_permissions?: string[];
+  invoice_scope?: string;
+  access_paused?: boolean;
+}
+
+export interface StaffInvite {
+  business_id: string;
+  business_name: string;
+  preset?: string;
+  status?: string;
+  invited_by_name?: string | null;
 }
 
 interface BusinessContextType {
@@ -18,6 +31,7 @@ interface BusinessContextType {
   setHasBusiness: (value: boolean) => void;
   business: Business | null;
   businesses: Business[];
+  pendingInvite: StaffInvite | null;
   isLoading: boolean;
   isSwitching: boolean;
   refreshBusinesses: () => Promise<void>;
@@ -35,6 +49,7 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
   const [hasBusiness, setHasBusiness] = useState(false);
   const [business, setBusiness] = useState<Business | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [pendingInvite, setPendingInvite] = useState<StaffInvite | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
 
@@ -43,13 +58,47 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
     try {
       const token = await getToken();
       setAuthToken(token);
-      const [meRes, allRes] = await Promise.all([
-        api.get('/businesses/me'),
-        api.get('/businesses/all'),
-      ]);
-      setBusiness(meRes.data);
-      setBusinesses(allRes.data);
-      setHasBusiness(true);
+      let meData: Business | null = null;
+      let allData: Business[] = [];
+      try {
+        const [meRes, allRes] = await Promise.all([
+          api.get('/businesses/me'),
+          api.get('/businesses/all'),
+        ]);
+        meData = meRes.data;
+        allData = Array.isArray(allRes.data) ? allRes.data : [];
+      } catch (err: any) {
+        if (err.response?.status === 404) {
+          meData = null;
+          allData = [];
+        } else {
+          console.log('Error fetching business in refreshBusinesses:', err);
+        }
+      }
+
+      if (!meData) {
+        setHasBusiness(false);
+        setBusiness(null);
+        setBusinesses([]);
+        // Query pending staff invites when user has no active business
+        try {
+          const invitesRes = await api.get('/staff/my-invites');
+          const invites = Array.isArray(invitesRes.data) ? invitesRes.data : [];
+          if (invites.length > 0) {
+            setPendingInvite(invites[0]);
+          } else {
+            setPendingInvite(null);
+          }
+        } catch (inviteErr) {
+          console.log('Error fetching staff invites in refreshBusinesses:', inviteErr);
+          setPendingInvite(null);
+        }
+      } else {
+        setBusiness(meData);
+        setBusinesses(allData);
+        setHasBusiness(true);
+        setPendingInvite(null);
+      }
     } catch (err: any) {
       if (err.response?.status === 404) {
         setHasBusiness(false);
@@ -79,17 +128,19 @@ export function BusinessProvider({ children }: { children: ReactNode }) {
       setBusiness(null);
       setBusinesses([]);
       setHasBusiness(false);
+      setPendingInvite(null);
     }
   }, [isSignedIn]);
 
   const status = business?.subscription_status || 'trial';
   const plan = business?.subscription_plan || 'basic';
   const maxBusinesses = status === 'trial' ? 1 : (PLAN_LIMITS[plan] || 1);
-  const canAddBusiness = businesses.length < maxBusinesses;
+  const canAddBusiness = (Array.isArray(businesses) ? businesses.length : 0) < maxBusinesses;
 
   return (
     <BusinessContext.Provider value={{
       hasBusiness, setHasBusiness, business, businesses,
+      pendingInvite,
       isLoading, isSwitching, refreshBusinesses, switchBusiness,
       canAddBusiness, maxBusinesses,
     }}>

@@ -282,10 +282,10 @@ export default function InvoiceDetailScreen() {
         <Text style={styles.topbarTitle}>Invoice</Text>
         <TouchableOpacity
           onPress={() => {
-            if (invoice.payment_status !== 'UNPAID') {
+            if (invoice.status === 'CANCELLED') {
               Alert.alert(
                 'Cannot Edit Invoice',
-                "This invoice has a payment recorded, so it's locked. Revert the payment first if you need to edit it.",
+                'This bill is cancelled and cannot be edited.',
                 [{ text: 'OK' }]
               );
             } else {
@@ -308,7 +308,7 @@ export default function InvoiceDetailScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 20 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <View>
+            <View style={{ flex: 1, marginRight: 8 }}>
               <Text style={styles.invoiceNum}>{invoice.invoice_number}</Text>
               {invoice.invoice_type === 'SERVICE' && (
                 <View style={{ backgroundColor: '#FFF7ED', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginTop: 4, alignSelf: 'flex-start' }}>
@@ -321,17 +321,34 @@ export default function InvoiceDetailScreen() {
                 </View>
               )}
               <Text style={styles.invoiceDate}>{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}</Text>
+              {invoice.created_by_name ? (
+                <Text style={{ fontSize: 12, color: Colors.textMuted, marginTop: 2 }}>
+                  Created by {invoice.created_by_name}
+                </Text>
+              ) : null}
+              {invoice.is_edited ? (
+                <Text style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>
+                  Revised{invoice.edited_at ? ` on ${new Date(invoice.edited_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}{invoice.edited_by_name ? ` by ${invoice.edited_by_name}` : ''}
+                </Text>
+              ) : null}
             </View>
-            <View style={[styles.badge, 
-              isPaid ? styles.paidBadge : 
-              isPartial ? styles.partialBadge : 
-              styles.unpaidBadge
-            ]}>
-              <Text style={[styles.badgeText,
-                isPaid ? styles.paidText :
-                isPartial ? styles.partialText :
-                styles.unpaidText
-              ]}>{ps}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.badge, 
+                isPaid ? styles.paidBadge : 
+                isPartial ? styles.partialBadge : 
+                styles.unpaidBadge
+              ]}>
+                <Text style={[styles.badgeText,
+                  isPaid ? styles.paidText :
+                  isPartial ? styles.partialText :
+                  styles.unpaidText
+                ]}>{ps}</Text>
+              </View>
+              {invoice.is_edited ? (
+                <View style={{ backgroundColor: '#FEF3C7', borderColor: '#FCD34D', borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '600', color: '#B45309' }}>Edited</Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
@@ -344,7 +361,7 @@ export default function InvoiceDetailScreen() {
 
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Items</Text>
-          {(invoice.line_items || invoice.items || []).map((item: any, i: number) => (
+          {(Array.isArray(invoice.line_items) ? invoice.line_items : Array.isArray(invoice.items) ? invoice.items : []).map((item: any, i: number) => (
             <View key={i} style={styles.itemRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName}>{item.item_name || item.item?.name || item.name || '—'}</Text>
@@ -467,12 +484,12 @@ export default function InvoiceDetailScreen() {
           )}
         </View>
         <View style={styles.card}>
-          {!(invoice.payments && invoice.payments.length > 0) ? (
+          {!(Array.isArray(invoice.payments) && invoice.payments.length > 0) ? (
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
               <Text style={{ fontSize: 13, color: Colors.textMuted }}>No payments recorded yet</Text>
             </View>
           ) : (
-            invoice.payments.map((p: any, index: number) => {
+            (Array.isArray(invoice.payments) ? invoice.payments : []).map((p: any, index: number) => {
               const isReverted = !!p.is_reverted;
               const formattedDate = new Date(p.payment_date).toLocaleDateString('en-IN', {
                 day: '2-digit', month: 'short', year: 'numeric'

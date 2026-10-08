@@ -21,17 +21,19 @@ export default function CreateItemScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id, name: prefillName, rate: prefillRate, gstRate: prefillGstRate, hsnCode: prefillHsnCode, unit: prefillUnit } = useLocalSearchParams<{
+  const { id, name: prefillName, rate: prefillRate, gstRate: prefillGstRate, hsnCode: prefillHsnCode, unit: prefillUnit, description: prefillDescription } = useLocalSearchParams<{
     id?: string;
     name?: string;
     rate?: string;
     gstRate?: string;
     hsnCode?: string;
     unit?: string;
+    description?: string;
   }>();
 
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [name, setName] = useState(prefillName || '');
+  const [description, setDescription] = useState(prefillDescription || '');
   const [hsnCode, setHsnCode] = useState(prefillHsnCode || '');
   const [rate, setRate] = useState(prefillRate || '');
   const [gstRate, setGstRate] = useState(prefillGstRate || '18');
@@ -52,13 +54,22 @@ export default function CreateItemScreen() {
         setBusinessId(bId);
 
         if (id) {
-          const itemRes = await api.get(`/items/${id}?business_id=${bId}`);
-          const item = itemRes.data;
-          setName(item.name || '');
-          setHsnCode(item.hsn_code || '');
-          setRate(String(item.rate || ''));
-          setGstRate(String(Number(item.gst_rate ?? 18)));
-          setUnit((item.unit || 'PCS').toUpperCase());
+          // Backend has no GET /items/{id} route; fetch via list endpoint
+          const itemsRes = await api.get(`/items/?business_id=${bId}&limit=5000&include_inactive=true`);
+          const itemsList = Array.isArray(itemsRes.data?.items)
+            ? itemsRes.data.items
+            : Array.isArray(itemsRes.data)
+            ? itemsRes.data
+            : [];
+          const item = itemsList.find((it: any) => String(it.id) === String(id));
+          if (item) {
+            setName(item.name || '');
+            setHsnCode(item.hsn_code || '');
+            setRate(String(item.rate ?? item.price ?? ''));
+            setGstRate(String(Number(item.gst_rate ?? 18)));
+            setUnit((item.unit || 'PCS').toUpperCase());
+            setDescription(item.description || '');
+          }
         }
       } catch (err) {
         console.log('Error loading business/item in edit:', err);
@@ -93,6 +104,7 @@ export default function CreateItemScreen() {
 
       const payload = {
         name: name.trim(),
+        description: description.trim() || null,
         hsn_code: hsnCode.trim() || null,
         rate: rateVal,
         gst_rate: Number(gstRate),
@@ -203,6 +215,27 @@ export default function CreateItemScreen() {
                   placeholderTextColor="#94A3B8"
                   value={name}
                   onChangeText={setName}
+                />
+              </View>
+
+              {/* Description */}
+              <View style={styles.fieldContainer}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>Description (optional)</Text>
+                  <Text style={{ fontSize: 11, color: description.length > 500 ? '#DC2626' : '#94A3B8' }}>
+                    {description.length}/500
+                  </Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { height: 72, textAlignVertical: 'top', paddingTop: 8 }]}
+                  placeholder="Optional item details or notes..."
+                  placeholderTextColor="#94A3B8"
+                  value={description}
+                  onChangeText={(t) => {
+                    if (t.length <= 500) setDescription(t);
+                  }}
+                  maxLength={500}
+                  multiline
                 />
               </View>
 

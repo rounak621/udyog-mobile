@@ -50,6 +50,7 @@ export interface Quotation {
   converted_at?: string | null;
   created_at: string;
   updated_at: string;
+  created_by_name?: string | null;
   customer?: CustomerSummary | null;
   items?: QuotationLineItem[];
 }

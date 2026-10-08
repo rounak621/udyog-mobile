@@ -38,7 +38,7 @@ export default function BusinessSwitcherModal({ visible, onClose }: BusinessSwit
           </View>
 
           <ScrollView style={{ maxHeight: 350 }} showsVerticalScrollIndicator={false}>
-            {businesses.map((b) => (
+            {(Array.isArray(businesses) ? businesses : []).map((b) => (
               <TouchableOpacity
                 key={b.id}
                 style={styles.modalItem}

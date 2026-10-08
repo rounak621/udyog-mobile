@@ -25,8 +25,10 @@ interface Item {
   name: string;
   hsn_code: string | null;
   rate: number;
+  price?: number;
   gst_rate: number;
   unit: string;
+  description?: string | null;
   is_active: boolean;
 }
 
@@ -284,13 +286,29 @@ export default function ItemsScreen() {
             <TouchableOpacity
               key={item.id}
               style={styles.card}
-              onPress={() => router.push(`/items/create?id=${item.id}`)}
+              onPress={() => router.push({
+                pathname: '/items/create',
+                params: {
+                  id: String(item.id),
+                  name: item.name || '',
+                  rate: String(item.rate ?? item.price ?? ''),
+                  gstRate: String(item.gst_rate ?? '18'),
+                  hsnCode: item.hsn_code || '',
+                  unit: item.unit || 'PCS',
+                  description: item.description || '',
+                }
+              })}
             >
               <View style={styles.avatar}>
                 <Ionicons name="cube-outline" size={20} color={Colors.primary} />
               </View>
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+                {item.description ? (
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 1, marginBottom: 2 }} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                ) : null}
                 <Text style={styles.cardSub} numberOfLines={1}>
                   HSN: {item.hsn_code || '—'} · Unit: {String(item.unit || 'pcs').toUpperCase()}
                 </Text>

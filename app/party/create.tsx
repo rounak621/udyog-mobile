@@ -82,7 +82,7 @@ export default function CreatePartyScreen() {
 
         if (id) {
           const res = await api.get(`/customers/${id}?business_id=${bId}`);
-          const p = res.data;
+          const p = res.data?.customer || res.data;
           setName(p.name || '');
           setPhone(p.phone || '');
           setEmail(p.email || '');
