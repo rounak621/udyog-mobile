@@ -58,6 +58,7 @@ interface RentalOrder {
   items: RentalOrderItem[];
   days_overdue?: number;
   share_token?: string;
+  created_by_name?: string;
 }
 
 const CONDITION_OPTIONS = [
@@ -403,8 +404,9 @@ export default function OrderDetailScreen() {
   const statusStyle = getStatusStyle(order.status);
   const payStyle = getPaymentStatusStyle(order.payment_status);
 
-  const totalRented = order.items.reduce((acc, it) => acc + it.quantity_rented, 0);
-  const totalReturned = order.items.reduce((acc, it) => acc + it.quantity_returned, 0);
+  const orderItems = Array.isArray(order.items) ? order.items : [];
+  const totalRented = orderItems.reduce((acc, it) => acc + (it.quantity_rented || 0), 0);
+  const totalReturned = orderItems.reduce((acc, it) => acc + (it.quantity_returned || 0), 0);
   const remainingToReturn = totalRented - totalReturned;
   const remainingBalance = Math.max(
     0,
@@ -493,6 +495,12 @@ export default function OrderDetailScreen() {
                 </Text>
               </View>
             )}
+            {order.created_by_name ? (
+              <View style={styles.gridItem}>
+                <Text style={styles.fieldLabel}>Created By</Text>
+                <Text style={styles.fieldValue}>{order.created_by_name}</Text>
+              </View>
+            ) : null}
           </View>
 
           {order.notes ? (
@@ -506,7 +514,7 @@ export default function OrderDetailScreen() {
         {/* Items Section */}
         <View style={styles.card}>
           <Text style={styles.sectionLabel}>Items Included</Text>
-          {order.items.map((item, idx) => {
+          {orderItems.map((item, idx) => {
             let assetList: string[] = [];
             if (item.asset_codes) {
               try {
@@ -631,13 +639,13 @@ export default function OrderDetailScreen() {
 
           {loadingPayments ? (
             <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 10 }} />
-          ) : payments.length === 0 ? (
+          ) : !(Array.isArray(payments) && payments.length > 0) ? (
             <Text style={{ fontSize: 13, color: Colors.textMuted, fontStyle: 'italic', marginVertical: 4 }}>
               No payments recorded yet.
             </Text>
           ) : (
             <View style={styles.timelineContainer}>
-              {payments.map((p, idx) => (
+              {(Array.isArray(payments) ? payments : []).map((p, idx) => (
                 <View key={p.id || idx} style={styles.timelineRow}>
                   <View style={styles.timelineLeft}>
                     <View style={styles.timelineDot} />

@@ -104,6 +104,7 @@ export default function CreateItemScreen() {
 
       const payload = {
         name: name.trim(),
+        description: description.trim() || null,
         hsn_code: hsnCode.trim() || null,
         rate: rateVal,
         gst_rate: Number(gstRate),
@@ -214,6 +215,27 @@ export default function CreateItemScreen() {
                   placeholderTextColor="#94A3B8"
                   value={name}
                   onChangeText={setName}
+                />
+              </View>
+
+              {/* Description */}
+              <View style={styles.fieldContainer}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.label}>Description (optional)</Text>
+                  <Text style={{ fontSize: 11, color: description.length > 500 ? '#DC2626' : '#94A3B8' }}>
+                    {description.length}/500
+                  </Text>
+                </View>
+                <TextInput
+                  style={[styles.input, { height: 72, textAlignVertical: 'top', paddingTop: 8 }]}
+                  placeholder="Optional item details or notes..."
+                  placeholderTextColor="#94A3B8"
+                  value={description}
+                  onChangeText={(t) => {
+                    if (t.length <= 500) setDescription(t);
+                  }}
+                  maxLength={500}
+                  multiline
                 />
               </View>
 

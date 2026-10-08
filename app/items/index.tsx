@@ -304,6 +304,11 @@ export default function ItemsScreen() {
               </View>
               <View style={styles.cardInfo}>
                 <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+                {item.description ? (
+                  <Text style={{ fontSize: 12, color: '#64748B', marginTop: 1, marginBottom: 2 }} numberOfLines={1}>
+                    {item.description}
+                  </Text>
+                ) : null}
                 <Text style={styles.cardSub} numberOfLines={1}>
                   HSN: {item.hsn_code || '—'} · Unit: {String(item.unit || 'pcs').toUpperCase()}
                 </Text>

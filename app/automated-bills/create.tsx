@@ -400,6 +400,7 @@ export default function CreateRecurringBillScreen() {
           gst_rate: item.gst_rate !== null && item.gst_rate !== undefined ? String(item.gst_rate) : l.gst_rate,
           unit: item.unit ? String(item.unit).toUpperCase() : l.unit,
           hsn_code: item.hsn_code || l.hsn_code,
+          description: l.description?.trim() ? l.description : (item.description || ''),
           isCustom: false,
         };
       })

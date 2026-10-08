@@ -27,6 +27,7 @@ interface Invoice {
   status: string;
   payment_status?: string;
   invoice_date: string;
+  is_edited?: boolean;
 }
 
 export default function BillsScreen() {
@@ -415,20 +416,27 @@ export default function BillsScreen() {
                 </View>
                 <View style={styles.cardRight}>
                   <Text style={styles.cardAmount}>{fmt(inv.total_amount)}</Text>
-                  <View style={[
-                    styles.badge,
-                    isPaid ? styles.paidBadge :
-                    isPartial ? styles.partialBadge :
-                    isDraft ? styles.draftBadge :
-                    styles.unpaidBadge
-                  ]}>
-                    <Text style={[
-                      styles.badgeText,
-                      isPaid ? styles.paidText :
-                      isPartial ? styles.partialText :
-                      isDraft ? styles.draftText :
-                      styles.unpaidText
-                    ]}>{isDraft ? 'DRAFT' : ps}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 4 }}>
+                    <View style={[
+                      styles.badge,
+                      isPaid ? styles.paidBadge :
+                      isPartial ? styles.partialBadge :
+                      isDraft ? styles.draftBadge :
+                      styles.unpaidBadge
+                    ]}>
+                      <Text style={[
+                        styles.badgeText,
+                        isPaid ? styles.paidText :
+                        isPartial ? styles.partialText :
+                        isDraft ? styles.draftText :
+                        styles.unpaidText
+                      ]}>{isDraft ? 'DRAFT' : ps}</Text>
+                    </View>
+                    {inv.is_edited ? (
+                      <View style={{ backgroundColor: '#FEF3C7', borderColor: '#FCD34D', borderWidth: 1, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 }}>
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: '#B45309' }}>Edited</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
               </View>

@@ -66,6 +66,10 @@ export default function CreateInvoiceScreen() {
   const [consignmentAddress, setConsignmentAddress] = useState('');
   const [customRoundOff, setCustomRoundOff] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [existingTotal, setExistingTotal] = useState<number>(0);
+  const [gstPeriodWarning, setGstPeriodWarning] = useState<string | null>(null);
+  const [isLockedCancelled, setIsLockedCancelled] = useState<boolean>(false);
   
   // Invoice type state
   const [invoiceType, setInvoiceType] = useState<'INVOICE' | 'NONGST' | 'SERVICE'>('INVOICE');
@@ -152,6 +156,18 @@ export default function CreateInvoiceScreen() {
         setConsignmentAddress(invData.consignment_address || '');
         setShowDiscount(!!invData.show_discount);
         setIsGstApplicable(invData.is_gst_applicable !== false);
+        const paid = Number(invData.paid_amount || invData.amount_paid || 0);
+        setPaidAmount(paid);
+        const oldTot = Number(invData.total_amount || 0);
+        setExistingTotal(oldTot);
+        if (typeof invData.gst_period_warning === 'string' && invData.gst_period_warning.trim().length > 0) {
+          setGstPeriodWarning(invData.gst_period_warning.trim());
+        } else {
+          setGstPeriodWarning(null);
+        }
+        if (invData.status === 'CANCELLED') {
+          setIsLockedCancelled(true);
+        }
         if (invData.round_off !== undefined && invData.round_off !== null) {
           setCustomRoundOff(String(Number(invData.round_off).toFixed(2)));
         } else {
@@ -370,6 +386,7 @@ export default function CreateInvoiceScreen() {
   const total = parseFloat((exactTotal + effectiveRoundOff).toFixed(2));
   const roundOff = effectiveRoundOff;
   const tax = totalCGST + totalSGST + totalIGST; // keep existing `tax` variable for anywhere else in the file that references it
+  const isTotalBelowPaid = isEditMode && paidAmount > 0 && Math.round(total * 100) < Math.round(paidAmount * 100);
 
   const playSuccessSound = async () => {
     try {
@@ -427,6 +444,13 @@ export default function CreateInvoiceScreen() {
 
   const handleSave = async (opts?: any) => {
     const b2cOverride = opts?.b2cOverride === true;
+    if (isTotalBelowPaid) {
+      Alert.alert(
+        'Cannot Save',
+        `New bill total (₹${total.toLocaleString('en-IN')}) cannot be less than the amount already paid (₹${paidAmount.toLocaleString('en-IN')}). Revert or refund a payment first.`
+      );
+      return;
+    }
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
     if (lineItems.some(i => !i.name || !i.rate)) { Alert.alert('Error', 'Please fill all item details'); return; }
 
@@ -441,6 +465,22 @@ export default function CreateInvoiceScreen() {
             handleSave({ b2cOverride: true });
           }},
           { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${selectedParty.id}`) }
+        ]
+      );
+      return;
+    }
+
+    if (isEditMode && paidAmount > 0 && !opts?.confirmed) {
+      const newBalance = Math.max(0, total - paidAmount);
+      Alert.alert(
+        'Update Paid Invoice?',
+        `Previous Total: ₹${existingTotal.toLocaleString('en-IN')}\nNew Total: ₹${total.toLocaleString('en-IN')}\nAmount Received: ₹${paidAmount.toLocaleString('en-IN')}\nNew Balance Due: ₹${newBalance.toLocaleString('en-IN')}\n\nThis updates the sales ledger and recalculates the customer's balance. Continue?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue',
+            onPress: () => handleSave({ ...opts, confirmed: true })
+          }
         ]
       );
       return;
@@ -539,7 +579,7 @@ export default function CreateInvoiceScreen() {
           <Text style={styles.headerTitle}>{isEditMode ? 'Edit Invoice' : 'New Invoice'}</Text>
           <Text style={styles.headerSub}>{isEditMode ? `Editing Invoice #${invoiceNumber}` : 'Draft · auto-saved'}</Text>
         </View>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
+        <TouchableOpacity style={[styles.saveBtn, (saving || isTotalBelowPaid) && { opacity: 0.5 }]} onPress={handleSave} disabled={saving || isTotalBelowPaid}>
           {saving ? (
             <ActivityIndicator color="#F97316" />
           ) : (
@@ -548,16 +588,56 @@ export default function CreateInvoiceScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAwareScrollView
-        ref={scrollViewRef}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: bottomPadding }}
-        enableOnAndroid={true}
-        extraScrollHeight={150}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Invoice type toggle */}
-        <View style={[styles.typeToggle, isEditMode && { opacity: 0.6 }]}>
+      {isLockedCancelled ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="lock-closed" size={56} color="#EF4444" />
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#0F172A', marginTop: 16 }}>Bill Locked</Text>
+          <Text style={{ fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+            This bill is cancelled and cannot be edited.
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ marginTop: 24, backgroundColor: '#F97316', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <KeyboardAwareScrollView
+          ref={scrollViewRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: bottomPadding }}
+          enableOnAndroid={true}
+          extraScrollHeight={150}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Amber banner for paid amount */}
+          {isEditMode && paidAmount > 0 ? (
+            <View style={{ marginHorizontal: 16, marginTop: 12, marginBottom: 8, padding: 12, backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'flex-start' }}>
+              <Ionicons name="warning-outline" size={20} color="#D97706" style={{ marginTop: 1, marginRight: 8 }} />
+              <Text style={{ flex: 1, fontSize: 13, color: '#92400E', lineHeight: 18 }}>
+                ₹{paidAmount.toLocaleString('en-IN')} has already been received on this bill. Customer and invoice number are locked. The new total cannot be less than ₹{paidAmount.toLocaleString('en-IN')}.
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Earlier-month GST warning banner */}
+          {gstPeriodWarning ? (
+            <View style={{ marginHorizontal: 16, marginTop: isEditMode && paidAmount > 0 ? 0 : 12, marginBottom: 8, padding: 12, backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1, borderRadius: 8, flexDirection: 'row', alignItems: 'flex-start' }}>
+              <Ionicons name="information-circle-outline" size={20} color="#D97706" style={{ marginTop: 1, marginRight: 8 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: '#92400E', lineHeight: 18, fontWeight: '500' }}>
+                  {gstPeriodWarning}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#B45309', marginTop: 4, lineHeight: 16 }}>
+                  This bill belongs to an earlier month. If its GST return is already filed, record the correction through your CA (credit/debit note).
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* Invoice type toggle */}
+          <View style={[styles.typeToggle, isEditMode && { opacity: 0.6 }]}>
           {[
             { label: 'GST Invoice', value: 'INVOICE' },
             { label: 'Non-GST', value: 'NONGST' },
@@ -672,7 +752,14 @@ export default function CreateInvoiceScreen() {
         {/* Bill To */}
         <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
           <Text style={styles.sectionLabel}>BILL TO</Text>
-          <TouchableOpacity style={[styles.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }]} onPress={() => setShowCustomerPicker(true)}>
+          <TouchableOpacity
+            style={[styles.card, { flexDirection: 'row', alignItems: 'center', gap: 12 }, isEditMode && paidAmount > 0 && { opacity: 0.6 }]}
+            onPress={() => {
+              if (isEditMode && paidAmount > 0) return;
+              setShowCustomerPicker(true);
+            }}
+            disabled={isEditMode && paidAmount > 0}
+          >
             {selectedCustomer ? (
               <>
                 <View style={styles.customerAvatar}>
@@ -798,6 +885,7 @@ export default function CreateInvoiceScreen() {
                                     gst_rate: String(prod.gst_rate || '18'),
                                     hsn_code: prod.hsn_code || l.hsn_code || '',
                                     unit: prod.unit || l.unit || 'PCS',
+                                    description: l.description?.trim() ? l.description : (prod.description || ''),
                                     isCustom: false,
                                   } : l));
                                   setItemSearch(prev => ({ ...prev, [item.id]: prod.name }));
@@ -1038,8 +1126,15 @@ export default function CreateInvoiceScreen() {
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#0F172A' }}>Total Amount</Text>
               <Text style={{ fontSize: 11, color: '#92400E' }}>Incl. all taxes</Text>
             </View>
-            <Text style={{ fontSize: 24, fontWeight: '800', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">₹{total.toLocaleString('en-IN')}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '800', color: isTotalBelowPaid ? '#DC2626' : '#F97316', flexShrink: 1 }} textBreakStrategy="simple">₹{total.toLocaleString('en-IN')}</Text>
           </View>
+          {isTotalBelowPaid && (
+            <View style={{ marginTop: 8, padding: 8, backgroundColor: '#FEF3C7', borderColor: '#F59E0B', borderWidth: 1, borderRadius: 6 }}>
+              <Text style={{ fontSize: 12, color: '#92400E', lineHeight: 16 }}>
+                ₹{paidAmount.toLocaleString('en-IN')} has already been received on this bill. Customer and invoice number are locked. The new total cannot be less than ₹{paidAmount.toLocaleString('en-IN')}.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Notes (optional) */}
@@ -1057,7 +1152,11 @@ export default function CreateInvoiceScreen() {
         </View>
 
         {/* Create Invoice button showing total */}
-        <TouchableOpacity style={styles.createBtn} onPress={handleSubmit} disabled={saving}>
+        <TouchableOpacity
+          style={[styles.createBtn, (saving || isTotalBelowPaid) && { backgroundColor: '#94A3B8' }]}
+          onPress={handleSubmit}
+          disabled={saving || isTotalBelowPaid}
+        >
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -1067,6 +1166,7 @@ export default function CreateInvoiceScreen() {
           )}
         </TouchableOpacity>
       </KeyboardAwareScrollView>
+      )}
 
       {/* Customer Picker Modal */}
       <Modal
