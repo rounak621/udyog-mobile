@@ -1,5 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View, Text, ScrollView, StyleSheet,
@@ -29,6 +29,7 @@ interface PurchaseBill {
   total_amount: number;
   payment_status: string;
   bill_date: string;
+  created_at?: string;
 }
 
 export default function PurchaseBillsScreen() {
@@ -162,8 +163,12 @@ export default function PurchaseBillsScreen() {
       }
       const res = await api.get(`/purchase-bills/?limit=${LIMIT}&skip=${currentSkip}&business_id=${bId}`);
       const data = res.data;
-      const newItems = data.items || data;
-      const serverTotal = data.total;
+      const newItems: PurchaseBill[] = Array.isArray(data?.items)
+        ? data.items
+        : Array.isArray(data)
+        ? data
+        : [];
+      const serverTotal = typeof data?.total === 'number' ? data.total : newItems.length;
 
       setTotal(serverTotal);
       setSkip(currentSkip);
@@ -219,6 +224,24 @@ export default function PurchaseBillsScreen() {
     }
     return matchSearch && matchFilter;
   });
+
+  // Match web ordering: newest bill date first, ties broken by created_at (newest first).
+  // The server database query already guarantees order_by(bill_date.desc(), created_at.desc())
+  // per page. When all pages are loaded, apply a stable client sort as a safeguard.
+  const displayBills = useMemo(() => {
+    if (bills.length >= total && total > 0) {
+      return [...filtered].sort((a, b) => {
+        const timeA = a.bill_date ? new Date(a.bill_date).getTime() : 0;
+        const timeB = b.bill_date ? new Date(b.bill_date).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        if (b.created_at && a.created_at) {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        return 0;
+      });
+    }
+    return filtered;
+  }, [filtered, bills.length, total]);
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
 
@@ -311,7 +334,7 @@ export default function PurchaseBillsScreen() {
       </View>
 
       <FlatList
-        data={filtered}
+        data={displayBills}
         keyExtractor={(item) => item.id}
         renderItem={({ item: bill }) => {
           const ps = (bill.payment_status || 'UNPAID').toUpperCase();
