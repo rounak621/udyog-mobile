@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View, AppState, Linking } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import IntroOverlay from '../components/IntroOverlay';
+import StaffBlockerScreen from '../components/StaffBlockerScreen';
 
 import { Colors } from '../constants/theme';
 import { setAuthToken, api } from '../services/api';
@@ -32,7 +33,7 @@ const tokenCache = {
 };
 
 function AuthGuard() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const segments = useSegments();
   const router = useRouter();
@@ -42,8 +43,20 @@ function AuthGuard() {
 
   const [roleSetupDone, setRoleSetupDone] = useState(false);
   const [businessCheckDone, setBusinessCheckDone] = useState(false);
-  const { hasBusiness, setHasBusiness, refreshBusinesses, business } = useBusiness();
+  const {
+    hasBusiness,
+    setHasBusiness,
+    refreshBusinesses,
+    business,
+    businesses,
+    pendingInvite,
+    switchBusiness,
+  } = useBusiness();
   const [checkingBusiness, setCheckingBusiness] = useState(false);
+
+  const isStaffOnActiveBusiness = Boolean(isSignedIn && hasBusiness && business?.my_role === 'STAFF');
+  const hasStaffInviteWithoutBusiness = Boolean(isSignedIn && !hasBusiness && pendingInvite !== null);
+  const isStaffBlocked = isStaffOnActiveBusiness || hasStaffInviteWithoutBusiness;
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -128,7 +141,7 @@ function AuthGuard() {
 
   // Handle background / system-tray notification taps
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !tokenReady || !businessCheckDone || !hasBusiness) return;
+    if (!isLoaded || !isSignedIn || !tokenReady || !businessCheckDone || !hasBusiness || isStaffBlocked) return;
 
     let isMounted = true;
     let subscription: any = null;
@@ -176,7 +189,7 @@ function AuthGuard() {
         subscription.remove();
       }
     };
-  }, [isLoaded, isSignedIn, tokenReady, businessCheckDone, hasBusiness]);
+  }, [isLoaded, isSignedIn, tokenReady, businessCheckDone, hasBusiness, isStaffBlocked]);
 
   // Handle custom scheme deep links (e.g. udyog://payment-success)
   useEffect(() => {
@@ -185,7 +198,7 @@ function AuthGuard() {
     let isMounted = true;
 
     const handleDeepLinkUrl = async (url: string | null) => {
-      if (!url) return;
+      if (!url || isStaffBlocked) return;
       console.log('[DEEP-LINK] Received deep link URL:', url);
       if (url.includes('payment-success')) {
         console.log('[DEEP-LINK] Payment success deep link detected. Refreshing business status...');
@@ -218,14 +231,14 @@ function AuthGuard() {
       isMounted = false;
       sub.remove();
     };
-  }, [isLoaded, isSignedIn, tokenReady, mode, refreshBusinesses, router]);
+  }, [isLoaded, isSignedIn, tokenReady, isStaffBlocked, mode, refreshBusinesses, router]);
 
   // AppState fallback: re-fetch status when returning to foreground specifically on subscription-locked screen
   useEffect(() => {
     if (!isSignedIn || !tokenReady) return;
 
     const sub = AppState.addEventListener('change', async (nextAppState) => {
-      if (nextAppState === 'active' && segments[0] === 'subscription-locked') {
+      if (nextAppState === 'active' && segments[0] === 'subscription-locked' && !isStaffBlocked) {
         console.log('[APP-STATE] Resumed on subscription-locked screen. Re-fetching business status...');
         try {
           await refreshBusinesses();
@@ -238,7 +251,7 @@ function AuthGuard() {
     return () => {
       sub.remove();
     };
-  }, [isSignedIn, tokenReady, segments, refreshBusinesses]);
+  }, [isSignedIn, tokenReady, segments, isStaffBlocked, refreshBusinesses]);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -279,6 +292,11 @@ function AuthGuard() {
     if (!isSignedIn && !inAuthGroup && !inWelcome && !inLegal) {
       router.replace('/welcome');
     } else if (isSignedIn) {
+      // 1. Staff blocker must be evaluated BEFORE subscription-locked and BEFORE no-business redirect
+      if (isStaffBlocked) {
+        return;
+      }
+
       const isExpired = business?.subscription_status?.toLowerCase() === 'expired';
 
       if (isExpired) {
@@ -299,7 +317,7 @@ function AuthGuard() {
         }
       }
     }
-  }, [isLoaded, isSignedIn, segments, tokenReady, businessCheckDone, hasBusiness, business, mode, modeLoaded]);
+  }, [isLoaded, isSignedIn, segments, tokenReady, businessCheckDone, hasBusiness, business, isStaffBlocked, mode, modeLoaded]);
 
   if (!isLoaded || !modeLoaded || (isSignedIn && !businessCheckDone)) {
     return (
@@ -308,6 +326,28 @@ function AuthGuard() {
           <ActivityIndicator size="large" color="#fff" />
         </View>
       </View>
+    );
+  }
+
+  if (isStaffBlocked) {
+    const isPaused = isStaffOnActiveBusiness && Boolean(business?.access_paused);
+    const isInvite = hasStaffInviteWithoutBusiness;
+    const staffBusinessName = isStaffOnActiveBusiness
+      ? (business?.name || '')
+      : (pendingInvite?.business_name || '');
+
+    return (
+      <StaffBlockerScreen
+        businessName={staffBusinessName}
+        isPaused={isPaused}
+        isInvite={isInvite}
+        businesses={businesses}
+        activeBusinessId={business?.id}
+        onSwitchBusiness={switchBusiness}
+        onLogout={async () => {
+          await signOut();
+        }}
+      />
     );
   }
 
