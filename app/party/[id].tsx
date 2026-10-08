@@ -137,7 +137,7 @@ export default function PartyDetailScreen() {
       const bId = bizRes.data.id;
       
       const partyRes = await api.get(`/customers/${id}?business_id=${bId}`);
-      const partyData = partyRes.data;
+      const partyData = partyRes.data?.customer || partyRes.data;
       setParty(partyData);
 
       const pt = String(partyData?.party_type || 'customer').toLowerCase();
