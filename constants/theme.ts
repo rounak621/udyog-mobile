@@ -26,3 +26,21 @@ export const UNITS = [
   'LTR', 'MLT', 'MM', 'MTR', 'NOS', 'PAIR', 'PCS', 'PER-DAY', 'PER-SHIFT', 'PKT',
   'ROLL', 'SET', 'SQF', 'SQM', 'SRV-MON', 'SRV-QTR', 'SRV-YR', 'TON', 'UNIT'
 ];
+
+export const DesignTokens = {
+  brandOrange: '#FF7A1A',
+  orangeText: '#D95F00',
+  orangeTint: '#FFF3E6',
+  ink: '#0F172A',
+  mutedText: '#475569',
+  lightText: '#64748B',
+  lines: '#E2E8F0',
+  inputBorder: '#8795AA',
+  pageBackground: '#F4F6F9',
+  cardBackground: '#FFFFFF',
+  cardRadius: 14,
+  errorRed: '#B91C1C',
+  switchOff: '#94A3B8',
+};
+
+

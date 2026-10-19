@@ -10,20 +10,19 @@ import {
   Alert,
   Switch,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { Colors, Spacing, Radius } from '../../constants/theme';
+import { DesignTokens } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import {
   expenseService,
   PaymentMode,
   ExpenseCreatePayload,
-  ExpenseUpdatePayload,
 } from '../../services/expenseService';
 import { getApiErrorMessage } from '../../utils/apiError';
 
@@ -66,6 +65,7 @@ export default function CreateExpenseScreen() {
   const [businessId, setBusinessId] = useState<string>('');
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Form Fields
   const [expenseDate, setExpenseDate] = useState<string>(dateToYmd(new Date()));
@@ -241,39 +241,96 @@ export default function CreateExpenseScreen() {
     }
   };
 
+  const handleDelete = () => {
+    if (!isEditMode || !params.id) return;
+    Alert.alert(
+      'Delete Expense',
+      'Are you sure you want to delete this expense? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!businessId || !params.id) return;
+            setDeleting(true);
+            try {
+              await expenseService.deleteExpense(businessId, params.id);
+              Alert.alert('Deleted', 'Expense has been deleted.', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            } catch (err) {
+              Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete expense.'));
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading) {
     return (
       <View style={[styles.centerLoading, { paddingTop: insets.top + 40 }]}>
-        <ActivityIndicator size="large" color={Colors.primary} />
+        <ActivityIndicator size="large" color={DesignTokens.brandOrange} />
         <Text style={styles.loadingText}>Loading expense...</Text>
       </View>
     );
   }
 
+  const bottomBarPadding = Math.max(insets.bottom, 12) + 8;
+
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      {/* Topbar */}
-      <View style={[styles.topbar, { paddingTop: Math.max(insets.top, 20) + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={Colors.text} />
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: DesignTokens.pageBackground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={24} color={DesignTokens.ink} />
         </TouchableOpacity>
-        <Text style={styles.topbarTitle}>
-          {isEditMode ? 'Edit Expense' : 'Record Expense'}
+        <Text style={styles.headerTitle}>
+          {isEditMode ? 'Edit expense' : 'New expense'}
         </Text>
       </View>
 
-      <KeyboardAwareScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
+      {/* Form Content */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {/* Date Selector */}
-        <View style={styles.fieldGroup}>
+        {/* Amount Card */}
+        <View style={styles.card}>
+          <Text style={styles.fieldLabel}>Amount *</Text>
+          <View style={styles.amountInputWrap}>
+            <Text style={styles.rupeeSymbol}>₹</Text>
+            <TextInput
+              style={styles.amountInput}
+              placeholder="0.00"
+              placeholderTextColor={DesignTokens.lightText}
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+            />
+          </View>
+        </View>
+
+        {/* Date Card */}
+        <View style={styles.card}>
           <Text style={styles.fieldLabel}>Date *</Text>
           <TouchableOpacity
             style={styles.datePickerBtn}
             onPress={() => setShowDatePicker(true)}
           >
-            <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} />
+            <Ionicons name="calendar-outline" size={20} color={DesignTokens.mutedText} />
             <Text style={styles.datePickerText}>{expenseDate}</Text>
           </TouchableOpacity>
           {showDatePicker && (
@@ -287,34 +344,19 @@ export default function CreateExpenseScreen() {
           )}
         </View>
 
-        {/* Amount */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Amount (₹) *</Text>
-          <View style={styles.amountInputWrap}>
-            <Text style={styles.rupeeSymbol}>₹</Text>
-            <TextInput
-              style={styles.amountInput}
-              placeholder="0.00"
-              placeholderTextColor={Colors.textMuted}
-              value={amount}
-              onChangeText={setAmount}
-              keyboardType="decimal-pad"
-            />
-          </View>
-        </View>
-
-        {/* Category */}
-        <View style={styles.fieldGroup}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        {/* Category Card */}
+        <View style={styles.card}>
+          <View style={styles.catHeaderRow}>
             <Text style={styles.fieldLabel}>Category *</Text>
             <TouchableOpacity
               onPress={() => {
                 setShowCustomCatInput(!showCustomCatInput);
                 if (!showCustomCatInput) setCustomCategory('');
               }}
+              style={styles.toggleCustomBtn}
             >
               <Text style={styles.toggleCustomText}>
-                {showCustomCatInput ? 'Choose Standard' : '+ Custom Category'}
+                {showCustomCatInput ? 'Standard list' : '+ Add new'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -322,9 +364,9 @@ export default function CreateExpenseScreen() {
           {showCustomCatInput ? (
             <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
               <TextInput
-                style={[styles.textInput, { flex: 1 }]}
-                placeholder="Enter custom category name..."
-                placeholderTextColor={Colors.textMuted}
+                style={[styles.inputField, { flex: 1 }]}
+                placeholder="Enter category name..."
+                placeholderTextColor={DesignTokens.lightText}
                 value={customCategory}
                 onChangeText={setCustomCategory}
                 onSubmitEditing={handleConfirmCustomCategory}
@@ -370,8 +412,8 @@ export default function CreateExpenseScreen() {
           )}
         </View>
 
-        {/* Payment Mode */}
-        <View style={styles.fieldGroup}>
+        {/* Payment Mode Card */}
+        <View style={styles.card}>
           <Text style={styles.fieldLabel}>Payment Mode *</Text>
           <View style={styles.modeRow}>
             {PAYMENT_MODES.map(m => {
@@ -384,8 +426,8 @@ export default function CreateExpenseScreen() {
                 >
                   <Ionicons
                     name={m.icon}
-                    size={16}
-                    color={isSelected ? Colors.primary : Colors.textMuted}
+                    size={18}
+                    color={isSelected ? DesignTokens.brandOrange : DesignTokens.mutedText}
                   />
                   <Text
                     style={[styles.modeBtnText, isSelected && styles.modeBtnTextActive]}
@@ -398,23 +440,23 @@ export default function CreateExpenseScreen() {
           </View>
         </View>
 
-        {/* Vendor Name */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Vendor / Paid To (Optional)</Text>
+        {/* Vendor / Paid To Card */}
+        <View style={styles.card}>
+          <Text style={styles.fieldLabel}>Paid to / Vendor (Optional)</Text>
           <TextInput
-            style={styles.textInput}
-            placeholder="e.g. Reliance Fresh, Electricity Board"
-            placeholderTextColor={Colors.textMuted}
+            style={styles.inputField}
+            placeholder="e.g. Reliance Fresh, Landlord, Helper"
+            placeholderTextColor={DesignTokens.lightText}
             value={vendorName}
             onChangeText={setVendorName}
           />
         </View>
 
-        {/* GST Toggle */}
-        <View style={styles.cardSection}>
+        {/* GST Card */}
+        <View style={styles.card}>
           <View style={styles.switchRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.switchTitle}>GST Applicable</Text>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <Text style={styles.switchTitle}>GST Bill</Text>
               <Text style={styles.switchSub}>
                 Enable if tax invoice or ITC claim is applicable
               </Text>
@@ -422,18 +464,19 @@ export default function CreateExpenseScreen() {
             <Switch
               value={isGstApplicable}
               onValueChange={setIsGstApplicable}
-              trackColor={{ false: '#E2E8F0', true: Colors.primary }}
+              trackColor={{ false: DesignTokens.lines, true: DesignTokens.brandOrange }}
+              thumbColor="#FFFFFF"
             />
           </View>
 
           {isGstApplicable && (
             <View style={styles.gstInputsBlock}>
-              <View style={styles.fieldGroup}>
+              <View style={{ marginBottom: 12 }}>
                 <Text style={styles.fieldLabel}>Vendor GSTIN (Optional)</Text>
                 <TextInput
-                  style={styles.textInput}
+                  style={styles.inputField}
                   placeholder="e.g. 27AAAAA0000A1Z5"
-                  placeholderTextColor={Colors.textMuted}
+                  placeholderTextColor={DesignTokens.lightText}
                   value={vendorGstin}
                   onChangeText={setVendorGstin}
                   autoCapitalize="characters"
@@ -441,7 +484,7 @@ export default function CreateExpenseScreen() {
                 />
               </View>
 
-              <View style={styles.fieldGroup}>
+              <View style={{ marginBottom: 12 }}>
                 <Text style={styles.fieldLabel}>Supply Type</Text>
                 <View style={styles.gstTypeRow}>
                   <TouchableOpacity
@@ -481,27 +524,27 @@ export default function CreateExpenseScreen() {
               </View>
 
               {gstType === 'intrastate' ? (
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.fieldGroup, { flex: 1 }]}>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.fieldLabel}>CGST (₹)</Text>
                     <TextInput
-                      style={styles.textInput}
+                      style={styles.inputField}
                       placeholder="0.00"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={DesignTokens.lightText}
                       value={cgstAmount}
                       onChangeText={val => {
                         setCgstAmount(val);
-                        setSgstAmount(val); // Match CGST and SGST
+                        setSgstAmount(val);
                       }}
                       keyboardType="decimal-pad"
                     />
                   </View>
-                  <View style={[styles.fieldGroup, { flex: 1 }]}>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.fieldLabel}>SGST (₹)</Text>
                     <TextInput
-                      style={styles.textInput}
+                      style={styles.inputField}
                       placeholder="0.00"
-                      placeholderTextColor={Colors.textMuted}
+                      placeholderTextColor={DesignTokens.lightText}
                       value={sgstAmount}
                       onChangeText={setSgstAmount}
                       keyboardType="decimal-pad"
@@ -509,12 +552,12 @@ export default function CreateExpenseScreen() {
                   </View>
                 </View>
               ) : (
-                <View style={styles.fieldGroup}>
+                <View>
                   <Text style={styles.fieldLabel}>IGST (₹)</Text>
                   <TextInput
-                    style={styles.textInput}
+                    style={styles.inputField}
                     placeholder="0.00"
-                    placeholderTextColor={Colors.textMuted}
+                    placeholderTextColor={DesignTokens.lightText}
                     value={igstAmount}
                     onChangeText={setIgstAmount}
                     keyboardType="decimal-pad"
@@ -525,15 +568,13 @@ export default function CreateExpenseScreen() {
           )}
         </View>
 
-
-
-        {/* Notes */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>Notes (Optional)</Text>
+        {/* Notes Card */}
+        <View style={styles.card}>
+          <Text style={styles.fieldLabel}>Note (Optional)</Text>
           <TextInput
-            style={[styles.textInput, { height: 75, textAlignVertical: 'top' }]}
-            placeholder="Add any extra notes or memo..."
-            placeholderTextColor={Colors.textMuted}
+            style={styles.textArea}
+            placeholder="Add any extra note or remark..."
+            placeholderTextColor={DesignTokens.lightText}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -541,22 +582,42 @@ export default function CreateExpenseScreen() {
           />
         </View>
 
-        {/* Save Button */}
+        {/* Delete button (Edit mode only) */}
+        {isEditMode && (
+          <TouchableOpacity
+            style={styles.deleteExpenseBtn}
+            onPress={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={DesignTokens.errorRed} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={18} color={DesignTokens.errorRed} />
+                <Text style={styles.deleteExpenseBtnText}>Delete expense</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+
+      {/* Sticky Bottom Bar (OUTSIDE ScrollView) */}
+      <View style={[styles.stickyBottomBar, { paddingBottom: bottomBarPadding }]}>
         <TouchableOpacity
           style={[styles.saveBtn, saving && { opacity: 0.7 }]}
           onPress={handleSave}
           disabled={saving}
         >
           {saving ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <Text style={styles.saveBtnText}>
-              {isEditMode ? 'Update Expense' : 'Save Expense'}
+              {isEditMode ? 'Update expense' : 'Save expense'}
             </Text>
           )}
         </TouchableOpacity>
-      </KeyboardAwareScrollView>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -566,130 +627,151 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    backgroundColor: DesignTokens.pageBackground,
   },
   loadingText: {
-    fontSize: 13,
-    color: Colors.textMuted,
+    fontSize: 14,
+    color: DesignTokens.mutedText,
   },
-  topbar: {
-    backgroundColor: Colors.card,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: 12,
+  header: {
+    height: 64 + 40,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: DesignTokens.lines,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 0.5,
-    borderBottomColor: Colors.border,
+    paddingHorizontal: 12,
   },
   backBtn: {
-    padding: 6,
-    marginRight: 8,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  topbarTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Colors.text,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: DesignTokens.ink,
+    marginLeft: 4,
   },
-  content: {
+  scrollContent: {
     padding: 16,
+    gap: 12,
   },
-  fieldGroup: {
-    marginBottom: 16,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: DesignTokens.cardRadius,
+    borderWidth: 1,
+    borderColor: DesignTokens.lines,
+    padding: 14,
   },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 6,
-  },
-  datePickerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    height: 46,
-  },
-  datePickerText: {
-    fontSize: 14,
-    color: Colors.text,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    color: DesignTokens.ink,
+    marginBottom: 8,
   },
   amountInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    height: 50,
+    borderColor: DesignTokens.inputBorder,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 52,
   },
   rupeeSymbol: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.text,
-    marginRight: 6,
+    fontSize: 22,
+    fontWeight: '800',
+    color: DesignTokens.ink,
+    marginRight: 8,
   },
   amountInput: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    color: DesignTokens.ink,
+  },
+  datePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: DesignTokens.inputBorder,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: DesignTokens.ink,
+    fontWeight: '600',
+  },
+  catHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  toggleCustomBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   toggleCustomText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: Colors.primary,
+    color: DesignTokens.orangeText,
   },
-  textInput: {
-    backgroundColor: '#fff',
+  inputField: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: 12,
-    height: 46,
-    fontSize: 14,
-    color: Colors.text,
+    borderColor: DesignTokens.inputBorder,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 52,
+    fontSize: 16,
+    color: DesignTokens.ink,
   },
   confirmCatBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: DesignTokens.brandOrange,
     paddingHorizontal: 16,
-    height: 46,
-    borderRadius: Radius.md,
+    height: 52,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   confirmCatBtnText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 14,
   },
   categoryScroll: {
     gap: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   categoryOptionChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: Radius.md,
-    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 16,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: DesignTokens.inputBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   categoryOptionChipActive: {
-    backgroundColor: '#FFF7ED',
-    borderColor: Colors.primary,
+    backgroundColor: DesignTokens.orangeTint,
+    borderColor: DesignTokens.brandOrange,
   },
   categoryOptionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: DesignTokens.ink,
   },
   categoryOptionTextActive: {
-    color: Colors.primary,
+    color: DesignTokens.orangeText,
     fontWeight: '700',
   },
   modeRow: {
@@ -702,32 +784,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    height: 42,
-    borderRadius: Radius.md,
-    backgroundColor: '#fff',
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: DesignTokens.lines,
   },
   modeBtnActive: {
-    backgroundColor: '#FFF7ED',
-    borderColor: Colors.primary,
+    backgroundColor: DesignTokens.orangeTint,
+    borderColor: DesignTokens.brandOrange,
   },
   modeBtnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: DesignTokens.mutedText,
   },
   modeBtnTextActive: {
-    color: Colors.primary,
+    color: DesignTokens.orangeText,
     fontWeight: '700',
-  },
-  cardSection: {
-    backgroundColor: '#fff',
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: 14,
-    marginBottom: 16,
   },
   switchRow: {
     flexDirection: 'row',
@@ -735,20 +809,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   switchTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    color: Colors.text,
+    color: DesignTokens.ink,
   },
   switchSub: {
-    fontSize: 11,
-    color: Colors.textMuted,
+    fontSize: 13,
+    color: DesignTokens.mutedText,
     marginTop: 2,
   },
   gstInputsBlock: {
     marginTop: 14,
     paddingTop: 14,
-    borderTopWidth: 0.5,
-    borderTopColor: '#F1F5F9',
+    borderTopWidth: 1,
+    borderTopColor: DesignTokens.lines,
   },
   gstTypeRow: {
     flexDirection: 'row',
@@ -756,39 +830,73 @@ const styles = StyleSheet.create({
   },
   gstTypeBtn: {
     flex: 1,
-    paddingVertical: 8,
+    height: 46,
+    justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: Radius.sm,
-    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: DesignTokens.lines,
   },
   gstTypeBtnActive: {
-    backgroundColor: '#FFF7ED',
-    borderColor: Colors.primary,
+    backgroundColor: DesignTokens.orangeTint,
+    borderColor: DesignTokens.brandOrange,
   },
   gstTypeBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.textSecondary,
+    color: DesignTokens.mutedText,
   },
   gstTypeBtnTextActive: {
-    color: Colors.primary,
+    color: DesignTokens.orangeText,
     fontWeight: '700',
   },
-
-  saveBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    height: 48,
+  textArea: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: DesignTokens.inputBorder,
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 90,
+    textAlignVertical: 'top',
+    fontSize: 15,
+    color: DesignTokens.ink,
+  },
+  deleteExpenseBtn: {
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: DesignTokens.lines,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginTop: 4,
   },
-  saveBtnText: {
+  deleteExpenseBtnText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#fff',
+    color: DesignTokens.errorRed,
+  },
+  stickyBottomBar: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: DesignTokens.lines,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  saveBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: DesignTokens.cardRadius,
+    backgroundColor: DesignTokens.brandOrange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveBtnText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
