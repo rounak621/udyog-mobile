@@ -8,6 +8,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView, useBottomPadding } from '../../components/ui/SafeLayout';
+import Svg, { Rect, Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import { Colors } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
@@ -21,6 +22,23 @@ interface DashboardStats {
   receivables: number;
   payables: number;
   unpaidCount: number;
+}
+
+interface MonthlyStat {
+  name: string;
+  Sales: number;
+  Purchases: number;
+}
+
+interface ExpenseCategorySummary {
+  category: string;
+  total_amount: number;
+  count: number;
+}
+
+interface ExpenseBreakdownData {
+  total_amount: number;
+  categories: ExpenseCategorySummary[];
 }
 
 interface RecentInvoice {
@@ -45,6 +63,9 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
+  const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdownData | null>(null);
+  const [chartWidth, setChartWidth] = useState<number>(320);
 
   const loadData = async () => {
     if (!business?.id) return;
@@ -53,11 +74,18 @@ export default function DashboardScreen() {
       setAuthToken(token);
       const businessId = business.id;
 
-      // Step 2: Get stats + invoices + notifications in parallel
-      const [statsRes, invoiceRes, notifRes] = await Promise.allSettled([
+      const now = new Date();
+      const mStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const mEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      // Step 2: Get stats + invoices + notifications + charts + expenses breakdown in parallel
+      const [statsRes, invoiceRes, notifRes, chartsRes, expenseBreakdownRes] = await Promise.allSettled([
         api.get(`/reports/dashboard-stats?business_id=${businessId}`),
         api.get(`/invoices/?limit=10&sort=desc&business_id=${businessId}`),
         api.get(`/notifications?business_id=${businessId}&limit=50`),
+        api.get(`/reports/dashboard-charts?business_id=${businessId}`),
+        api.get(`/expenses/breakdown?business_id=${businessId}&start_date=${mStart}&end_date=${mEnd}`),
       ]);
 
       if (statsRes.status === 'fulfilled') {
@@ -80,6 +108,17 @@ export default function DashboardScreen() {
           const count = notifs.filter((n: any) => n.read_at === null).length;
           setUnreadCount(count);
         }
+      }
+      if (chartsRes.status === 'fulfilled') {
+        const cData = chartsRes.value.data;
+        setMonthlyStats(Array.isArray(cData?.monthlyStats) ? cData.monthlyStats : []);
+      }
+      if (expenseBreakdownRes.status === 'fulfilled') {
+        const ebData = expenseBreakdownRes.value.data;
+        setExpenseBreakdown({
+          total_amount: Number(ebData?.total_amount || 0),
+          categories: Array.isArray(ebData?.categories) ? ebData.categories : [],
+        });
       }
     } catch (err) {
       console.log('Dashboard load error:', err);
@@ -330,6 +369,197 @@ export default function DashboardScreen() {
             ))}
           </View>
         )}
+
+        {/* Sales vs Purchases Bar Chart */}
+        <View style={styles.chartCard} onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}>
+          <View style={styles.chartCardHeader}>
+            <Text style={styles.chartCardTitle}>Sales vs Purchases</Text>
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: '#FF7A1A' }} />
+                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>Sales</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: '#2F9BFF' }} />
+                <Text style={{ fontSize: 11, color: '#64748B', fontWeight: '600' }}>Purchases</Text>
+              </View>
+            </View>
+          </View>
+          <View style={{ paddingVertical: 12, paddingHorizontal: 10 }}>
+            {monthlyStats.length === 0 ? (
+              <View style={{ height: 140, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 13, color: '#94A3B8' }}>No sales or purchase data yet</Text>
+              </View>
+            ) : (() => {
+              const svgW = Math.max(chartWidth - 20, 240);
+              const svgH = 160;
+              const top = 12;
+              const bottom = 24;
+              const left = 44;
+              const right = 8;
+              const plotW = Math.max(svgW - left - right, 100);
+              const plotH = svgH - top - bottom;
+              const maxVal = Math.max(
+                ...monthlyStats.map(m => Math.max(Number(m.Sales) || 0, Number(m.Purchases) || 0)),
+                100
+              );
+              const y0 = top + plotH;
+              const yMid = top + plotH / 2;
+              const yMax = top;
+              const colCount = monthlyStats.length;
+              const colW = plotW / colCount;
+              const barW = Math.max(Math.min(12, (colW - 6) / 2), 4);
+
+              return (
+                <Svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+                  {/* Grid Lines */}
+                  <Line x1={left} y1={y0} x2={svgW - right} y2={y0} stroke="#E2E8F0" strokeWidth="1" />
+                  <Line x1={left} y1={yMid} x2={svgW - right} y2={yMid} stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+                  <Line x1={left} y1={yMax} x2={svgW - right} y2={yMax} stroke="#E2E8F0" strokeDasharray="3,3" strokeWidth="1" />
+
+                  {/* Y-axis Labels */}
+                  <SvgText x={left - 4} y={yMax + 4} fontSize="9" fill="#94A3B8" textAnchor="end">
+                    {compactFmt(maxVal)}
+                  </SvgText>
+                  <SvgText x={left - 4} y={yMid + 4} fontSize="9" fill="#94A3B8" textAnchor="end">
+                    {compactFmt(maxVal / 2)}
+                  </SvgText>
+                  <SvgText x={left - 4} y={y0 + 3} fontSize="9" fill="#94A3B8" textAnchor="end">
+                    ₹0
+                  </SvgText>
+
+                  {/* Month Columns & Bars */}
+                  {monthlyStats.map((item, idx) => {
+                    const centerX = left + idx * colW + colW / 2;
+                    const salesH = maxVal > 0 ? ((Number(item.Sales) || 0) / maxVal) * plotH : 0;
+                    const purchasesH = maxVal > 0 ? ((Number(item.Purchases) || 0) / maxVal) * plotH : 0;
+
+                    return (
+                      <G key={item.name || String(idx)}>
+                        {/* Sales Bar */}
+                        <Rect
+                          x={centerX - barW - 1}
+                          y={y0 - salesH}
+                          width={barW}
+                          height={Math.max(salesH, 0)}
+                          fill="#FF7A1A"
+                          rx={2}
+                        />
+                        {/* Purchases Bar */}
+                        <Rect
+                          x={centerX + 1}
+                          y={y0 - purchasesH}
+                          width={barW}
+                          height={Math.max(purchasesH, 0)}
+                          fill="#2F9BFF"
+                          rx={2}
+                        />
+                        {/* Month Label */}
+                        <SvgText x={centerX} y={svgH - 6} fontSize="10" fill="#64748B" textAnchor="middle">
+                          {item.name}
+                        </SvgText>
+                      </G>
+                    );
+                  })}
+                </Svg>
+              );
+            })()}
+          </View>
+        </View>
+
+        {/* Expenses by Category Donut */}
+        <View style={styles.chartCard}>
+          <View style={styles.chartCardHeader}>
+            <Text style={styles.chartCardTitle}>Expenses by category</Text>
+            <TouchableOpacity onPress={() => router.push('/expenses' as any)}>
+              <Text style={{ color: '#FF7A1A', fontWeight: '700', fontSize: 13 }}>View all</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 16 }}>
+            {(() => {
+              const categories = expenseBreakdown?.categories || [];
+              const totalAmount = expenseBreakdown?.total_amount || 0;
+              const totalCount = categories.reduce((sum, c) => sum + (c.count || 0), 0);
+              const R = 45;
+              const circumference = 2 * Math.PI * R;
+              const DONUT_COLORS = ['#FF7A1A', '#2F9BFF', '#A855F7', '#22C55E', '#F59E0B'];
+
+              if (categories.length === 0 || totalAmount === 0) {
+                return (
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View style={{ width: 120, height: 120, position: 'relative', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Svg width={120} height={120} viewBox="0 0 120 120">
+                        <Circle cx={60} cy={60} r={R} stroke="#EEF0F5" strokeWidth={18} fill="none" />
+                      </Svg>
+                      <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 16, fontWeight: '800', color: '#1B1F24' }}>₹0</Text>
+                        <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>0 expenses</Text>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 16 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#1B1F24', marginBottom: 4 }}>No expenses this month</Text>
+                      <Text style={{ fontSize: 12, color: '#64748B', lineHeight: 17, marginBottom: 8 }}>
+                        Your category split will appear here once you record an expense.
+                      </Text>
+                      <TouchableOpacity onPress={() => router.push('/expenses/create' as any)}>
+                        <Text style={{ color: '#FF7A1A', fontWeight: '700', fontSize: 13 }}>+ Add expense</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              }
+
+              let accumulatedOffset = 0;
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 120, height: 120, position: 'relative', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Svg width={120} height={120} viewBox="0 0 120 120">
+                      <G rotation="-90" origin="60, 60">
+                        {categories.map((cat, idx) => {
+                          const pct = totalAmount > 0 ? (Number(cat.total_amount) / totalAmount) : 0;
+                          const strokeDash = pct * circumference;
+                          const strokeOffset = -accumulatedOffset;
+                          accumulatedOffset += strokeDash;
+
+                          return (
+                            <Circle
+                              key={cat.category || String(idx)}
+                              cx={60}
+                              cy={60}
+                              r={R}
+                              stroke={DONUT_COLORS[idx % DONUT_COLORS.length]}
+                              strokeWidth={18}
+                              strokeDasharray={`${strokeDash} ${circumference - strokeDash}`}
+                              strokeDashoffset={strokeOffset}
+                              fill="none"
+                            />
+                          );
+                        })}
+                      </G>
+                    </Svg>
+                    <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 15, fontWeight: '800', color: '#1B1F24' }}>{compactFmt(totalAmount)}</Text>
+                      <Text style={{ fontSize: 10, color: '#64748B', marginTop: 1 }}>
+                        {totalCount} {totalCount === 1 ? 'expense' : 'expenses'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 16, justifyContent: 'center' }}>
+                    {categories.slice(0, 5).map((cat, idx) => (
+                      <View key={cat.category || String(idx)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 3 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: DONUT_COLORS[idx % DONUT_COLORS.length], marginRight: 6 }} />
+                        <Text style={{ flex: 1, fontSize: 12, color: '#475569' }} numberOfLines={1}>{cat.category}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A', marginLeft: 6 }}>
+                          ₹{Math.round(Number(cat.total_amount)).toLocaleString('en-IN')}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              );
+            })()}
+          </View>
+        </View>
       </SafeScrollView>
 
       <TouchableOpacity style={styles.createFab} onPress={() => router.push('/invoice/create')}>
@@ -412,4 +642,32 @@ const styles = StyleSheet.create({
   createFab: { position: 'absolute', bottom: 24, right: 16, flexDirection: 'row', height: 42, paddingHorizontal: 14, borderRadius: 21, backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   avatarCircleSmall: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' },
   avatarSmallText: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+  },
+  chartCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  chartCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
 });
