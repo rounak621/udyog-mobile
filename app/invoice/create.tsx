@@ -38,6 +38,7 @@ interface LineItem {
   hsn_code?: string;
   description?: string;
   isCustom?: boolean;
+  save_as_item?: boolean;
 }
 
 export default function CreateInvoiceScreen() {
@@ -63,7 +64,7 @@ export default function CreateInvoiceScreen() {
   const [partySearch, setPartySearch] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false }
+    { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false, save_as_item: true }
   ]);
   const [notes, setNotes] = useState('');
   const [consignmentAddress, setConsignmentAddress] = useState('');
@@ -341,7 +342,7 @@ export default function CreateInvoiceScreen() {
 
   const addLineItem = () => {
     const newId = Math.random().toString();
-    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false }]);
+    setLineItems(prev => [...prev, { id: newId, item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false, save_as_item: true }]);
     setTimeout(() => {
       const y = itemPositions.current[newId];
       if (typeof y === 'number' && scrollViewRef.current) {
@@ -457,6 +458,38 @@ export default function CreateInvoiceScreen() {
     if (!selectedParty) { Alert.alert('Error', 'Please select a customer'); return; }
     if (lineItems.some(i => !i.name || !i.rate)) { Alert.alert('Error', 'Please fill all item details'); return; }
 
+    const isB2B = Boolean(selectedParty?.gstin && selectedParty.gstin.trim());
+    const HSN_REGEX = /^(\d{2}|\d{4}|\d{6}|\d{8})$/;
+
+    for (const line of lineItems) {
+      const isTyped = !line.item_id;
+      const itemName = line.name?.trim() || 'Item';
+      const cleanHsn = (line.hsn_code || '').trim();
+
+      if (isB2B && isTyped) {
+        if (!cleanHsn) {
+          Alert.alert(
+            'HSN Code Required',
+            `HSN code is required for B2B invoices and must be 2, 4, 6, or 8 digits (for item: "${itemName}").`
+          );
+          return;
+        }
+        if (!HSN_REGEX.test(cleanHsn)) {
+          Alert.alert(
+            'Invalid HSN Code',
+            `HSN code must be exactly 2, 4, 6, or 8 digits for item: "${itemName}". Got "${cleanHsn}".`
+          );
+          return;
+        }
+      } else if (cleanHsn && !HSN_REGEX.test(cleanHsn)) {
+        Alert.alert(
+          'Invalid HSN Code',
+          `HSN code must be exactly 2, 4, 6, or 8 digits for item: "${itemName}". Got "${cleanHsn}".`
+        );
+        return;
+      }
+    }
+
     const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
     if (isGstInvoice && !selectedParty.gstin?.trim() && !isB2cConfirmed && !b2cOverride) {
       Alert.alert(
@@ -503,17 +536,22 @@ export default function CreateInvoiceScreen() {
       const payload: any = {
         customer_id: selectedParty?.id || null,
         invoice_date: invoiceDate,
-        line_items: lineItems.map(l => ({
-          item_id: l.item_id || null,
-          item_name: l.name,
-          quantity: Number(l.qty) || 1,
-          rate: Number(l.rate) || 0,
-          gst_rate: (!hasGstin || invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
-          discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
-          hsn_code: l.hsn_code?.trim() || undefined,
-          description: l.description?.trim() || undefined,
-          unit: l.unit || 'PCS',
-        })),
+        line_items: lineItems.map(l => {
+          const isTyped = !l.item_id;
+          const saveItem = isTyped ? (l.save_as_item !== false) : false;
+          return {
+            item_id: l.item_id || null,
+            item_name: l.name,
+            quantity: Number(l.qty) || 1,
+            rate: Number(l.rate) || 0,
+            gst_rate: (!hasGstin || invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
+            discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
+            hsn_code: l.hsn_code?.trim() || undefined,
+            description: l.description?.trim() || undefined,
+            unit: l.unit || 'PCS',
+            ...(isTyped ? { save_as_item: saveItem, save_to_items: saveItem } : {}),
+          };
+        }),
         consignment_address: dualAddressEnabled ? (consignmentAddress.trim() || null) : null,
         is_gst_applicable: invoiceType === 'SERVICE' ? isGstApplicable : true,
         notes: notes.trim() || null,
@@ -800,7 +838,9 @@ export default function CreateInvoiceScreen() {
           <Text style={[styles.sectionLabel, { marginBottom: 8 }]}>ITEMS · {lineItems.length}</Text>
           <View style={styles.card}>
             {lineItems.map((item, index) => {
-              const showHsnSac = invoiceType === 'SERVICE' || (invoiceType !== 'NONGST' && isGstApplicable);
+              const isB2B = Boolean(selectedParty?.gstin && selectedParty.gstin.trim());
+              const isTyped = !item.item_id;
+              const showHsnSac = (isB2B && isTyped) || invoiceType === 'SERVICE' || (invoiceType !== 'NONGST' && isGstApplicable);
               return (
                 <View key={item.id} onLayout={(e) => { itemPositions.current[item.id] = e.nativeEvent.layout.y; }}>
                   {index > 0 && <View style={{ height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 }} />}
@@ -866,6 +906,7 @@ export default function CreateInvoiceScreen() {
                                 updateItem(item.id, 'isCustom', true);
                                 updateItem(item.id, 'name', '');
                                 updateItem(item.id, 'item_id', null);
+                                updateItem(item.id, 'save_as_item', true);
                                 setShowItemDropdown(null);
                               }}
                             >
@@ -890,6 +931,7 @@ export default function CreateInvoiceScreen() {
                                     unit: prod.unit || l.unit || 'PCS',
                                     description: l.description?.trim() ? l.description : (prod.description || ''),
                                     isCustom: false,
+                                    save_as_item: false,
                                   } : l));
                                   setItemSearch(prev => ({ ...prev, [item.id]: prod.name }));
                                   setShowItemDropdown(null);
@@ -925,7 +967,11 @@ export default function CreateInvoiceScreen() {
                         key={`item_hsn_${item.id}`}
                         blurOnSubmit={false}
                         style={[styles.itemInput, { height: 38, paddingVertical: 6, paddingHorizontal: 10, fontSize: 13 }]}
-                        placeholder={invoiceType === 'SERVICE' ? "SAC Code (optional)" : "HSN Code (optional)"}
+                        placeholder={
+                          isB2B && isTyped
+                            ? (invoiceType === 'SERVICE' ? "SAC Code (2, 4, 6 or 8 digits) *" : "HSN Code (2, 4, 6 or 8 digits) *")
+                            : (invoiceType === 'SERVICE' ? "SAC Code (optional)" : "HSN Code (optional)")
+                        }
                         placeholderTextColor="#94A3B8"
                         value={item.hsn_code || ''}
                         onChangeText={t => updateItem(item.id, 'hsn_code', t)}
@@ -1038,6 +1084,22 @@ export default function CreateInvoiceScreen() {
                         ))}
                       </View>
                     </View>
+                  )}
+                  {/* Save to My Items checkbox for typed items */}
+                  {isTyped && item.name.trim().length > 0 && (
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }}
+                      onPress={() => updateItem(item.id, 'save_as_item', item.save_as_item === false ? true : false)}
+                    >
+                      <Ionicons
+                        name={item.save_as_item !== false ? "checkbox" : "square-outline"}
+                        size={18}
+                        color={item.save_as_item !== false ? Colors.primary : '#94A3B8'}
+                      />
+                      <Text style={{ fontSize: 12, color: '#475569', fontWeight: '500' }}>
+                        Save to My Items
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               );
