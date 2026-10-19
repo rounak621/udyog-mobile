@@ -478,13 +478,13 @@ export default function InvoiceSettingsScreen() {
             />
           </View>
 
-          {/* Bill Look / Theme row */}
+          {/* Template / Theme row */}
           <TouchableOpacity
             style={[styles.switchRow, { borderBottomWidth: 0 }]}
             onPress={() => setThemeModalVisible(true)}
           >
             <View style={styles.switchInfo}>
-              <Text style={styles.switchTitle}>Bill look</Text>
+              <Text style={styles.switchTitle}>Template</Text>
               <Text style={styles.switchHint}>{currentThemeLabel}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={DesignTokens.mutedText} />
@@ -763,7 +763,7 @@ export default function InvoiceSettingsScreen() {
           <View style={[styles.themeModalSheet, { paddingBottom: Math.max(insets.bottom, 12) + 20 }]}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Select Bill Look</Text>
+              <Text style={styles.sheetTitle}>Select Template</Text>
               <TouchableOpacity
                 onPress={() => setThemeModalVisible(false)}
                 style={styles.sheetCloseBtn}
