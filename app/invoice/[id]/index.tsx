@@ -99,7 +99,7 @@ export default function InvoiceDetailScreen() {
 
   const handleDownloadPDF = async () => {
     try {
-      const customerName = (invoice.customer_name || invoice.party_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const customerName = (invoice.walk_in_name || invoice.customer_name || invoice.party_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
       const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `${customerName}_${invoiceNum}.pdf`;
 
@@ -209,7 +209,7 @@ export default function InvoiceDetailScreen() {
       const token = await getToken();
       setAuthToken(token);
       
-      const customerName = (invoice.customer_name || invoice.party_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+      const customerName = (invoice.walk_in_name || invoice.customer_name || invoice.party_name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
       const invoiceNum = (invoice.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `Statement_${customerName}_${invoiceNum}.pdf`;
       
@@ -355,8 +355,12 @@ export default function InvoiceDetailScreen() {
           <View style={styles.divider} />
 
           <Text style={styles.sectionLabel}>Bill To</Text>
-          <Text style={styles.partyName}>{invoice.party_name || invoice.customer_name || 'Unknown Party'}</Text>
-          {invoice.party_gstin && <Text style={styles.partyGst}>GSTIN: {invoice.party_gstin}</Text>}
+          <Text style={styles.partyName}>{invoice.walk_in_name || invoice.party_name || invoice.customer_name || 'Cash Customer'}</Text>
+          {invoice.walk_in_name && (invoice.party_name === 'Cash Sale' || invoice.customer_name === 'Cash Sale') ? (
+            <Text style={styles.partyGst}>Cash Sale / Walk-in</Text>
+          ) : invoice.party_gstin ? (
+            <Text style={styles.partyGst}>GSTIN: {invoice.party_gstin}</Text>
+          ) : null}
         </View>
 
         <View style={styles.card}>

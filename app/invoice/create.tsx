@@ -62,6 +62,7 @@ export default function CreateInvoiceScreen() {
   const [items, setItems] = useState<any[]>([]);
   const [selectedParty, setSelectedParty] = useState<any>(null);
   const [partySearch, setPartySearch] = useState('');
+  const [walkInName, setWalkInName] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: Math.random().toString(), item_id: null, name: '', qty: '1', rate: '', gst_rate: '18', unit: 'PCS', discount_percent: '', hsn_code: '', description: '', isCustom: false, save_as_item: true }
@@ -157,6 +158,7 @@ export default function CreateInvoiceScreen() {
         setInvoiceDate(invData.invoice_date);
         setInvoiceType(invData.invoice_type || 'INVOICE');
         setNotes(invData.notes || '');
+        if (invData.walk_in_name) setWalkInName(invData.walk_in_name);
         setConsignmentAddress(invData.consignment_address || '');
         setShowDiscount(!!invData.show_discount);
         setIsGstApplicable(invData.is_gst_applicable !== false);
@@ -275,6 +277,9 @@ export default function CreateInvoiceScreen() {
           setIsInterState(!!interState);
         }
       }
+      if (draft.walk_in_name) {
+        setWalkInName(draft.walk_in_name);
+      }
       // Pre-fill line items
       if (draft.items && draft.items.length > 0) {
         const newLineItems: LineItem[] = draft.items.map((di: any) => {
@@ -338,7 +343,20 @@ export default function CreateInvoiceScreen() {
     }
   }, [showSuccess]);
 
-  const filteredParties = parties.filter(p => p.name?.toLowerCase().includes(partySearch.toLowerCase()));
+  const searchLower = partySearch.toLowerCase().trim();
+  const filteredParties = [
+    ...parties.filter(p => p.name === 'Cash Sale' && (
+      !searchLower ||
+      'cash sale'.includes(searchLower) ||
+      'walk-in'.includes(searchLower)
+    )),
+    ...parties.filter(p => p.name !== 'Cash Sale' && (
+      !searchLower ||
+      p.name?.toLowerCase().includes(searchLower) ||
+      p.phone?.toLowerCase().includes(searchLower) ||
+      p.gstin?.toLowerCase().includes(searchLower)
+    )),
+  ];
 
   const addLineItem = () => {
     const newId = Math.random().toString();
@@ -408,7 +426,7 @@ export default function CreateInvoiceScreen() {
       const pdfUrl = `${API_BASE_URL}/public/invoice/${createdInvoice.share_token}/pdf`;
 
       if (mode === 'download') {
-        const customerName = (selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+        const customerName = (walkInName.trim() || selectedCustomer?.name || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
         const invoiceNum = (createdInvoice?.invoice_number || 'invoice').replace(/[^a-zA-Z0-9]/g, '_');
         const fileName = `${customerName}_${invoiceNum}.pdf`;
         const fileUri = (FileSystem as any).cacheDirectory + fileName;
@@ -535,6 +553,7 @@ export default function CreateInvoiceScreen() {
       
       const payload: any = {
         customer_id: selectedParty?.id || null,
+        walk_in_name: selectedParty?.name === 'Cash Sale' && walkInName.trim() ? walkInName.trim() : null,
         invoice_date: invoiceDate,
         line_items: lineItems.map(l => {
           const isTyped = !l.item_id;
@@ -807,8 +826,12 @@ export default function CreateInvoiceScreen() {
                   <Text style={styles.customerAvatarText}>{getInitials(selectedCustomer.name)}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardValue}>{selectedCustomer.name}</Text>
-                  {selectedCustomer.gstin && <Text style={styles.customerGstin}>GSTIN {selectedCustomer.gstin}</Text>}
+                  <Text style={styles.cardValue}>{selectedCustomer.name === 'Cash Sale' ? '🏪 Cash Sale' : selectedCustomer.name}</Text>
+                  {selectedCustomer.name === 'Cash Sale' ? (
+                    <Text style={styles.customerGstin}>{walkInName ? `Customer: ${walkInName}` : 'Walk-in / B2C Customer'}</Text>
+                  ) : selectedCustomer.gstin ? (
+                    <Text style={styles.customerGstin}>GSTIN {selectedCustomer.gstin}</Text>
+                  ) : null}
                 </View>
               </>
             ) : (
@@ -816,6 +839,18 @@ export default function CreateInvoiceScreen() {
             )}
             <Ionicons name="chevron-forward" size={18} color="#94A3B8" />
           </TouchableOpacity>
+          {selectedCustomer?.name === 'Cash Sale' && (
+            <View style={[styles.card, { marginTop: 10, padding: 12 }]}>
+              <Text style={styles.cardLabel}>CUSTOMER NAME (OPTIONAL)</Text>
+              <TextInput
+                style={[styles.itemInput, { minWidth: '100%', textAlign: 'left', paddingHorizontal: 11, height: 42, fontSize: 14 }]}
+                placeholder="Customer name (optional)"
+                placeholderTextColor="#94A3B8"
+                value={walkInName}
+                onChangeText={setWalkInName}
+              />
+            </View>
+          )}
         </View>
 
         {/* Shipping / Consignee Address (conditional on dual_address_enabled) */}
@@ -1296,41 +1331,50 @@ export default function CreateInvoiceScreen() {
               data={filteredParties}
               keyExtractor={item => String(item.id)}
               contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalItem}
-                  onPress={() => {
-                    setSelectedParty(item);
-                    setConsignmentAddress(item.consignment_address || item.address || '');
-                    const customerState = item.state || '';
-                    const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
-                    setIsInterState(!!interState);
-                    setShowCustomerPicker(false);
-                    setPartySearch('');
+              renderItem={({ item }) => {
+                const isCash = item.name === 'Cash Sale';
+                return (
+                  <TouchableOpacity
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setSelectedParty(item);
+                      setConsignmentAddress(item.consignment_address || item.address || '');
+                      const customerState = item.state || '';
+                      const interState = businessState && customerState && businessState.toLowerCase().trim() !== customerState.toLowerCase().trim();
+                      setIsInterState(!!interState);
+                      setShowCustomerPicker(false);
+                      setPartySearch('');
 
-                    const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
-                    if (isGstInvoice && !item.gstin?.trim()) {
-                      setIsB2cConfirmed(false);
-                      Alert.alert(
-                        'GSTIN Required',
-                        'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
-                        [
-                          { text: 'Switch to B2C', onPress: () => setIsB2cConfirmed(true) },
-                          { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${item.id}`) }
-                        ]
-                      );
-                    } else {
-                      setIsB2cConfirmed(false);
-                    }
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.modalItemName}>{item.name}</Text>
-                    {item.gstin && <Text style={styles.modalItemSub}>GSTIN: {item.gstin}</Text>}
-                  </View>
-                  {item.phone && <Text style={styles.modalItemPhone}>{item.phone}</Text>}
-                </TouchableOpacity>
-              )}
+                      const isGstInvoice = invoiceType === 'INVOICE' || (invoiceType === 'SERVICE' && isGstApplicable);
+                      if (isCash) {
+                        setIsB2cConfirmed(true);
+                      } else if (isGstInvoice && !item.gstin?.trim()) {
+                        setIsB2cConfirmed(false);
+                        Alert.alert(
+                          'GSTIN Required',
+                          'The selected party has no GST number. Please add it for a B2B invoice, or switch to B2C.',
+                          [
+                            { text: 'Switch to B2C', onPress: () => setIsB2cConfirmed(true) },
+                            { text: 'Add GSTIN', onPress: () => router.push(`/party/create?id=${item.id}`) }
+                          ]
+                        );
+                      } else {
+                        setIsB2cConfirmed(false);
+                      }
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.modalItemName}>{isCash ? '🏪 Cash Sale' : item.name}</Text>
+                      {isCash ? (
+                        <Text style={styles.modalItemSub}>Walk-in / B2C Customer</Text>
+                      ) : (
+                        item.gstin ? <Text style={styles.modalItemSub}>GSTIN: {item.gstin}</Text> : null
+                      )}
+                    </View>
+                    {!isCash && item.phone ? <Text style={styles.modalItemPhone}>{item.phone}</Text> : null}
+                  </TouchableOpacity>
+                );
+              }}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>No customers found</Text>
