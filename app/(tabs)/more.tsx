@@ -35,6 +35,8 @@ export default function MoreScreen() {
 
   const [showSwitcher, setShowSwitcher] = useState(false);
 
+  const isRentalEnabled = business?.subscription_status === 'trial' || business?.subscription_plan?.toLowerCase() === 'enterprise';
+
   const switchToRental = () => {
     setMode('rental');
     router.replace('/(rental)/overview');
@@ -103,7 +105,9 @@ export default function MoreScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Business</Text>
           <View style={styles.card}>
-            <MenuItem icon="calendar-outline" label="Switch to Rental Business" onPress={switchToRental} />
+            {isRentalEnabled && (
+              <MenuItem icon="calendar-outline" label="Switch to Rental Business" onPress={switchToRental} />
+            )}
             <MenuItem icon="business-outline" label="Business Settings" onPress={() => router.push('/settings/business')} />
             <MenuItem icon="document-text-outline" label="Invoice Settings" onPress={() => router.push('/settings/invoice')} />
             <MenuItem icon="cube-outline" label="Items" onPress={() => router.push('/items')} />
