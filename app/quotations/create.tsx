@@ -50,6 +50,7 @@ export default function CreateQuotationScreen() {
   const bottomPadding = useBottomPadding(24);
   const { getToken } = useAuth();
   const { business } = useBusiness();
+  const hasGstin = Boolean(business?.gst_number && business.gst_number.trim());
   const params = useLocalSearchParams<{ id?: string; customer_id?: string; maya_data?: string }>();
   const isEditMode = !!params.id;
 
@@ -348,7 +349,7 @@ export default function CreateQuotationScreen() {
   lineItems.forEach(l => {
     const qty = Number(l.qty) || 0;
     const rate = Number(l.rate) || 0;
-    const gstRate = Number(l.gst_rate) || 0;
+    const gstRate = !hasGstin ? 0 : (Number(l.gst_rate) || 0);
     const baseAmount = qty * rate;
     const discountPercent = showDiscount ? Number(l.discount_percent) || 0 : 0;
     const discountFactor = 1 - discountPercent / 100;
@@ -407,7 +408,7 @@ export default function CreateQuotationScreen() {
           quantity: Number(l.qty) || 1,
           rate: Number(l.rate) || 0,
           discount_percent: showDiscount ? Number(l.discount_percent) || 0 : 0,
-          gst_rate: Number(l.gst_rate) || 0,
+          gst_rate: !hasGstin ? 0 : Number(l.gst_rate) || 0,
         })),
         terms_and_conditions: termsAndConditions.trim() ? termsAndConditions.trim().slice(0, 300) : null,
         notes: notes.trim() ? notes.trim().slice(0, 300) : null,
@@ -731,25 +732,27 @@ export default function CreateQuotationScreen() {
                     </View>
 
                     {/* GST Rate Pills */}
-                    <View>
-                      <Text style={styles.miniLabel}>GST RATE (%)</Text>
-                      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                        {GST_RATE_STRINGS.map(rateStr => {
-                          const active = String(item.gst_rate) === rateStr;
-                          return (
-                            <TouchableOpacity
-                              key={rateStr}
-                              style={[styles.gstPill, active && styles.gstPillActive]}
-                              onPress={() => updateLineItem(item.id, 'gst_rate', rateStr)}
-                            >
-                              <Text style={[styles.gstPillText, active && styles.gstPillTextActive]}>
-                                {rateStr}%
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
+                    {hasGstin && (
+                      <View>
+                        <Text style={styles.miniLabel}>GST RATE (%)</Text>
+                        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                          {GST_RATE_STRINGS.map(rateStr => {
+                            const active = String(item.gst_rate) === rateStr;
+                            return (
+                              <TouchableOpacity
+                                key={rateStr}
+                                style={[styles.gstPill, active && styles.gstPillActive]}
+                                onPress={() => updateLineItem(item.id, 'gst_rate', rateStr)}
+                              >
+                                <Text style={[styles.gstPillText, active && styles.gstPillTextActive]}>
+                                  {rateStr}%
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
                       </View>
-                    </View>
+                    )}
 
                     {/* Line Total preview */}
                     <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 4 }}>
@@ -766,6 +769,21 @@ export default function CreateQuotationScreen() {
               <Ionicons name="add" size={18} color={Colors.primary} />
               <Text style={styles.addItemBtnText}>Add Another Item</Text>
             </TouchableOpacity>
+
+            {!hasGstin && (
+              <View style={{ marginTop: 10, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 12, color: '#64748B', lineHeight: 18 }}>
+                  GST is off because no GSTIN is added.{' '}
+                  <Text
+                    style={{ color: '#FF7A1A', fontWeight: '600', textDecorationLine: 'underline' }}
+                    onPress={() => router.push('/settings/business')}
+                  >
+                    Add your GSTIN in Settings
+                  </Text>{' '}
+                  to charge GST.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 

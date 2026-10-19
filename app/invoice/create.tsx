@@ -23,6 +23,7 @@ import { Audio } from 'expo-av';
 import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { checkIsOnline } from '../../services/network';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { useBusiness } from '../../context/BusinessContext';
 import { UnitPickerModal } from '../../components/UnitPickerModal';
 
 interface LineItem {
@@ -43,6 +44,8 @@ export default function CreateInvoiceScreen() {
   const { getToken } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { business } = useBusiness();
+  const hasGstin = Boolean(business?.gst_number && business.gst_number.trim());
   const params = useLocalSearchParams<{ customer_id?: string; party_id?: string; maya_data?: string; id?: string }>();
   const isEditMode = !!params.id;
   const preselectCustomerId = params.customer_id || params.party_id;
@@ -362,7 +365,7 @@ export default function CreateInvoiceScreen() {
   lineItems.forEach(l => {
     const qty = Number(l.qty) || 0;
     const rate = Number(l.rate) || 0;
-    const gstRate = (invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : (Number(l.gst_rate) || 0);
+    const gstRate = (!hasGstin || invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : (Number(l.gst_rate) || 0);
     const baseAmount = qty * rate;
     const discountPercent = showDiscount ? (Number(l.discount_percent) || 0) : 0;
     const discountFactor = 1 - (discountPercent / 100);
@@ -505,7 +508,7 @@ export default function CreateInvoiceScreen() {
           item_name: l.name,
           quantity: Number(l.qty) || 1,
           rate: Number(l.rate) || 0,
-          gst_rate: (invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
+          gst_rate: (!hasGstin || invoiceType === 'NONGST' || (invoiceType === 'SERVICE' && !isGstApplicable)) ? 0 : Number(l.gst_rate) || 0,
           discount_percent: showDiscount ? (Number(l.discount_percent) || 0) : 0,
           hsn_code: l.hsn_code?.trim() || undefined,
           description: l.description?.trim() || undefined,
@@ -1011,7 +1014,7 @@ export default function CreateInvoiceScreen() {
                       </View>
                     )}
                   </View>
-                  {(invoiceType !== 'NONGST' && !(invoiceType === 'SERVICE' && !isGstApplicable)) && (
+                  {(hasGstin && invoiceType !== 'NONGST' && !(invoiceType === 'SERVICE' && !isGstApplicable)) && (
                     <View style={{ marginTop: 8 }}>
                       <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 6 }}>GST Rate</Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
@@ -1043,6 +1046,20 @@ export default function CreateInvoiceScreen() {
               <Ionicons name="add" size={16} color="#F97316" />
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add Item</Text>
             </TouchableOpacity>
+            {!hasGstin && (
+              <View style={{ marginTop: 10, paddingHorizontal: 4 }}>
+                <Text style={{ fontSize: 12, color: '#64748B', lineHeight: 18 }}>
+                  GST is off because no GSTIN is added.{' '}
+                  <Text
+                    style={{ color: '#FF7A1A', fontWeight: '600', textDecorationLine: 'underline' }}
+                    onPress={() => router.push('/settings/business')}
+                  >
+                    Add your GSTIN in Settings
+                  </Text>{' '}
+                  to charge GST.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
 

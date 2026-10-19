@@ -63,6 +63,7 @@ export default function OrderCreateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { business } = useBusiness();
+  const hasGstin = Boolean(business?.gst_number && business.gst_number.trim());
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
@@ -418,7 +419,7 @@ export default function OrderCreateScreen() {
         rental_product_id: it.product.id,
         quantity_rented: qtyVal,
         rate: rateVal,
-        gst_rate: parseFloat(it.gstRate),
+        gst_rate: !hasGstin ? 0 : parseFloat(it.gstRate),
         asset_codes: it.assetCodes.length > 0 ? it.assetCodes : undefined
       });
     });
@@ -781,29 +782,31 @@ export default function OrderCreateScreen() {
               </View>
 
               {/* GST rate selector chips */}
-              <View style={[styles.fieldContainer, { marginTop: 10 }]}>
-                <Text style={styles.fieldLabel}>GST Rate *</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                  {GST_RATE_STRINGS.map((rateStr) => {
-                    const isSelected = row.gstRate === rateStr;
-                    return (
-                      <TouchableOpacity
-                        key={rateStr}
-                        style={[styles.gstChip, isSelected ? styles.gstChipActive : null]}
-                        onPress={() =>
-                          setItems((prev) =>
-                            prev.map((it, idx) => (idx === index ? { ...it, gstRate: rateStr } : it))
-                          )
-                        }
-                      >
-                        <Text style={[styles.gstChipText, isSelected ? styles.gstChipTextActive : null]}>
-                          {rateStr}%
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
+              {hasGstin && (
+                <View style={[styles.fieldContainer, { marginTop: 10 }]}>
+                  <Text style={styles.fieldLabel}>GST Rate *</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {GST_RATE_STRINGS.map((rateStr) => {
+                      const isSelected = row.gstRate === rateStr;
+                      return (
+                        <TouchableOpacity
+                          key={rateStr}
+                          style={[styles.gstChip, isSelected ? styles.gstChipActive : null]}
+                          onPress={() =>
+                            setItems((prev) =>
+                              prev.map((it, idx) => (idx === index ? { ...it, gstRate: rateStr } : it))
+                            )
+                          }
+                        >
+                          <Text style={[styles.gstChipText, isSelected ? styles.gstChipTextActive : null]}>
+                            {rateStr}%
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
 
               {/* Asset Allocation Button (Only displayed if trackable assets exist) */}
               {row.product && !row.loadingAssets && row.availableAssets.length > 0 && (
@@ -833,6 +836,20 @@ export default function OrderCreateScreen() {
             <Ionicons name="add" size={16} color={Colors.primary} />
             <Text style={styles.addRowLinkText}>Add Item</Text>
           </TouchableOpacity>
+          {!hasGstin && (
+            <View style={{ marginTop: 10, paddingHorizontal: 4 }}>
+              <Text style={{ fontSize: 12, color: '#64748B', lineHeight: 18 }}>
+                GST is off because no GSTIN is added.{' '}
+                <Text
+                  style={{ color: '#FF7A1A', fontWeight: '600', textDecorationLine: 'underline' }}
+                  onPress={() => router.push('/settings/business')}
+                >
+                  Add your GSTIN in Settings
+                </Text>{' '}
+                to charge GST.
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Notes */}
