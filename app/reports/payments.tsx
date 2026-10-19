@@ -9,11 +9,16 @@ import {
   RefreshControl,
   ScrollView,
   BackHandler,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Print from 'expo-print';
+import { saveCsvToAndroidOrShare, savePdfToAndroidOrShare } from '../../services/safHelper';
+import { escapeHtml } from '../../utils/escapeHtml';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
@@ -122,6 +127,8 @@ export default function PaymentReportScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [data, setData] = useState<PaymentReportData | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -240,6 +247,161 @@ export default function PaymentReportScreen() {
     return data.received_by_mode.reduce((acc, m) => acc + (m.total_amount || 0), 0);
   }, [data]);
 
+  const escapeCsv = (str: any) => {
+    if (str === null || str === undefined) return '';
+    const s = String(str);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const handleExportCsv = async () => {
+    const payments = data?.payments || [];
+    if (payments.length === 0) {
+      Alert.alert('No Data', 'There are no payments to export for this period.');
+      return;
+    }
+
+    setExportingCsv(true);
+    try {
+      const headers = ['#', 'Payment Date', 'Customer Name', 'Invoice No', 'Payment Mode', 'Amount', 'Notes'];
+      const rows = payments.map((p, idx) => [
+        idx + 1,
+        escapeCsv(p.payment_date),
+        escapeCsv(p.customer_name),
+        escapeCsv(p.invoice_number || 'Unallocated'),
+        escapeCsv(p.mode),
+        escapeCsv(Number(p.amount || 0).toFixed(2)),
+        escapeCsv(p.notes || '')
+      ].join(','));
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const safeLabel = periodLabel.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `Payment_Report_${safeLabel}.csv`;
+      const fileUri = (FileSystem as any).cacheDirectory + fileName;
+
+      await FileSystem.writeAsStringAsync(fileUri, csvContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      await saveCsvToAndroidOrShare(fileUri, fileName, 'Export Payment Report', 'Reports');
+    } catch (err) {
+      console.log('CSV export error:', err);
+      Alert.alert('Error', 'Failed to export Payment Report CSV.');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    const payments = data?.payments || [];
+    if (payments.length === 0) {
+      Alert.alert('No Data', 'There are no payments to export for this period.');
+      return;
+    }
+
+    setExportingPdf(true);
+    try {
+      const rowsHtml = payments.map((p, idx) => `
+        <tr style="background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(formatDisplayDate(p.payment_date))}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; font-weight: 600;">${escapeHtml(p.customer_name)}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(p.invoice_number || 'Unallocated')}</td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; background-color: #EEF2FF; color: #4338CA;">${escapeHtml(p.mode)}</span>
+          </td>
+          <td style="padding: 8px; border-bottom: 1px solid #E2E8F0; text-align: right; font-weight: 600;">${formatCurrency(p.amount)}</td>
+        </tr>
+      `).join('');
+
+      const modesHtml = (data?.received_by_mode || []).map(m => `
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; min-width: 120px;">
+          <div style="font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase;">${escapeHtml(m.mode)} (${m.count})</div>
+          <div style="font-size: 15px; font-weight: 800; color: #0F172A; margin-top: 4px;">${formatCurrency(m.total_amount)}</div>
+        </div>
+      `).join('');
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <style>
+              body { font-family: system-ui, -apple-system, sans-serif; margin: 24px; color: #1E293B; }
+              .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F97316; padding-bottom: 12px; margin-bottom: 20px; }
+              .title { font-size: 22px; font-weight: 800; color: #F97316; margin: 0; }
+              .subtitle { font-size: 13px; color: #64748B; margin-top: 4px; }
+              .stats-grid { display: flex; gap: 12px; margin-bottom: 20px; }
+              .stat-card { flex: 1; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; }
+              .stat-label { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; }
+              .stat-value { font-size: 18px; font-weight: 800; color: #0F172A; margin-top: 4px; }
+              .modes-wrap { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
+              table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+              th { background-color: #F1F5F9; color: #475569; font-weight: 700; padding: 10px 8px; text-align: left; border-bottom: 2px solid #CBD5E1; }
+              th.right, td.right { text-align: right; }
+              .footer { margin-top: 24px; font-size: 11px; color: #94A3B8; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <h1 class="title">Payment Report</h1>
+                <div class="subtitle">Period: ${escapeHtml(periodLabel)}</div>
+              </div>
+            </div>
+
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-label">Total Received</div>
+                <div class="stat-value" style="color: #16A34A;">${formatCurrency(receivedTotal)}</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Total Pending</div>
+                <div class="stat-value" style="color: #DC2626;">${formatCurrency(data?.pending_total || 0)}</div>
+              </div>
+            </div>
+
+            <div style="font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px;">Received By Mode</div>
+            <div class="modes-wrap">
+              ${modesHtml}
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Invoice No</th>
+                  <th>Mode</th>
+                  <th class="right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+
+            <div class="footer">
+              Generated automatically via Udyog App
+            </div>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      const safeLabel = periodLabel.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `Payment_Report_${safeLabel}.pdf`;
+
+      await savePdfToAndroidOrShare(uri, fileName, 'Export Payment Report PDF', 'Reports');
+    } catch (err) {
+      console.log('PDF export error:', err);
+      Alert.alert('Error', 'Failed to export Payment Report PDF.');
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Top Header */}
@@ -250,6 +412,37 @@ export default function PaymentReportScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.topbarTitle}>Payment Report</Text>
           <Text style={styles.topbarSubtitle}>{periodLabel}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <TouchableOpacity
+            style={[styles.exportBtn, exportingCsv && { opacity: 0.7 }]}
+            onPress={handleExportCsv}
+            disabled={exportingCsv || exportingPdf || loading}
+          >
+            {exportingCsv ? (
+              <ActivityIndicator size="small" color="#F97316" />
+            ) : (
+              <>
+                <Ionicons name="document-text-outline" size={14} color="#F97316" />
+                <Text style={styles.exportBtnText}>CSV</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.exportBtn, exportingPdf && { opacity: 0.7 }]}
+            onPress={handleExportPdf}
+            disabled={exportingCsv || exportingPdf || loading}
+          >
+            {exportingPdf ? (
+              <ActivityIndicator size="small" color="#F97316" />
+            ) : (
+              <>
+                <Ionicons name="document-outline" size={14} color="#F97316" />
+                <Text style={styles.exportBtnText}>PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -564,6 +757,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
     marginTop: 1,
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F97316',
   },
   listContainer: {
     padding: 16,
