@@ -38,9 +38,8 @@ export const DesignTokens = {
   inputBorder: '#8795AA',
   pageBackground: '#F4F6F9',
   cardBackground: '#FFFFFF',
-  cardRadius: 14,
+  cardRadius: Radius.md,
   errorRed: '#B91C1C',
-  switchOff: '#94A3B8',
 };
 
 

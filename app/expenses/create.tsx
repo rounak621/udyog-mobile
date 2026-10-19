@@ -17,8 +17,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { DesignTokens } from '../../constants/theme';
+import { DesignTokens, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { FixedBottomBar, useBottomPadding } from '../../components/ui/SafeLayout';
 import {
   expenseService,
   PaymentMode,
@@ -279,7 +280,7 @@ export default function CreateExpenseScreen() {
     );
   }
 
-  const bottomBarPadding = Math.max(insets.bottom, 12) + 8;
+  const bottomPadding = useBottomPadding(20);
 
   return (
     <KeyboardAvoidingView
@@ -287,13 +288,13 @@ export default function CreateExpenseScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backBtn}
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={24} color={DesignTokens.ink} />
+          <Ionicons name="arrow-back" size={22} color={DesignTokens.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           {isEditMode ? 'Edit expense' : 'New expense'}
@@ -303,7 +304,7 @@ export default function CreateExpenseScreen() {
       {/* Form Content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -602,7 +603,7 @@ export default function CreateExpenseScreen() {
       </ScrollView>
 
       {/* Sticky Bottom Bar (OUTSIDE ScrollView) */}
-      <View style={[styles.stickyBottomBar, { paddingBottom: bottomBarPadding }]}>
+      <FixedBottomBar style={styles.stickyBottomBar}>
         <TouchableOpacity
           style={[styles.saveBtn, saving && { opacity: 0.7 }]}
           onPress={handleSave}
@@ -616,7 +617,7 @@ export default function CreateExpenseScreen() {
             </Text>
           )}
         </TouchableOpacity>
-      </View>
+      </FixedBottomBar>
     </KeyboardAvoidingView>
   );
 }
@@ -630,29 +631,26 @@ const styles = StyleSheet.create({
     backgroundColor: DesignTokens.pageBackground,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: 13,
     color: DesignTokens.mutedText,
   },
   header: {
-    height: 64 + 40,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   backBtn: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
+    marginRight: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: DesignTokens.ink,
-    marginLeft: 4,
   },
   scrollContent: {
     padding: 16,
@@ -660,52 +658,54 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: DesignTokens.cardRadius,
-    borderWidth: 1,
+    borderRadius: Radius.md,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
-    padding: 14,
+    padding: 16,
   },
   fieldLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: DesignTokens.ink,
-    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
   amountInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 52,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
   },
   rupeeSymbol: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     color: DesignTokens.ink,
     marginRight: 8,
   },
   amountInput: {
     flex: 1,
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     color: DesignTokens.ink,
+    padding: 0,
   },
   datePickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 52,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
+    padding: 11,
   },
   datePickerText: {
-    fontSize: 16,
+    fontSize: 14,
     color: DesignTokens.ink,
     fontWeight: '600',
   },
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   toggleCustomBtn: {
     paddingVertical: 4,
@@ -721,31 +721,30 @@ const styles = StyleSheet.create({
   },
   toggleCustomText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: DesignTokens.orangeText,
   },
   inputField: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 52,
-    fontSize: 16,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
+    padding: 11,
+    fontSize: 14,
     color: DesignTokens.ink,
   },
   confirmCatBtn: {
     backgroundColor: DesignTokens.brandOrange,
-    paddingHorizontal: 16,
-    height: 52,
-    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: Radius.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
   confirmCatBtnText: {
     color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
+    fontWeight: '600',
+    fontSize: 13,
   },
   categoryScroll: {
     gap: 8,
@@ -753,11 +752,11 @@ const styles = StyleSheet.create({
   },
   categoryOptionChip: {
     paddingHorizontal: 16,
-    height: 44,
-    borderRadius: 22,
+    paddingVertical: 7,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -766,13 +765,13 @@ const styles = StyleSheet.create({
     borderColor: DesignTokens.brandOrange,
   },
   categoryOptionText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: DesignTokens.ink,
   },
   categoryOptionTextActive: {
     color: DesignTokens.orangeText,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   modeRow: {
     flexDirection: 'row',
@@ -784,10 +783,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    height: 48,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
   },
   modeBtnActive: {
@@ -795,7 +794,7 @@ const styles = StyleSheet.create({
     borderColor: DesignTokens.brandOrange,
   },
   modeBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     color: DesignTokens.mutedText,
   },
@@ -809,19 +808,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   switchTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: DesignTokens.ink,
   },
   switchSub: {
-    fontSize: 13,
+    fontSize: 11,
     color: DesignTokens.mutedText,
     marginTop: 2,
   },
   gstInputsBlock: {
     marginTop: 14,
     paddingTop: 14,
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: DesignTokens.lines,
   },
   gstTypeRow: {
@@ -830,12 +829,12 @@ const styles = StyleSheet.create({
   },
   gstTypeBtn: {
     flex: 1,
-    height: 46,
+    paddingVertical: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
   },
   gstTypeBtnActive: {
@@ -853,20 +852,20 @@ const styles = StyleSheet.create({
   },
   textArea: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
-    padding: 12,
-    minHeight: 90,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
+    padding: 11,
+    minHeight: 80,
     textAlignVertical: 'top',
-    fontSize: 15,
+    fontSize: 14,
     color: DesignTokens.ink,
   },
   deleteExpenseBtn: {
-    height: 52,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: Radius.sm,
     backgroundColor: '#F1F5F9',
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
     flexDirection: 'row',
     alignItems: 'center',
@@ -875,28 +874,28 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   deleteExpenseBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
     color: DesignTokens.errorRed,
   },
   stickyBottomBar: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: DesignTokens.lines,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
   saveBtn: {
     width: '100%',
-    height: 56,
-    borderRadius: DesignTokens.cardRadius,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     backgroundColor: DesignTokens.brandOrange,
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
 });

@@ -13,12 +13,14 @@ import {
   FlatList,
   Platform,
   KeyboardAvoidingView,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DesignTokens } from '../../constants/theme';
+import { DesignTokens, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { FixedBottomBar, useBottomPadding } from '../../components/ui/SafeLayout';
 
 const THEMES = [
   { label: 'Corporate Standard (Black & White)', value: 'corporate_tax_invoice' },
@@ -339,7 +341,7 @@ export default function InvoiceSettingsScreen() {
     THEMES.find(t => t.value === prefForm.invoice_theme)?.label ||
     'Select Theme';
 
-  const bottomBarPadding = Math.max(insets.bottom, 12) + 8;
+  const bottomPadding = useBottomPadding(20);
 
   if (loading) {
     return (
@@ -355,13 +357,13 @@ export default function InvoiceSettingsScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backBtn}
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={24} color={DesignTokens.ink} />
+          <Ionicons name="arrow-back" size={22} color={DesignTokens.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Invoice settings</Text>
       </View>
@@ -369,7 +371,7 @@ export default function InvoiceSettingsScreen() {
       {/* Main Scrollable Content */}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -428,26 +430,14 @@ export default function InvoiceSettingsScreen() {
               <Text style={styles.switchTitle}>Show discount</Text>
               <Text style={styles.switchHint}>A discount column on the bill</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[
-                styles.customSwitchTrack,
-                prefForm.show_discount ? styles.switchTrackOn : styles.switchTrackOff,
-              ]}
-              onPress={() =>
-                setPrefForm(p => ({ ...p, show_discount: !p.show_discount }))
+            <Switch
+              value={prefForm.show_discount}
+              onValueChange={val =>
+                setPrefForm(p => ({ ...p, show_discount: val }))
               }
-              role="switch"
-              aria-checked={prefForm.show_discount}
-              accessibilityLabel="Show discount"
-            >
-              <View
-                style={[
-                  styles.customSwitchThumb,
-                  prefForm.show_discount ? styles.switchThumbOn : styles.switchThumbOff,
-                ]}
-              />
-            </TouchableOpacity>
+              trackColor={{ false: '#E2E8F0', true: DesignTokens.brandOrange }}
+              thumbColor="#FFFFFF"
+            />
           </View>
 
           {/* Switch 2: Show Paid or Unpaid (Mapped to show_payment_status_on_pdf) */}
@@ -456,33 +446,17 @@ export default function InvoiceSettingsScreen() {
               <Text style={styles.switchTitle}>Show Paid or Unpaid</Text>
               <Text style={styles.switchHint}>A stamp on the bill</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[
-                styles.customSwitchTrack,
-                prefForm.show_payment_status_on_pdf
-                  ? styles.switchTrackOn
-                  : styles.switchTrackOff,
-              ]}
-              onPress={() =>
+            <Switch
+              value={prefForm.show_payment_status_on_pdf}
+              onValueChange={val =>
                 setPrefForm(p => ({
                   ...p,
-                  show_payment_status_on_pdf: !p.show_payment_status_on_pdf,
+                  show_payment_status_on_pdf: val,
                 }))
               }
-              role="switch"
-              aria-checked={prefForm.show_payment_status_on_pdf}
-              accessibilityLabel="Show Paid or Unpaid"
-            >
-              <View
-                style={[
-                  styles.customSwitchThumb,
-                  prefForm.show_payment_status_on_pdf
-                    ? styles.switchThumbOn
-                    : styles.switchThumbOff,
-                ]}
-              />
-            </TouchableOpacity>
+              trackColor={{ false: '#E2E8F0', true: DesignTokens.brandOrange }}
+              thumbColor="#FFFFFF"
+            />
           </View>
 
           {/* Switch 3: Show delivery address */}
@@ -491,29 +465,17 @@ export default function InvoiceSettingsScreen() {
               <Text style={styles.switchTitle}>Show delivery address</Text>
               <Text style={styles.switchHint}>Where the goods are sent</Text>
             </View>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[
-                styles.customSwitchTrack,
-                prefForm.dual_address_enabled ? styles.switchTrackOn : styles.switchTrackOff,
-              ]}
-              onPress={() =>
+            <Switch
+              value={prefForm.dual_address_enabled}
+              onValueChange={val =>
                 setPrefForm(p => ({
                   ...p,
-                  dual_address_enabled: !p.dual_address_enabled,
+                  dual_address_enabled: val,
                 }))
               }
-              role="switch"
-              aria-checked={prefForm.dual_address_enabled}
-              accessibilityLabel="Show delivery address"
-            >
-              <View
-                style={[
-                  styles.customSwitchThumb,
-                  prefForm.dual_address_enabled ? styles.switchThumbOn : styles.switchThumbOff,
-                ]}
-              />
-            </TouchableOpacity>
+              trackColor={{ false: '#E2E8F0', true: DesignTokens.brandOrange }}
+              thumbColor="#FFFFFF"
+            />
           </View>
 
           {/* Bill Look / Theme row */}
@@ -573,7 +535,7 @@ export default function InvoiceSettingsScreen() {
       </ScrollView>
 
       {/* Sticky Bottom Bar (OUTSIDE ScrollView) */}
-      <View style={[styles.stickyBottomBar, { paddingBottom: bottomBarPadding }]}>
+      <FixedBottomBar style={styles.stickyBottomBar}>
         <TouchableOpacity
           style={[
             styles.saveChangesBtn,
@@ -588,7 +550,7 @@ export default function InvoiceSettingsScreen() {
             <Text style={styles.saveChangesBtnText}>Save changes</Text>
           )}
         </TouchableOpacity>
-      </View>
+      </FixedBottomBar>
 
       {/* BOTTOM SHEET: NUMBERING CONFIG */}
       <Modal
@@ -624,7 +586,7 @@ export default function InvoiceSettingsScreen() {
                 style={styles.sheetCloseBtn}
                 accessibilityLabel="Close"
               >
-                <Ionicons name="close" size={24} color={DesignTokens.ink} />
+                <Ionicons name="close" size={22} color={DesignTokens.ink} />
               </TouchableOpacity>
             </View>
 
@@ -755,26 +717,17 @@ export default function InvoiceSettingsScreen() {
                           Reset number at the start of each month (e.g. INV/10/001)
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[
-                          styles.customSwitchTrack,
-                          sheetForm.monthly_reset_enabled ? styles.switchTrackOn : styles.switchTrackOff,
-                        ]}
-                        onPress={() =>
+                      <Switch
+                        value={sheetForm.monthly_reset_enabled}
+                        onValueChange={val =>
                           setSheetForm(f => ({
                             ...f,
-                            monthly_reset_enabled: !f.monthly_reset_enabled,
+                            monthly_reset_enabled: val,
                           }))
                         }
-                      >
-                        <View
-                          style={[
-                            styles.customSwitchThumb,
-                            sheetForm.monthly_reset_enabled ? styles.switchThumbOn : styles.switchThumbOff,
-                          ]}
-                        />
-                      </TouchableOpacity>
+                        trackColor={{ false: '#E2E8F0', true: DesignTokens.brandOrange }}
+                        thumbColor="#FFFFFF"
+                      />
                     </View>
                   )}
                 </View>
@@ -782,7 +735,7 @@ export default function InvoiceSettingsScreen() {
             </ScrollView>
 
             {/* Sheet Sticky Save Button */}
-            <View style={[styles.sheetBottomBar, { paddingBottom: bottomBarPadding }]}>
+            <FixedBottomBar style={styles.sheetBottomBar}>
               <TouchableOpacity
                 style={styles.sheetSaveBtn}
                 onPress={handleSaveSheet}
@@ -794,7 +747,7 @@ export default function InvoiceSettingsScreen() {
                   <Text style={styles.sheetSaveBtnText}>Save</Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </FixedBottomBar>
           </KeyboardAvoidingView>
         </View>
       </Modal>
@@ -815,7 +768,7 @@ export default function InvoiceSettingsScreen() {
                 onPress={() => setThemeModalVisible(false)}
                 style={styles.sheetCloseBtn}
               >
-                <Ionicons name="close" size={24} color={DesignTokens.ink} />
+                <Ionicons name="close" size={22} color={DesignTokens.ink} />
               </TouchableOpacity>
             </View>
 
@@ -862,49 +815,50 @@ const styles = StyleSheet.create({
     backgroundColor: DesignTokens.pageBackground,
   },
   header: {
-    height: 64 + 40,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   backBtn: {
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 4,
+    marginRight: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: DesignTokens.ink,
-    marginLeft: 4,
   },
   scrollContent: {
     padding: 16,
     gap: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: DesignTokens.ink,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginTop: 4,
+    marginBottom: 2,
   },
   card: {
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
-    borderRadius: DesignTokens.cardRadius,
+    borderRadius: Radius.md,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
+    marginBottom: 8,
   },
   numberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 14,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
   },
   numberRowLeft: {
@@ -912,27 +866,27 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   numberRowLabel: {
-    fontSize: 15,
-    color: DesignTokens.mutedText,
-  },
-  numberRowValue: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: DesignTokens.ink,
   },
+  numberRowValue: {
+    fontSize: 13,
+    color: DesignTokens.mutedText,
+  },
   changeBtn: {
-    height: 44,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
+    height: 34,
+    paddingHorizontal: 14,
+    borderWidth: 1,
     borderColor: DesignTokens.brandOrange,
-    borderRadius: 10,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   changeBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: DesignTokens.orangeText,
   },
   switchRow: {
@@ -940,7 +894,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 14,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
   },
   switchInfo: {
@@ -948,47 +902,24 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   switchTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: DesignTokens.ink,
   },
   switchHint: {
-    fontSize: 14,
+    fontSize: 11,
     color: DesignTokens.mutedText,
-  },
-  customSwitchTrack: {
-    width: 56,
-    height: 32,
-    borderRadius: 999,
-    padding: 4,
-    justifyContent: 'center',
-  },
-  switchTrackOn: {
-    backgroundColor: DesignTokens.brandOrange,
-  },
-  switchTrackOff: {
-    backgroundColor: DesignTokens.switchOff,
-  },
-  customSwitchThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 999,
-    backgroundColor: '#FFFFFF',
-  },
-  switchThumbOn: {
-    alignSelf: 'flex-end',
-  },
-  switchThumbOff: {
-    alignSelf: 'flex-start',
   },
   headingButtonsRow: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 8,
   },
   headingButton: {
     flex: 1,
-    height: 52,
-    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -996,51 +927,54 @@ const styles = StyleSheet.create({
     backgroundColor: DesignTokens.brandOrange,
   },
   headingButtonInactive: {
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
     backgroundColor: '#FFFFFF',
   },
   headingButtonText: {
-    fontSize: 16,
+    fontSize: 13,
+    fontWeight: '600',
   },
   headingButtonTextActive: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   headingButtonTextInactive: {
     color: DesignTokens.ink,
     fontWeight: '600',
   },
   noteLabel: {
-    fontSize: 14,
+    fontSize: 11,
+    fontWeight: '700',
     color: DesignTokens.mutedText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     paddingHorizontal: 14,
-    paddingTop: 14,
+    paddingTop: 12,
   },
   textArea: {
-    margin: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
+    margin: 12,
+    padding: 11,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14,
     color: DesignTokens.ink,
-    minHeight: 90,
+    minHeight: 80,
     textAlignVertical: 'top',
   },
   stickyBottomBar: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: DesignTokens.lines,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
   saveChangesBtn: {
     width: '100%',
-    height: 56,
-    borderRadius: DesignTokens.cardRadius,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     backgroundColor: DesignTokens.brandOrange,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1049,8 +983,8 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   saveChangesBtnText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   modalBackdrop: {
@@ -1060,14 +994,14 @@ const styles = StyleSheet.create({
   },
   sheetContainer: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '75%',
     paddingTop: 10,
   },
   sheetHandle: {
     width: 44,
-    height: 5,
+    height: 4,
     borderRadius: 999,
     backgroundColor: '#CBD5E1',
     alignSelf: 'center',
@@ -1079,65 +1013,61 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 10,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
   },
   sheetTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: DesignTokens.ink,
   },
   sheetSubtitle: {
-    fontSize: 14,
+    fontSize: 11,
     color: DesignTokens.mutedText,
     marginTop: 1,
   },
   sheetCloseBtn: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   sheetContent: {
-    padding: 20,
-    gap: 14,
+    padding: 16,
+    gap: 12,
   },
   previewBox: {
-    padding: 16,
-    borderRadius: DesignTokens.cardRadius,
+    padding: 12,
+    borderRadius: Radius.md,
     backgroundColor: DesignTokens.orangeTint,
     gap: 2,
   },
   previewSub: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
     color: DesignTokens.mutedText,
   },
   previewNumber: {
-    fontSize: 30,
-    fontWeight: '800',
-    lineHeight: 34,
+    fontSize: 22,
+    fontWeight: '700',
     color: DesignTokens.orangeText,
   },
   sheetFieldGroup: {
-    gap: 8,
+    gap: 6,
   },
   fieldLabel: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
     color: DesignTokens.ink,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   sheetInput: {
     width: '100%',
-    height: 52,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
+    padding: 11,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
     color: DesignTokens.ink,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 14,
   },
   stepperRow: {
     flexDirection: 'row',
@@ -1145,64 +1075,65 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stepperBtn: {
-    width: 52,
-    height: 52,
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepperInput: {
     flex: 1,
-    height: 52,
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
-    borderRadius: 10,
-    fontSize: 20,
-    fontWeight: '800',
+    padding: 11,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
+    borderRadius: Radius.sm,
+    fontSize: 16,
+    fontWeight: '700',
     color: DesignTokens.ink,
+    textAlign: 'center',
   },
   sheetWarningText: {
-    fontSize: 13,
+    fontSize: 11,
     color: DesignTokens.lightText,
     paddingHorizontal: 2,
-    marginTop: -4,
+    marginTop: -2,
   },
   moreOptionsBtn: {
-    height: 52,
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
-    borderRadius: DesignTokens.cardRadius,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   moreOptionsBtnText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#334155',
   },
   moreOptionsHelperText: {
-    fontSize: 13,
+    fontSize: 11,
     color: DesignTokens.lightText,
     paddingHorizontal: 4,
-    marginTop: -8,
+    marginTop: -6,
   },
   moreOptionsPanel: {
-    gap: 14,
-    paddingTop: 6,
+    gap: 12,
+    paddingTop: 4,
   },
   paddingPill: {
-    paddingHorizontal: 14,
-    height: 44,
-    borderRadius: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1213,7 +1144,7 @@ const styles = StyleSheet.create({
   paddingPillText: {
     fontSize: 13,
     color: DesignTokens.mutedText,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   paddingPillTextActive: {
     color: DesignTokens.brandOrange,
@@ -1227,28 +1158,28 @@ const styles = StyleSheet.create({
   },
   sheetBottomBar: {
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: DesignTokens.lines,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 12,
   },
   sheetSaveBtn: {
     width: '100%',
-    height: 56,
-    borderRadius: DesignTokens.cardRadius,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     backgroundColor: DesignTokens.brandOrange,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sheetSaveBtnText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   themeModalSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '70%',
     paddingTop: 10,
   },
@@ -1256,13 +1187,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
   },
   themeItemText: {
-    fontSize: 15,
+    fontSize: 14,
     color: DesignTokens.ink,
   },
   themeItemTextSelected: {

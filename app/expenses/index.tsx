@@ -16,9 +16,10 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { DesignTokens } from '../../constants/theme';
+import { DesignTokens, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
+import { FixedBottomBar, useBottomPadding } from '../../components/ui/SafeLayout';
 import {
   expenseService,
   Expense,
@@ -303,19 +304,19 @@ export default function ExpensesScreen() {
     return Array.from(set);
   }, [categoriesList, expenses]);
 
-  // Sticky bottom bar safe padding
-  const bottomBarPadding = Math.max(insets.bottom, 12) + 8;
+  // Safe bottom padding for list
+  const bottomPadding = useBottomPadding(20);
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.headerBackBtn}
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={24} color={DesignTokens.ink} />
+          <Ionicons name="arrow-back" size={22} color={DesignTokens.ink} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Expenses</Text>
         <View style={{ flex: 1 }} />
@@ -357,7 +358,7 @@ export default function ExpensesScreen() {
         data={groupedExpenses}
         keyExtractor={item => item.dateKey}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[DesignTokens.brandOrange]} />}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: 110 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View style={styles.listHeaderWrap}>
@@ -368,7 +369,7 @@ export default function ExpensesScreen() {
                 style={styles.monthArrowBtn}
                 accessibilityLabel="Previous month"
               >
-                <Ionicons name="chevron-back" size={22} color={DesignTokens.ink} />
+                <Ionicons name="chevron-back" size={20} color={DesignTokens.ink} />
               </TouchableOpacity>
               <Text style={styles.monthTitleText}>{displayPeriodLabel}</Text>
               <TouchableOpacity
@@ -376,7 +377,7 @@ export default function ExpensesScreen() {
                 style={styles.monthArrowBtn}
                 accessibilityLabel="Next month"
               >
-                <Ionicons name="chevron-forward" size={22} color={DesignTokens.ink} />
+                <Ionicons name="chevron-forward" size={20} color={DesignTokens.ink} />
               </TouchableOpacity>
             </View>
 
@@ -386,7 +387,7 @@ export default function ExpensesScreen() {
               style={styles.otherDatesBtn}
             >
               <Text style={styles.otherDatesText}>
-                {filterMode === 'monthly' ? 'Other dates (Last 60D, 90D, Custom)' : 'Change date range'}
+                {filterMode === 'monthly' ? 'Other dates' : 'Change date range'}
               </Text>
             </TouchableOpacity>
 
@@ -517,7 +518,7 @@ export default function ExpensesScreen() {
       />
 
       {/* Sticky Bottom Bar (OUTSIDE ScrollView) */}
-      <View style={[styles.stickyBottomBar, { paddingBottom: bottomBarPadding }]}>
+      <FixedBottomBar style={styles.stickyBottomBar}>
         <TouchableOpacity
           style={styles.addExpenseBtn}
           onPress={() => router.push('/expenses/create' as any)}
@@ -525,7 +526,7 @@ export default function ExpensesScreen() {
           <Ionicons name="add" size={20} color="#FFFFFF" />
           <Text style={styles.addExpenseBtnText}>Add expense</Text>
         </TouchableOpacity>
-      </View>
+      </FixedBottomBar>
 
       {/* Other Dates Selection Modal */}
       <Modal
@@ -543,7 +544,7 @@ export default function ExpensesScreen() {
                 onPress={() => setShowDatesModal(false)}
                 style={styles.sheetCloseBtn}
               >
-                <Ionicons name="close" size={24} color={DesignTokens.ink} />
+                <Ionicons name="close" size={22} color={DesignTokens.ink} />
               </TouchableOpacity>
             </View>
 
@@ -617,7 +618,7 @@ export default function ExpensesScreen() {
                 onPress={() => setShowAllBreakdownModal(false)}
                 style={styles.sheetCloseBtn}
               >
-                <Ionicons name="close" size={24} color={DesignTokens.ink} />
+                <Ionicons name="close" size={22} color={DesignTokens.ink} />
               </TouchableOpacity>
             </View>
 
@@ -661,29 +662,26 @@ const styles = StyleSheet.create({
     backgroundColor: DesignTokens.pageBackground,
   },
   header: {
-    height: 64 + 40,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   headerBackBtn: {
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 4,
+    marginRight: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: DesignTokens.ink,
-    marginLeft: 4,
   },
   headerSearchBtn: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -693,17 +691,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginTop: 10,
-    paddingHorizontal: 14,
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: Radius.sm,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13,
     color: DesignTokens.ink,
+    height: '100%',
+    paddingVertical: 0,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -716,29 +716,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 4,
-    borderWidth: 1,
+    padding: 10,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
-    borderRadius: DesignTokens.cardRadius,
+    borderRadius: Radius.md,
     backgroundColor: '#FFFFFF',
   },
   monthArrowBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: Radius.sm,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   monthTitleText: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: DesignTokens.ink,
   },
   otherDatesBtn: {
     alignSelf: 'center',
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     marginTop: 2,
     marginBottom: 6,
   },
@@ -750,33 +750,32 @@ const styles = StyleSheet.create({
   totalCard: {
     padding: 16,
     gap: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
-    borderRadius: DesignTokens.cardRadius,
+    borderRadius: Radius.md,
     backgroundColor: '#FFFFFF',
     marginBottom: 12,
   },
   totalSubLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
     color: DesignTokens.mutedText,
     marginBottom: 2,
   },
   totalAmountText: {
-    fontSize: 32,
-    fontWeight: '800',
-    lineHeight: 36,
+    fontSize: 22,
+    fontWeight: '700',
     color: DesignTokens.ink,
   },
   segmentedBarTrack: {
     flexDirection: 'row',
-    height: 12,
+    height: 8,
     borderRadius: 999,
     overflow: 'hidden',
     backgroundColor: DesignTokens.lines,
   },
   legendContainer: {
-    gap: 8,
+    gap: 6,
     marginTop: 2,
   },
   legendRow: {
@@ -785,17 +784,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   legendColorBox: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
+    width: 10,
+    height: 10,
+    borderRadius: 2,
   },
   legendCatName: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 13,
     color: '#334155',
   },
   legendCatAmount: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: DesignTokens.ink,
   },
@@ -805,12 +804,12 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 4,
     paddingTop: 8,
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: DesignTokens.lines,
   },
   seeAllBtnText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: DesignTokens.orangeText,
   },
   chipsScrollContent: {
@@ -819,9 +818,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   chip: {
-    height: 44,
+    paddingVertical: 7,
     paddingHorizontal: 16,
-    borderRadius: 999,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -830,15 +829,16 @@ const styles = StyleSheet.create({
   },
   chipInactive: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
   },
   chipText: {
-    fontSize: 15,
+    fontSize: 13,
+    fontWeight: '600',
   },
   chipTextActive: {
     color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   chipTextInactive: {
     color: DesignTokens.ink,
@@ -848,11 +848,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   groupHeader: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     color: DesignTokens.mutedText,
     paddingHorizontal: 2,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   expenseRowCard: {
     width: '100%',
@@ -860,24 +862,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: DesignTokens.lines,
-    borderRadius: DesignTokens.cardRadius,
+    borderRadius: Radius.md,
     backgroundColor: '#FFFFFF',
     marginBottom: 8,
-    minHeight: 68,
   },
   rowInitialBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: DesignTokens.orangeTint,
     alignItems: 'center',
     justifyContent: 'center',
   },
   rowInitialText: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: DesignTokens.orangeText,
   },
   rowMiddle: {
@@ -886,17 +887,17 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   rowCategory: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: DesignTokens.ink,
   },
   rowNote: {
-    fontSize: 14,
+    fontSize: 11,
     color: DesignTokens.mutedText,
   },
   rowAmount: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: DesignTokens.ink,
   },
   emptyContainer: {
@@ -906,29 +907,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     color: DesignTokens.ink,
     marginTop: 8,
   },
   emptySub: {
-    fontSize: 14,
+    fontSize: 13,
     color: DesignTokens.mutedText,
     textAlign: 'center',
     paddingHorizontal: 30,
   },
   stickyBottomBar: {
-    position: 'relative',
     backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: DesignTokens.lines,
     paddingHorizontal: 16,
     paddingTop: 12,
   },
   addExpenseBtn: {
     width: '100%',
-    height: 56,
-    borderRadius: DesignTokens.cardRadius,
+    paddingVertical: 16,
+    borderRadius: Radius.md,
     backgroundColor: DesignTokens.brandOrange,
     flexDirection: 'row',
     alignItems: 'center',
@@ -936,8 +936,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   addExpenseBtnText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   modalBackdrop: {
@@ -947,13 +947,13 @@ const styles = StyleSheet.create({
   },
   modalSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     paddingTop: 10,
   },
   sheetHandle: {
     width: 44,
-    height: 5,
+    height: 4,
     borderRadius: 999,
     backgroundColor: '#CBD5E1',
     alignSelf: 'center',
@@ -965,19 +965,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingBottom: 12,
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: DesignTokens.lines,
   },
   sheetTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: DesignTokens.ink,
   },
   sheetCloseBtn: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 4,
   },
   presetOptionsRow: {
     flexDirection: 'row',
@@ -987,11 +984,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   presetPill: {
+    paddingVertical: 7,
     paddingHorizontal: 16,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: DesignTokens.inputBorder,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: DesignTokens.lines,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1001,7 +998,7 @@ const styles = StyleSheet.create({
     backgroundColor: DesignTokens.orangeTint,
   },
   presetPillText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: DesignTokens.ink,
   },
@@ -1019,22 +1016,22 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   breakdownDetailCat: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: DesignTokens.ink,
   },
   breakdownDetailCount: {
-    fontSize: 12,
+    fontSize: 11,
     color: DesignTokens.mutedText,
     marginTop: 1,
   },
   breakdownDetailAmt: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: DesignTokens.ink,
   },
   breakdownDetailPct: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: DesignTokens.orangeText,
   },
