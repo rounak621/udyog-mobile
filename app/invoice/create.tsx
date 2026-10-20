@@ -1431,111 +1431,215 @@ export default function CreateInvoiceScreen() {
           }
         }}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
-          behavior="padding"
-          keyboardVerticalOffset={0}
-        >
-          <View style={{
-            backgroundColor: '#fff',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-            padding: 24,
-            paddingBottom: gstinKeyboardShown ? 12 : insets.bottom + 12,
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>GSTIN required</Text>
-            <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 20, lineHeight: 20 }}>Add your GSTIN to create GST bills.</Text>
+        {Platform.OS === 'ios' ? (
+          <KeyboardAvoidingView
+            style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
+            behavior="padding"
+            keyboardVerticalOffset={0}
+          >
+            <View style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 24,
+              paddingBottom: gstinKeyboardShown ? 12 : insets.bottom + 12,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>GSTIN required</Text>
+              <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 20, lineHeight: 20 }}>Add your GSTIN to create GST bills.</Text>
 
-            <TextInput
-              style={{
-                backgroundColor: '#F8FAFC',
-                borderWidth: 1,
-                borderColor: gstinError ? '#DC2626' : '#E2E8F0',
-                borderRadius: 10,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                fontSize: 16,
-                color: '#0F172A',
-                letterSpacing: 1,
-                marginBottom: 8,
-              }}
-              placeholder="e.g. 27AAPFU0939F1ZV"
-              placeholderTextColor="#94A3B8"
-              autoCapitalize="characters"
-              maxLength={15}
-              value={gstinInput}
-              onChangeText={(v) => {
-                setGstinInput(v.toUpperCase());
-                if (gstinError) setGstinError(null);
-              }}
-              editable={!gstinSaving}
-              autoFocus
-            />
+              <TextInput
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  borderWidth: 1,
+                  borderColor: gstinError ? '#DC2626' : '#E2E8F0',
+                  borderRadius: 10,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                  color: '#0F172A',
+                  letterSpacing: 1,
+                  marginBottom: 8,
+                }}
+                placeholder="e.g. 27AAPFU0939F1ZV"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+                maxLength={15}
+                value={gstinInput}
+                onChangeText={(v) => {
+                  setGstinInput(v.toUpperCase());
+                  if (gstinError) setGstinError(null);
+                }}
+                editable={!gstinSaving}
+                autoFocus
+              />
 
-            {gstinError ? (
-              <Text style={{ fontSize: 12, color: '#DC2626', marginBottom: 12 }}>{gstinError}</Text>
-            ) : (
-              <View style={{ height: 12 }} />
-            )}
-
-            <TouchableOpacity
-              style={{
-                backgroundColor: gstinSaving ? '#FDA06A' : '#FF7A1A',
-                borderRadius: 10,
-                paddingVertical: 14,
-                alignItems: 'center',
-                marginBottom: 10,
-              }}
-              onPress={async () => {
-                const trimmed = gstinInput.trim().toUpperCase();
-                const res = validateGSTIN(trimmed);
-                if (!res.isValid) {
-                  setGstinError(res.error || 'Invalid GSTIN');
-                  return;
-                }
-                if (trimmed.length !== 15) {
-                  setGstinError('GSTIN must be exactly 15 characters');
-                  return;
-                }
-                setGstinSaving(true);
-                setGstinError(null);
-                try {
-                  const token = await getToken();
-                  setAuthToken(token);
-                  await api.put('/businesses/settings', {
-                    gst_number: trimmed,
-                    gst_enabled: true,
-                  });
-                  await refreshBusinesses();
-                  setShowGstinPopup(false);
-                  setInvoiceType('INVOICE');
-                } catch (err: any) {
-                  const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to save GSTIN';
-                  setGstinError(typeof msg === 'string' ? msg : 'Failed to save GSTIN');
-                } finally {
-                  setGstinSaving(false);
-                }
-              }}
-              disabled={gstinSaving}
-            >
-              {gstinSaving ? (
-                <ActivityIndicator color="#fff" size="small" />
+              {gstinError ? (
+                <Text style={{ fontSize: 12, color: '#DC2626', marginBottom: 12 }}>{gstinError}</Text>
               ) : (
-                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save GSTIN</Text>
+                <View style={{ height: 12 }} />
               )}
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={{ paddingVertical: 12, alignItems: 'center' }}
-              onPress={() => {
-                if (!gstinSaving) setShowGstinPopup(false);
-              }}
-              disabled={gstinSaving}
-            >
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748B' }}>Cancel</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: gstinSaving ? '#FDA06A' : '#FF7A1A',
+                  borderRadius: 10,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  marginBottom: 10,
+                }}
+                onPress={async () => {
+                  const trimmed = gstinInput.trim().toUpperCase();
+                  const res = validateGSTIN(trimmed);
+                  if (!res.isValid) {
+                    setGstinError(res.error || 'Invalid GSTIN');
+                    return;
+                  }
+                  if (trimmed.length !== 15) {
+                    setGstinError('GSTIN must be exactly 15 characters');
+                    return;
+                  }
+                  setGstinSaving(true);
+                  setGstinError(null);
+                  try {
+                    const token = await getToken();
+                    setAuthToken(token);
+                    await api.put('/businesses/settings', {
+                      gst_number: trimmed,
+                      gst_enabled: true,
+                    });
+                    await refreshBusinesses();
+                    setShowGstinPopup(false);
+                    setInvoiceType('INVOICE');
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to save GSTIN';
+                    setGstinError(typeof msg === 'string' ? msg : 'Failed to save GSTIN');
+                  } finally {
+                    setGstinSaving(false);
+                  }
+                }}
+                disabled={gstinSaving}
+              >
+                {gstinSaving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save GSTIN</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: 'center' }}
+                onPress={() => {
+                  if (!gstinSaving) setShowGstinPopup(false);
+                }}
+                disabled={gstinSaving}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748B' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        ) : (
+          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={{
+              backgroundColor: '#fff',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 24,
+              paddingBottom: 12,
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>GSTIN required</Text>
+              <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 20, lineHeight: 20 }}>Add your GSTIN to create GST bills.</Text>
+
+              <TextInput
+                style={{
+                  backgroundColor: '#F8FAFC',
+                  borderWidth: 1,
+                  borderColor: gstinError ? '#DC2626' : '#E2E8F0',
+                  borderRadius: 10,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                  color: '#0F172A',
+                  letterSpacing: 1,
+                  marginBottom: 8,
+                }}
+                placeholder="e.g. 27AAPFU0939F1ZV"
+                placeholderTextColor="#94A3B8"
+                autoCapitalize="characters"
+                maxLength={15}
+                value={gstinInput}
+                onChangeText={(v) => {
+                  setGstinInput(v.toUpperCase());
+                  if (gstinError) setGstinError(null);
+                }}
+                editable={!gstinSaving}
+                autoFocus
+              />
+
+              {gstinError ? (
+                <Text style={{ fontSize: 12, color: '#DC2626', marginBottom: 12 }}>{gstinError}</Text>
+              ) : (
+                <View style={{ height: 12 }} />
+              )}
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: gstinSaving ? '#FDA06A' : '#FF7A1A',
+                  borderRadius: 10,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  marginBottom: 10,
+                }}
+                onPress={async () => {
+                  const trimmed = gstinInput.trim().toUpperCase();
+                  const res = validateGSTIN(trimmed);
+                  if (!res.isValid) {
+                    setGstinError(res.error || 'Invalid GSTIN');
+                    return;
+                  }
+                  if (trimmed.length !== 15) {
+                    setGstinError('GSTIN must be exactly 15 characters');
+                    return;
+                  }
+                  setGstinSaving(true);
+                  setGstinError(null);
+                  try {
+                    const token = await getToken();
+                    setAuthToken(token);
+                    await api.put('/businesses/settings', {
+                      gst_number: trimmed,
+                      gst_enabled: true,
+                    });
+                    await refreshBusinesses();
+                    setShowGstinPopup(false);
+                    setInvoiceType('INVOICE');
+                  } catch (err: any) {
+                    const msg = err?.response?.data?.detail || err?.response?.data?.message || err?.message || 'Failed to save GSTIN';
+                    setGstinError(typeof msg === 'string' ? msg : 'Failed to save GSTIN');
+                  } finally {
+                    setGstinSaving(false);
+                  }
+                }}
+                disabled={gstinSaving}
+              >
+                {gstinSaving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save GSTIN</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: 'center' }}
+                onPress={() => {
+                  if (!gstinSaving) setShowGstinPopup(false);
+                }}
+                disabled={gstinSaving}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#64748B' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </KeyboardAvoidingView>
+        )}
       </Modal>
 
       {/* Success Modal */}
