@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invoice settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit}
+button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid #FF7A1A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;display:flex;flex-direction:column;background:#F4F6F9;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0F172A;overflow:hidden">
+
+  <div style="flex:none;height:64px;box-sizing:border-box;display:flex;align-items:center;gap:4px;padding:0 12px 0 6px;background:#FFFFFF;border-bottom:1px solid #E2E8F0">
+    <button type="button" aria-label="Go back" style="width:48px;height:48px;border:0;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+    </button>
+    <div style="font-size:20px;font-weight:800;color:#0F172A">Invoice settings</div>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+
+    <div style="font-size:18px;font-weight:800;color:#0F172A">Invoice numbers</div>
+    <div style="display:flex;flex-direction:column;border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #E2E8F0">
+        <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+          <div style="font-size:15px;color:#475569">GST bill</div>
+          <div style="font-size:17px;font-weight:700;color:#0F172A">INV-003</div>
+        </div>
+        <button type="button" style="flex:none;height:44px;padding:0 16px;border:1.5px solid #FF7A1A;border-radius:10px;background:#FFFFFF;font-size:15px;font-weight:700;color:#D95F00;cursor:pointer">Change</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #E2E8F0">
+        <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+          <div style="font-size:15px;color:#475569">Without GST</div>
+          <div style="font-size:17px;font-weight:700;color:#0F172A">NG-012</div>
+        </div>
+        <button type="button" style="flex:none;height:44px;padding:0 16px;border:1.5px solid #FF7A1A;border-radius:10px;background:#FFFFFF;font-size:15px;font-weight:700;color:#D95F00;cursor:pointer">Change</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+        <div style="flex:1;display:flex;flex-direction:column;gap:1px">
+          <div style="font-size:15px;color:#475569">Service bill</div>
+          <div style="font-size:17px;font-weight:700;color:#0F172A">SRV-007</div>
+        </div>
+        <button type="button" style="flex:none;height:44px;padding:0 16px;border:1.5px solid #FF7A1A;border-radius:10px;background:#FFFFFF;font-size:15px;font-weight:700;color:#D95F00;cursor:pointer">Change</button>
+      </div>
+    </div>
+
+    <div style="font-size:18px;font-weight:800;color:#0F172A;margin-top:4px">What to show on the bill</div>
+    <div style="display:flex;flex-direction:column;border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF;overflow:hidden">
+      <sc-for list="{{switches}}" as="s" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #E2E8F0">
+          <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+            <div style="font-size:16px;font-weight:700;color:#0F172A">{{s.title}}</div>
+            <div style="font-size:14px;color:#475569">{{s.hint}}</div>
+          </div>
+          <sc-if value="{{s.on}}" hint-placeholder-val="{{true}}">
+            <button type="button" role="switch" aria-checked="true" aria-label="{{s.title}}" onClick="{{s.flip}}" style="flex:none;width:56px;height:32px;padding:0;border:0;border-radius:999px;background:#FF7A1A;position:relative;cursor:pointer">
+              <span style="position:absolute;top:4px;left:28px;width:24px;height:24px;border-radius:999px;background:#FFFFFF"></span>
+            </button>
+          </sc-if>
+          <sc-if value="{{s.off}}" hint-placeholder-val="{{false}}">
+            <button type="button" role="switch" aria-checked="false" aria-label="{{s.title}}" onClick="{{s.flip}}" style="flex:none;width:56px;height:32px;padding:0;border:0;border-radius:999px;background:#94A3B8;position:relative;cursor:pointer">
+              <span style="position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:999px;background:#FFFFFF"></span>
+            </button>
+          </sc-if>
+        </div>
+      </sc-for>
+      <button type="button" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:0;background:#FFFFFF;text-align:left;cursor:pointer">
+        <div style="flex:1;display:flex;flex-direction:column;gap:2px">
+          <div style="font-size:16px;font-weight:700;color:#0F172A">Bill look</div>
+          <div style="font-size:14px;color:#475569">Classic orange</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div style="font-size:18px;font-weight:800;color:#0F172A;margin-top:4px">Bill heading</div>
+    <div style="display:flex;gap:8px">
+      <sc-for list="{{headings}}" as="h" hint-placeholder-count="2">
+        <sc-if value="{{h.active}}" hint-placeholder-val="{{false}}">
+          <button type="button" onClick="{{h.pick}}" style="flex:1;height:52px;border:0;border-radius:12px;background:#FF7A1A;color:#FFFFFF;font-size:16px;font-weight:700;cursor:pointer">{{h.label}}</button>
+        </sc-if>
+        <sc-if value="{{h.inactive}}" hint-placeholder-val="{{true}}">
+          <button type="button" onClick="{{h.pick}}" style="flex:1;height:52px;border:1px solid #8795AA;border-radius:12px;background:#FFFFFF;color:#0F172A;font-size:16px;font-weight:600;cursor:pointer">{{h.label}}</button>
+        </sc-if>
+      </sc-for>
+    </div>
+
+    <div style="font-size:18px;font-weight:800;color:#0F172A;margin-top:4px">Note at the bottom</div>
+    <div style="box-sizing:border-box;padding:14px;display:flex;flex-direction:column;gap:8px;border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF">
+      <label for="decl" style="font-size:14px;color:#475569">Printed on every bill</label>
+      <textarea id="decl" rows="3" style="box-sizing:border-box;width:100%;padding:12px;border:1px solid #8795AA;border-radius:10px;background:#FFFFFF;font:500 16px 'Plus Jakarta Sans',system-ui,sans-serif;color:#0F172A;resize:none">Thank you for your business. Goods once sold will not be taken back.</textarea>
+    </div>
+  </div>
+
+  <div style="flex:none;box-sizing:border-box;padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #E2E8F0">
+    <button type="button" style="width:100%;height:56px;border:0;border-radius:14px;background:#FF7A1A;color:#FFFFFF;font-size:17px;font-weight:800;cursor:pointer">Save changes</button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const sw = st.sw || { discount: false, paid: true, ship: false };
+    const heading = st.heading || 'Tax Invoice';
+    const defs = [
+      { key: 'discount', title: 'Show discount', hint: 'A discount column on the bill' },
+      { key: 'paid', title: 'Show Paid or Unpaid', hint: 'A stamp at the top of the bill' },
+      { key: 'ship', title: 'Show delivery address', hint: 'Where the goods are sent' }
+    ];
+    const switches = defs.map((d) => ({
+      title: d.title,
+      hint: d.hint,
+      on: !!sw[d.key],
+      off: !sw[d.key],
+      flip: () => {
+        const n = Object.assign({}, sw);
+        n[d.key] = !sw[d.key];
+        this.setState({ sw: n });
+      }
+    }));
+    const headings = ['Tax Invoice', 'Invoice'].map((h) => ({
+      label: h,
+      active: heading === h,
+      inactive: heading !== h,
+      pick: () => this.setState({ heading: h })
+    }));
+    return { switches: switches, headings: headings };
+  }
+}
+</script>
+</body>
+</html>

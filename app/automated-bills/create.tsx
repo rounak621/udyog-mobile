@@ -64,7 +64,7 @@ export default function CreateRecurringBillScreen() {
   const bottomPadding = useBottomPadding(24);
   const { getToken } = useAuth();
   const { business } = useBusiness();
-  const hasGstin = Boolean(business?.gst_number && business.gst_number.trim());
+  const hasGstin = Boolean(business?.gst_number?.trim());
   const params = useLocalSearchParams<{ id?: string; customer_id?: string; maya_data?: string }>();
   const isEditMode = !!params.id;
 

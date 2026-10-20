@@ -63,7 +63,7 @@ export default function OrderCreateScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { business } = useBusiness();
-  const hasGstin = Boolean(business?.gst_number && business.gst_number.trim());
+  const hasGstin = Boolean(business?.gst_number?.trim());
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);

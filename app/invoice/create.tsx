@@ -46,7 +46,7 @@ export default function CreateInvoiceScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { business } = useBusiness();
-  const hasGstin = Boolean(business?.gst_number && business.gst_number.trim());
+  const hasGstin = Boolean(business?.gst_number?.trim());
   const params = useLocalSearchParams<{ customer_id?: string; party_id?: string; maya_data?: string; id?: string }>();
   const isEditMode = !!params.id;
   const preselectCustomerId = params.customer_id || params.party_id;
