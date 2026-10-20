@@ -4,7 +4,7 @@ import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, TextInput, ActivityIndicator,
   Alert, Modal, FlatList, Animated, Easing, Linking,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, Keyboard
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -90,6 +90,7 @@ export default function CreateInvoiceScreen() {
   const [gstinInput, setGstinInput] = useState('');
   const [gstinSaving, setGstinSaving] = useState(false);
   const [gstinError, setGstinError] = useState<string | null>(null);
+  const [gstinKeyboardShown, setGstinKeyboardShown] = useState(false);
 
   // Item picker state
   const [itemSearch, setItemSearch] = useState<Record<string, string>>({});
@@ -354,6 +355,16 @@ export default function CreateInvoiceScreen() {
       ]).start();
     }
   }, [showSuccess]);
+
+  // Track keyboard visibility for the GSTIN popup bottom padding
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setGstinKeyboardShown(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setGstinKeyboardShown(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const searchLower = partySearch.toLowerCase().trim();
   const filteredParties = [
@@ -1162,20 +1173,6 @@ export default function CreateInvoiceScreen() {
               <Ionicons name="add" size={16} color="#F97316" />
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316', flexShrink: 1 }} textBreakStrategy="simple">Add Item</Text>
             </TouchableOpacity>
-            {!hasGstin && (
-              <View style={{ marginTop: 10, paddingHorizontal: 4 }}>
-                <Text style={{ fontSize: 12, color: '#64748B', lineHeight: 18 }}>
-                  GST is off because no GSTIN is added.{' '}
-                  <Text
-                    style={{ color: '#FF7A1A', fontWeight: '600', textDecorationLine: 'underline' }}
-                    onPress={() => router.push('/settings/business')}
-                  >
-                    Add your GSTIN in Settings
-                  </Text>{' '}
-                  to charge GST.
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
@@ -1427,6 +1424,7 @@ export default function CreateInvoiceScreen() {
         visible={showGstinPopup}
         transparent
         animationType="slide"
+        statusBarTranslucent
         onRequestClose={() => {
           if (!gstinSaving) {
             setShowGstinPopup(false);
@@ -1435,10 +1433,16 @@ export default function CreateInvoiceScreen() {
       >
         <KeyboardAvoidingView
           style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          behavior="padding"
+          keyboardVerticalOffset={0}
         >
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 24 + insets.bottom }}>
+          <View style={{
+            backgroundColor: '#fff',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            padding: 24,
+            paddingBottom: gstinKeyboardShown ? 12 : insets.bottom + 12,
+          }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 8 }}>GSTIN required</Text>
             <Text style={{ fontSize: 14, color: '#64748B', marginBottom: 20, lineHeight: 20 }}>Add your GSTIN to create GST bills.</Text>
 
