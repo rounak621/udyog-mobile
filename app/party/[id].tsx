@@ -74,6 +74,31 @@ export default function PartyDetailScreen() {
   const [ledgerLoaded, setLedgerLoaded] = useState(false);
   const [downloadingKhata, setDownloadingKhata] = useState(false);
 
+  // Bill-wise Khata State
+  const [khataView, setKhataView] = useState<'billwise' | 'ledger'>('billwise');
+  const [billPendingOnly, setBillPendingOnly] = useState(false);
+  const [billwiseData, setBillwiseData] = useState<any>(null);
+  const [billwiseLoading, setBillwiseLoading] = useState(false);
+  const [billwiseLoaded, setBillwiseLoaded] = useState(false);
+
+  const loadBillwiseStatement = useCallback(async () => {
+    setBillwiseLoading(true);
+    try {
+      const token = await getToken();
+      setAuthToken(token);
+      const bizRes = await api.get('/businesses/me');
+      const bId = bizRes.data.id;
+
+      const res = await api.get(`/customers/${id}/statement?business_id=${bId}${billPendingOnly ? '&pending_only=true' : ''}`);
+      setBillwiseData(res.data);
+      setBillwiseLoaded(true);
+    } catch (err) {
+      console.log('Failed to load billwise statement', err);
+    } finally {
+      setBillwiseLoading(false);
+    }
+  }, [id, getToken, billPendingOnly]);
+
   const handleDownloadKhata = async () => {
     if (!party || downloadingKhata) return;
     setDownloadingKhata(true);
@@ -85,9 +110,12 @@ export default function PartyDetailScreen() {
 
       const safeName = (party.name || 'Party').replace(/[^a-zA-Z0-9]/g, '_');
       const dateStr = new Date().toISOString().split('T')[0];
-      const fileName = `${safeName}_Khata_${dateStr}.pdf`;
+      const suffix = (khataView === 'billwise' && billPendingOnly) ? '_Pending' : '';
+      const fileName = `${safeName}_Khata${suffix}_${dateStr}.pdf`;
 
-      const pdfUrl = `${API_BASE_URL}/customers/${id}/ledger/pdf?business_id=${bId}`;
+      const viewParam = khataView === 'ledger' ? 'ledger' : 'bill_wise';
+      const pendingParam = (khataView === 'billwise' && billPendingOnly) ? '&pending_only=true' : '';
+      const pdfUrl = `${API_BASE_URL}/customers/${id}/ledger/pdf?business_id=${bId}&view=${viewParam}${pendingParam}`;
       const fileUri = (FileSystem as any).cacheDirectory + fileName;
 
       const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
@@ -231,12 +259,16 @@ export default function PartyDetailScreen() {
     }, [load])
   );
 
-  // Lazy load ledger when switching to khata tab
+  // Lazy load billwise statement or ledger when switching to khata tab
   useEffect(() => {
-    if (activeTab === 'khata' && !ledgerLoaded && party) {
-      loadLedger();
+    if (activeTab === 'khata' && party) {
+      if (khataView === 'billwise') {
+        loadBillwiseStatement();
+      } else if (!ledgerLoaded) {
+        loadLedger();
+      }
     }
-  }, [activeTab, ledgerLoaded, party, loadLedger]);
+  }, [activeTab, khataView, billPendingOnly, ledgerLoaded, party, loadBillwiseStatement, loadLedger]);
 
   const handleEdit = () => {
     router.push(`/party/create?id=${id}`);
@@ -342,6 +374,33 @@ export default function PartyDetailScreen() {
 
   const fmt = (n: number) => '₹' + (n || 0).toLocaleString('en-IN');
   const getInitials = (name: string) => name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+
+  const formatStatementDate = (dateStr?: string | null) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${day}-${months[d.getMonth()]}-${d.getFullYear()}`;
+  };
+
+  const renderBillwiseBadge = (status: string) => {
+    const s = (status || '').toUpperCase();
+    let bg = '#DC2626'; // UNPAID solid red
+    let label = 'UNPAID';
+    if (s === 'PAID') {
+      bg = '#16A34A'; // PAID solid green
+      label = 'PAID';
+    } else if (s === 'PART PAID' || s === 'PARTIAL') {
+      bg = '#D97706'; // PART PAID solid amber
+      label = 'PART PAID';
+    }
+    return (
+      <View style={{ backgroundColor: bg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 3 }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{label}</Text>
+      </View>
+    );
+  };
 
   if (loading) return <View style={styles.loader}><ActivityIndicator color={Colors.primary} /></View>;
   if (!party) return (
@@ -611,8 +670,39 @@ export default function PartyDetailScreen() {
         {/* Tab Contents */}
         {activeTab === 'khata' ? (
           <View style={styles.section}>
+            {/* View Switcher: Bill-wise vs Ledger */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
+              <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 3 }}>
+                <TouchableOpacity
+                  onPress={() => setKhataView('billwise')}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 6,
+                    backgroundColor: khataView === 'billwise' ? '#FFFFFF' : 'transparent',
+                    elevation: khataView === 'billwise' ? 1 : 0,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: khataView === 'billwise' ? '#0F172A' : '#64748B' }}>
+                    Bill-wise
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setKhataView('ledger')}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: 6,
+                    backgroundColor: khataView === 'ledger' ? '#FFFFFF' : 'transparent',
+                    elevation: khataView === 'ledger' ? 1 : 0,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: khataView === 'ledger' ? '#0F172A' : '#64748B' }}>
+                    Ledger view
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <TouchableOpacity
                 onPress={handleDownloadKhata}
                 disabled={downloadingKhata}
@@ -628,35 +718,180 @@ export default function PartyDetailScreen() {
                 )}
               </TouchableOpacity>
             </View>
-            {ledgerLoading ? (
-              <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
-            ) : ledgerLines.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No transactions found.</Text>
+
+            {/* Bill-wise view */}
+            {khataView === 'billwise' ? (
+              <View>
+                {/* Filter toggle: All bills vs Only pending bills */}
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                  <TouchableOpacity
+                    onPress={() => setBillPendingOnly(false)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: !billPendingOnly ? '#0F172A' : '#E2E8F0',
+                      backgroundColor: !billPendingOnly ? '#0F172A' : '#FFFFFF',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: !billPendingOnly ? '#FFFFFF' : '#64748B' }}>
+                      All bills
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setBillPendingOnly(true)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 4,
+                      borderRadius: 16,
+                      borderWidth: 1,
+                      borderColor: billPendingOnly ? '#0F172A' : '#E2E8F0',
+                      backgroundColor: billPendingOnly ? '#0F172A' : '#FFFFFF',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: billPendingOnly ? '#FFFFFF' : '#64748B' }}>
+                      Only pending bills
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {billwiseLoading ? (
+                  <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
+                ) : !billwiseData?.bills || billwiseData.bills.length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyText}>
+                      {billPendingOnly ? 'No pending bills found.' : 'No invoices found.'}
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {billwiseData.bills.map((b: any, idx: number) => {
+                      return (
+                        <TouchableOpacity
+                          key={b.invoice_id || idx}
+                          onPress={() => router.push(`/invoice/${b.invoice_id}`)}
+                          style={{
+                            backgroundColor: Colors.card,
+                            borderRadius: Radius.md,
+                            padding: 12,
+                            borderWidth: 0.5,
+                            borderColor: Colors.border,
+                            marginBottom: 8,
+                            gap: 6,
+                          }}
+                        >
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: Colors.primary }}>
+                              {b.bill_number}
+                            </Text>
+                            {renderBillwiseBadge(b.status)}
+                          </View>
+
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+                              Date: {formatStatementDate(b.bill_date)}
+                            </Text>
+                            {b.payment_date && (
+                              <Text style={{ fontSize: 11, color: Colors.textMuted }}>
+                                Paid on: {formatStatementDate(b.payment_date)} ({b.mode || 'Cash'})
+                              </Text>
+                            )}
+                          </View>
+
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4, borderTopWidth: 0.5, borderTopColor: '#F1F5F9' }}>
+                            <View>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted, textTransform: 'uppercase' }}>Amount</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{fmt(Number(b.amount))}</Text>
+                            </View>
+                            <View>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted, textTransform: 'uppercase' }}>Paid</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '700', color: '#16A34A' }}>
+                                {Number(b.paid) > 0 ? fmt(Number(b.paid)) : '—'}
+                              </Text>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text style={{ fontSize: 10, color: Colors.textMuted, textTransform: 'uppercase' }}>Pending</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '800', color: Number(b.pending) > 0 ? '#DC2626' : '#16A34A' }}>
+                                {fmt(Number(b.pending))}
+                              </Text>
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+
+                    {/* Advance / Unallocated Section */}
+                    {billwiseData?.unallocated_payments && billwiseData.unallocated_payments.length > 0 && (
+                      <View style={{ backgroundColor: '#FAF5FF', borderWidth: 1, borderColor: '#E9D5FF', borderRadius: Radius.md, padding: 12, marginTop: 4, marginBottom: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#7E22CE', textTransform: 'uppercase', marginBottom: 6 }}>
+                          Advance / unallocated payments
+                        </Text>
+                        {billwiseData.unallocated_payments.map((u: any, idx: number) => (
+                          <View key={u.payment_id || idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+                            <Text style={{ fontSize: 12, color: '#3B0764' }}>
+                              {formatStatementDate(u.payment_date)} • {u.mode}
+                            </Text>
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#16A34A' }}>
+                              {fmt(Number(u.amount))}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Bottom Totals Card */}
+                    <View style={{ backgroundColor: Colors.card, borderRadius: Radius.md, borderWidth: 1.5, borderColor: '#0F172A', overflow: 'hidden', marginTop: 4 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border }}>
+                        <Text style={{ fontSize: 12, color: Colors.textSecondary, fontWeight: '600' }}>Total Billed</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: Colors.text }}>{fmt(Number(billwiseData.total_billed))}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border }}>
+                        <Text style={{ fontSize: 12, color: Colors.textSecondary, fontWeight: '600' }}>Total Received</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#16A34A' }}>{fmt(Number(billwiseData.total_received))}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#0F172A' }}>
+                        <Text style={{ fontSize: 12, color: '#FFFFFF', fontWeight: '700' }}>Total Pending (Closing Balance)</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFFFFF' }}>
+                          {fmt(Number(billwiseData.closing_balance))} {billwiseData.closing_balance_type || 'DR'}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
             ) : (
-              ledgerLines.map((line, idx) => {
-                const isDebit = Number(line.debit) > 0;
-                const amount = isDebit ? line.debit : line.credit;
-                return (
-                  <View key={idx} style={styles.ledgerCard}>
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <Text style={styles.ledgerParticulars}>{line.narration || 'Transaction'}</Text>
-                      <Text style={styles.ledgerDate}>
-                        {line.transaction_date ? new Date(line.transaction_date).toLocaleDateString('en-IN') : ''}
-                      </Text>
+              /* Ledger view */
+              ledgerLoading ? (
+                <ActivityIndicator color={Colors.primary} style={{ marginVertical: 24 }} />
+              ) : ledgerLines.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>No transactions found.</Text>
+                </View>
+              ) : (
+                ledgerLines.map((line, idx) => {
+                  const isDebit = Number(line.debit) > 0;
+                  const amount = isDebit ? line.debit : line.credit;
+                  return (
+                    <View key={idx} style={styles.ledgerCard}>
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <Text style={styles.ledgerParticulars}>{line.narration || 'Transaction'}</Text>
+                        <Text style={styles.ledgerDate}>
+                          {line.transaction_date ? new Date(line.transaction_date).toLocaleDateString('en-IN') : ''}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                        <Text style={[styles.ledgerAmount, isDebit ? styles.debitText : styles.creditText]}>
+                          {isDebit ? '-' : '+'}{fmt(Number(amount))}
+                        </Text>
+                        <Text style={styles.ledgerBalance}>
+                          Bal: {fmt(Number(line.running_balance))} {line.balance_type}
+                        </Text>
+                      </View>
                     </View>
-                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                      <Text style={[styles.ledgerAmount, isDebit ? styles.debitText : styles.creditText]}>
-                        {isDebit ? '-' : '+'}{fmt(Number(amount))}
-                      </Text>
-                      <Text style={styles.ledgerBalance}>
-                        Bal: {fmt(Number(line.running_balance))} {line.balance_type}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })
+                  );
+                })
+              )
             )}
           </View>
         ) : (

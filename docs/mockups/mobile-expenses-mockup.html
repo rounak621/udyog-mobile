@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Expenses</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #FF7A1A;outline-offset:2px}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;display:flex;flex-direction:column;background:#F4F6F9;font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0F172A;overflow:hidden">
+
+  <div style="flex:none;height:64px;box-sizing:border-box;display:flex;align-items:center;gap:4px;padding:0 12px 0 6px;background:#FFFFFF;border-bottom:1px solid #E2E8F0">
+    <button type="button" aria-label="Go back" style="width:48px;height:48px;border:0;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></svg>
+    </button>
+    <div style="font-size:20px;font-weight:800;color:#0F172A">Expenses</div>
+  </div>
+
+  <div style="flex:1;min-height:0;overflow-y:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:12px">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;padding:4px;border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF">
+      <button type="button" aria-label="Last month" onClick="{{prev}}" style="width:48px;height:48px;border:0;border-radius:10px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <div style="font-size:18px;font-weight:800;color:#0F172A">{{monthName}}</div>
+      <button type="button" aria-label="Next month" onClick="{{next}}" style="width:48px;height:48px;border:0;border-radius:10px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;cursor:pointer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div style="box-sizing:border-box;padding:16px;display:flex;flex-direction:column;gap:12px;border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-size:14px;font-weight:500;color:#475569">Spent this month</div>
+        <div style="font-size:32px;font-weight:800;line-height:1.1;color:#0F172A">{{total}}</div>
+      </div>
+      <div style="display:flex;height:12px;border-radius:999px;overflow:hidden;background:#E2E8F0">
+        <div style="width:65%;background:#FF7A1A"></div>
+        <div style="width:13%;background:#0F172A"></div>
+        <div style="width:16%;background:#64748B"></div>
+        <div style="width:6%;background:#CBD5E1"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;font-size:15px;color:#334155">
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:#FF7A1A"></span><span style="flex:1">Rent</span><span style="font-weight:700;color:#0F172A">₹12,000</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:#0F172A"></span><span style="flex:1">Electricity</span><span style="font-weight:700;color:#0F172A">₹2,350</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:#64748B"></span><span style="flex:1">Salary</span><span style="font-weight:700;color:#0F172A">₹3,000</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="width:12px;height:12px;border-radius:3px;background:#CBD5E1"></span><span style="flex:1">Internet</span><span style="font-weight:700;color:#0F172A">₹1,100</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px">
+      <sc-for list="{{chips}}" as="c" hint-placeholder-count="5">
+        <sc-if value="{{c.active}}" hint-placeholder-val="{{false}}">
+          <button type="button" onClick="{{c.pick}}" style="flex:none;height:44px;padding:0 16px;border:0;border-radius:999px;background:#FF7A1A;color:#FFFFFF;font-size:15px;font-weight:700;cursor:pointer">{{c.label}}</button>
+        </sc-if>
+        <sc-if value="{{c.inactive}}" hint-placeholder-val="{{true}}">
+          <button type="button" onClick="{{c.pick}}" style="flex:none;height:44px;padding:0 16px;border:1px solid #8795AA;border-radius:999px;background:#FFFFFF;color:#0F172A;font-size:15px;font-weight:600;cursor:pointer">{{c.label}}</button>
+        </sc-if>
+      </sc-for>
+    </div>
+
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:14px;font-weight:700;color:#475569;padding:0 2px">{{g.day}}</div>
+        <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+          <button type="button" style="width:100%;box-sizing:border-box;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E2E8F0;border-radius:14px;background:#FFFFFF;text-align:left;cursor:pointer">
+            <div style="flex:none;width:44px;height:44px;border-radius:12px;background:#FFF3E6;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#D95F00">{{r.initial}}</div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+              <div style="font-size:17px;font-weight:700;color:#0F172A">{{r.cat}}</div>
+              <div style="font-size:14px;color:#475569">{{r.note}}</div>
+            </div>
+            <div style="flex:none;font-size:17px;font-weight:800;color:#0F172A">{{r.amount}}</div>
+          </button>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex:none;box-sizing:border-box;padding:12px 16px 20px;background:#FFFFFF;border-top:1px solid #E2E8F0">
+    <button type="button" style="width:100%;height:56px;border:0;border-radius:14px;background:#FF7A1A;color:#FFFFFF;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:800;cursor:pointer">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+      <span>Add expense</span>
+    </button>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const cat = st.cat || 'All';
+    const m = st.m === undefined ? 0 : st.m;
+    const months = ['October 2026', 'September 2026', 'August 2026'];
+    const idx = Math.min(Math.max(m, 0), 2);
+    const rows = [
+      { day: 'Today, 19 Oct', cat: 'Electricity', note: 'Paid by UPI', amount: '₹2,350' },
+      { day: '15 Oct', cat: 'Salary', note: 'Ramesh, helper', amount: '₹3,000' },
+      { day: '10 Oct', cat: 'Internet', note: 'Monthly plan', amount: '₹1,100' },
+      { day: '1 Oct', cat: 'Rent', note: 'Shop rent', amount: '₹12,000' }
+    ];
+    const filtered = rows.filter((r) => cat === 'All' || r.cat === cat);
+    const groups = filtered.map((r) => ({
+      day: r.day,
+      rows: [{ initial: r.cat.charAt(0), cat: r.cat, note: r.note, amount: r.amount }]
+    }));
+    const chips = ['All', 'Rent', 'Electricity', 'Salary', 'Internet'].map((c) => ({
+      label: c,
+      active: cat === c,
+      inactive: cat !== c,
+      pick: () => this.setState({ cat: c })
+    }));
+    return {
+      monthName: months[idx],
+      prev: () => this.setState({ m: Math.min(idx + 1, 2) }),
+      next: () => this.setState({ m: Math.max(idx - 1, 0) }),
+      total: '₹18,450',
+      chips: chips,
+      groups: groups
+    };
+  }
+}
+</script>
+</body>
+</html>
