@@ -9,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
+import { safeBack } from '../../utils/navigation';
 
 export default function ReportsScreen() {
   const { getToken } = useAuth();
@@ -43,7 +44,7 @@ export default function ReportsScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.replace('/(tabs)/more');
+        safeBack(router, '/(tabs)/more');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -100,7 +101,7 @@ export default function ReportsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/more')} style={{ padding: 4, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(tabs)/more')} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Reports</Text>

@@ -25,6 +25,7 @@ import { GST_RATE_STRINGS } from '../../constants/gst';
 import { api, setAuthToken } from '../../services/api';
 import { quotationService, QuotationLineItem } from '../../services/quotation';
 import { showApiError } from '../../utils/apiError';
+import { safeBack } from '../../utils/navigation';
 import { checkIsOnline } from '../../services/network';
 import { UnitPickerModal } from '../../components/UnitPickerModal';
 import { useBusiness } from '../../context/BusinessContext';
@@ -123,7 +124,7 @@ export default function CreateQuotationScreen() {
         Alert.alert(
           'Plan Upgrade Required',
           'Estimates / Quotations are available on Vistaar, Premium, and Enterprise plans. Upgrade your subscription to create quotations.',
-          [{ text: 'OK', onPress: () => router.back() }]
+          [{ text: 'OK', onPress: () => safeBack(router, '/quotations') }]
         );
       }
       return;
@@ -461,7 +462,7 @@ export default function CreateQuotationScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Top Bar */}
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/quotations')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>

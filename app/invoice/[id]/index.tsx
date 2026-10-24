@@ -16,6 +16,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { savePdfToAndroidOrShare } from '../../../services/safHelper';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { safeBack } from '../../../utils/navigation';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -150,7 +151,7 @@ export default function InvoiceDetailScreen() {
               const token = await getToken();
               setAuthToken(token);
               await api.delete(`/invoices/${id}?business_id=${invoice.business_id}`);
-              router.replace('/(tabs)/bills');
+              safeBack(router, '/(tabs)/bills');
             } catch (err: any) {
               Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete invoice'));
             } finally {
@@ -173,7 +174,7 @@ export default function InvoiceDetailScreen() {
       );
       setShowDeletePaidModal(false);
       setConfirmInvoiceNumber('');
-      router.replace('/(tabs)/bills');
+      safeBack(router, '/(tabs)/bills');
     } catch (err: any) {
       Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete invoice'));
     } finally {
@@ -311,7 +312,7 @@ export default function InvoiceDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(tabs)/bills')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Invoice</Text>

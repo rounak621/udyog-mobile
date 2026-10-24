@@ -23,6 +23,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { safeBack } from '../../utils/navigation';
 
 interface PaymentModeBreakdown {
   mode: string;
@@ -143,7 +144,7 @@ export default function PaymentReportScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.back();
+        safeBack(router, '/reports');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -406,7 +407,7 @@ export default function PaymentReportScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Top Header */}
       <View style={[styles.topbar, { paddingTop: Math.max(insets.top, 20) + 12 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/reports')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>

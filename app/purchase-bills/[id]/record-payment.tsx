@@ -12,6 +12,7 @@ import { FixedBottomBar } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { safeBack } from '../../../utils/navigation';
 
 export default function PurchaseBillRecordPaymentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,7 +45,7 @@ export default function PurchaseBillRecordPaymentScreen() {
       setPaymentAmount(String(bal));
     } catch (err) {
       Alert.alert('Error', 'Failed to load purchase bill details');
-      router.back();
+      safeBack(router, id ? `/purchase-bills/${id}` : '/purchase-bills');
     } finally {
       setLoading(false);
     }
@@ -77,7 +78,7 @@ export default function PurchaseBillRecordPaymentScreen() {
         purchase_bill_id: bill?.id,
         supplier_id: bill?.supplier?.id,
       });
-      router.back();
+      safeBack(router, id ? `/purchase-bills/${id}` : '/purchase-bills');
     } catch (err: any) {
       Alert.alert('Error', getApiErrorMessage(err, 'Failed to record payment'));
     } finally {
@@ -96,7 +97,7 @@ export default function PurchaseBillRecordPaymentScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, id ? `/purchase-bills/${id}` : '/purchase-bills')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Record Payment</Text>

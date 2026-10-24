@@ -16,6 +16,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
 import { escapeHtml } from '../../utils/escapeHtml';
+import { safeBack } from '../../utils/navigation';
 
 interface PurchaseBill {
   id: string;
@@ -124,7 +125,7 @@ export default function PurchaseReportScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.replace('/reports');
+        safeBack(router, '/reports');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -317,7 +318,7 @@ export default function PurchaseReportScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={[styles.headerRow, { justifyContent: 'space-between' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={() => router.replace('/reports')} style={styles.backBtn}>
+            <TouchableOpacity onPress={() => safeBack(router, '/reports')} style={styles.backBtn}>
               <Ionicons name="arrow-back" size={22} color={Colors.text} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Purchase Report</Text>

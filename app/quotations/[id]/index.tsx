@@ -23,6 +23,7 @@ import { quotationService, Quotation } from '../../../services/quotation';
 import { showApiError } from '../../../utils/apiError';
 import { getPdfViewerHtml } from '../../../utils/pdfViewerHtml';
 import { savePdfToAndroidOrShare } from '../../../services/safHelper';
+import { safeBack } from '../../../utils/navigation';
 import { useBusiness } from '../../../context/BusinessContext';
 
 export default function QuotationDetailScreen() {
@@ -210,7 +211,7 @@ export default function QuotationDetailScreen() {
               const token = await getToken();
               setAuthToken(token);
               await quotationService.deleteQuotation(quotation.id, quotation.business_id);
-              router.replace('/quotations');
+              safeBack(router, '/quotations');
             } catch (err: any) {
               showApiError(err, 'Failed to delete quotation');
             } finally {
@@ -282,7 +283,7 @@ export default function QuotationDetailScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={{ color: Colors.textMuted, fontSize: 14 }}>Quotation not found.</Text>
-        <TouchableOpacity style={styles.backHomeBtn} onPress={() => router.replace('/quotations')}>
+        <TouchableOpacity style={styles.backHomeBtn} onPress={() => safeBack(router, '/quotations')}>
           <Text style={{ color: '#fff', fontWeight: '600' }}>Go to Quotations</Text>
         </TouchableOpacity>
       </View>
@@ -316,7 +317,7 @@ export default function QuotationDetailScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Top Header */}
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/quotations')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 10 }}>

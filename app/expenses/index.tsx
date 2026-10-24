@@ -20,6 +20,7 @@ import { DesignTokens, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
 import { FixedBottomBar, useBottomPadding } from '../../components/ui/SafeLayout';
+import { safeBack } from '../../utils/navigation';
 import {
   expenseService,
   Expense,
@@ -126,7 +127,7 @@ export default function ExpensesScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.back();
+        safeBack(router, '/(tabs)');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -312,7 +313,7 @@ export default function ExpensesScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, '/(tabs)')}
           style={styles.headerBackBtn}
           accessibilityLabel="Go back"
         >

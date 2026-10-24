@@ -13,6 +13,7 @@ import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
 import Svg, { Circle } from 'react-native-svg';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { safeBack } from '../../utils/navigation';
 
 const PLANS = [
   {
@@ -237,7 +238,7 @@ export default function SubscriptionScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(tabs)/more')} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>My Plan</Text>

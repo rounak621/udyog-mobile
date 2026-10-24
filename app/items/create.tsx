@@ -16,6 +16,7 @@ import { api, setAuthToken } from '../../services/api';
 import { validateHSN } from '../../utils/validators';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { UnitPickerModal } from '../../components/UnitPickerModal';
+import { safeBack } from '../../utils/navigation';
 
 export default function CreateItemScreen() {
   const { getToken } = useAuth();
@@ -139,7 +140,7 @@ export default function CreateItemScreen() {
               setAuthToken(token);
               await api.delete(`/items/${id}?business_id=${businessId}`);
               Alert.alert('Success', 'Item deleted successfully', [
-                { text: 'OK', onPress: () => router.replace('/items') }
+                { text: 'OK', onPress: () => safeBack(router, '/inventory') }
               ]);
             } catch (err: any) {
               Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete item'));
@@ -156,7 +157,7 @@ export default function CreateItemScreen() {
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/inventory')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>

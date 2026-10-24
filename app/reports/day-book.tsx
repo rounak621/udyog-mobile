@@ -12,6 +12,7 @@ import { useBottomPadding } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import DateRangePicker from '../../components/DateRangePicker';
+import { safeBack } from '../../utils/navigation';
 
 interface DayBookEntry {
   date: string;
@@ -144,7 +145,7 @@ export default function DayBookReportScreen() {
   useFocusEffect(
     useCallback(() => {
       const onBack = () => {
-        router.replace('/reports');
+        safeBack(router, '/reports');
         return true;
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
@@ -183,7 +184,7 @@ export default function DayBookReportScreen() {
       {/* Top Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.replace('/reports')} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeBack(router, '/reports')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Day Book (Ledger)</Text>

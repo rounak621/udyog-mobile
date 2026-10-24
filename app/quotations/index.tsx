@@ -22,6 +22,7 @@ import { quotationService, QuotationListItem } from '../../services/quotation';
 import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
 import { hasVistaarPlusAccess } from '../../utils/planAccess';
+import { safeBack } from '../../utils/navigation';
 
 const STATUS_FILTERS = ['All', 'Pending', 'Accepted', 'Rejected', 'Expired'];
 const LIMIT = 20;
@@ -220,7 +221,7 @@ export default function QuotationsListScreen() {
       {/* Top Header */}
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeBack(router, '/(tabs)/bills')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.title}>Quotations</Text>

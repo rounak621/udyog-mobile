@@ -12,6 +12,7 @@ import { FixedBottomBar } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { safeBack } from '../../../utils/navigation';
 
 type PaymentSource = 'DIRECT' | 'ADVANCE' | 'SPLIT';
 
@@ -95,7 +96,7 @@ export default function InvoiceRecordPaymentScreen() {
       }
     } catch (err) {
       Alert.alert('Error', 'Failed to load invoice details');
-      router.back();
+      safeBack(router, id ? `/invoice/${id}` : '/(tabs)/bills');
     } finally {
       setLoading(false);
     }
@@ -145,7 +146,7 @@ export default function InvoiceRecordPaymentScreen() {
           ],
         });
 
-        router.back();
+        safeBack(router, id ? `/invoice/${id}` : '/(tabs)/bills');
       } else if (paymentSource === 'ADVANCE') {
         const amt = parseFloat(advanceAmount);
         if (isNaN(amt) || amt <= 0) {
@@ -170,7 +171,7 @@ export default function InvoiceRecordPaymentScreen() {
           notes: advanceNotes.trim() || null,
         });
 
-        router.back();
+        safeBack(router, id ? `/invoice/${id}` : '/(tabs)/bills');
       } else if (paymentSource === 'SPLIT') {
         const numAdv = parseFloat(splitAdvanceAmount);
         const numDirect = parseFloat(splitDirectAmount);
@@ -218,11 +219,11 @@ export default function InvoiceRecordPaymentScreen() {
               },
             ],
           });
-          router.back();
+          safeBack(router, id ? `/invoice/${id}` : '/(tabs)/bills');
         } catch (splitErr: any) {
           const errMsg = getApiErrorMessage(splitErr, 'Direct payment portion failed.');
           Alert.alert('Partial Success', `Advance applied successfully, but recording direct payment failed: ${errMsg}`);
-          router.back();
+          safeBack(router, id ? `/invoice/${id}` : '/(tabs)/bills');
         }
       }
     } catch (err: any) {
@@ -243,7 +244,7 @@ export default function InvoiceRecordPaymentScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, id ? `/invoice/${id}` : '/(tabs)/bills')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Record Payment</Text>

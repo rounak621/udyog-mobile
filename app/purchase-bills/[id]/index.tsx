@@ -12,6 +12,7 @@ import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { safeBack } from '../../../utils/navigation';
 
 interface PurchaseBillItem {
   id: number;
@@ -151,7 +152,7 @@ export default function PurchaseBillDetailScreen() {
               const bId = bizRes.data.id;
               await api.delete(`/purchase-bills/${bill.id}?business_id=${bId}`);
               Alert.alert('Success', 'Purchase bill deleted successfully');
-              router.back();
+              safeBack(router, '/purchase-bills');
             } catch (err: any) {
               const errMsg = getApiErrorMessage(err, 'Failed to delete purchase bill');
               Alert.alert('Error', errMsg);
@@ -215,7 +216,7 @@ export default function PurchaseBillDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => safeBack(router, '/purchase-bills')} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Bill Details</Text>
