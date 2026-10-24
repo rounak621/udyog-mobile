@@ -48,6 +48,10 @@ export default function InvoiceDetailScreen() {
   const [reverting, setReverting] = useState(false);
   const [availableAdvance, setAvailableAdvance] = useState(0);
 
+  // Paid bill deletion confirmation
+  const [showDeletePaidModal, setShowDeletePaidModal] = useState(false);
+  const [confirmInvoiceNumber, setConfirmInvoiceNumber] = useState('');
+
   const loadInvoice = async () => {
     try {
       const token = await getToken();
@@ -120,6 +124,18 @@ export default function InvoiceDetailScreen() {
   };
 
   const handleDelete = () => {
+    if (!invoice) return;
+    if (invoice.status === 'CANCELLED') {
+      Alert.alert('Error', 'Cancelled bills cannot be deleted.');
+      return;
+    }
+    const paid = Number(invoice.paid_amount || 0);
+    if (paid > 0 || invoice.status === 'PAID') {
+      setConfirmInvoiceNumber('');
+      setShowDeletePaidModal(true);
+      return;
+    }
+
     Alert.alert(
       'Delete Invoice',
       `Are you sure you want to delete invoice ${invoice?.invoice_number}? This action cannot be undone.`,
@@ -144,6 +160,25 @@ export default function InvoiceDetailScreen() {
         },
       ]
     );
+  };
+
+  const handleConfirmDeletePaid = async () => {
+    if (!invoice) return;
+    try {
+      setDeleting(true);
+      const token = await getToken();
+      setAuthToken(token);
+      await api.delete(
+        `/invoices/${id}?business_id=${invoice.business_id}&confirm_invoice_number=${encodeURIComponent(confirmInvoiceNumber.trim())}`
+      );
+      setShowDeletePaidModal(false);
+      setConfirmInvoiceNumber('');
+      router.replace('/(tabs)/bills');
+    } catch (err: any) {
+      Alert.alert('Error', getApiErrorMessage(err, 'Failed to delete invoice'));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const ps = (invoice?.payment_status || 'UNPAID').toUpperCase();
@@ -621,6 +656,74 @@ export default function InvoiceDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      <Modal
+        visible={showDeletePaidModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowDeletePaidModal(false); setConfirmInvoiceNumber(''); }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { color: Colors.danger }]}>Delete Paid Bill</Text>
+            <View style={{ backgroundColor: '#FEF2F2', padding: 12, borderRadius: 8, marginVertical: 10, borderWidth: 1, borderColor: '#FECACA' }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#DC2626', marginBottom: 4 }}>
+                Payments of ₹{Number(invoice?.paid_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} will be reversed
+              </Text>
+              <Text style={{ fontSize: 12, color: '#991B1B', lineHeight: 16 }}>
+                Total Bill: ₹{Number(invoice?.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+
+            <Text style={styles.inputLabel}>
+              Type &quot;{invoice?.invoice_number}&quot; to confirm:
+            </Text>
+            <TextInput
+              style={[styles.textInput, { marginBottom: 20 }]}
+              value={confirmInvoiceNumber}
+              onChangeText={setConfirmInvoiceNumber}
+              placeholder={invoice?.invoice_number || ''}
+              placeholderTextColor={Colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setShowDeletePaidModal(false); setConfirmInvoiceNumber(''); }}
+                style={styles.modalCancelBtn}
+                disabled={deleting}
+              >
+                <Text style={styles.modalCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmDeletePaid}
+                disabled={deleting || confirmInvoiceNumber.trim() !== (invoice?.invoice_number || '').trim()}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor:
+                      confirmInvoiceNumber.trim() === (invoice?.invoice_number || '').trim() && !deleting
+                        ? Colors.danger
+                        : '#9CA3AF',
+                  },
+                ]}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalConfirmBtnText}>Delete Bill</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+
       <Modal visible={showPdfPreview} animationType="slide" onRequestClose={() => setShowPdfPreview(false)}>
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
           <View style={[styles.pdfHeader, { paddingTop: insets.top + 8 }]}>
@@ -674,6 +777,7 @@ export default function InvoiceDetailScreen() {
           </View>
         </View>
       </Modal>
+
     </View>
   );
 }
