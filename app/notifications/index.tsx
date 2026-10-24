@@ -10,6 +10,7 @@ import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api } from '../../services/api';
 import { normalizeDeepLink } from '../../services/notifications';
+import { safeBack } from '../../utils/navigation';
 
 interface NotificationItem {
   id: string;
@@ -93,7 +94,7 @@ export default function NotificationsScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(tabs)')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>

@@ -117,7 +117,7 @@ export default function CreateItemScreen() {
       } else {
         await api.post(`/items/?business_id=${businessId}`, payload);
       }
-      router.back();
+      safeBack(router, '/inventory');
     } catch (err: any) {
       Alert.alert('Error', getApiErrorMessage(err, 'Failed to save item'));
     } finally {

@@ -427,11 +427,16 @@ export default function CreatePurchaseBillScreen() {
       if (editId) {
         await api.put(`/purchase-bills/${editId}?business_id=${businessId}`, payload);
         Alert.alert('Success', 'Purchase bill updated successfully');
+        router.replace(`/purchase-bills/${editId}`);
       } else {
-        await api.post(`/purchase-bills/?business_id=${businessId}`, payload);
+        const res = await api.post(`/purchase-bills/?business_id=${businessId}`, payload);
         Alert.alert('Success', 'Purchase bill recorded successfully');
+        if (res?.data?.id) {
+          router.replace(`/purchase-bills/${res.data.id}`);
+        } else {
+          router.replace('/purchase-bills');
+        }
       }
-      router.back();
     } catch (err: any) {
       Alert.alert('Error', getApiErrorMessage(err, 'Failed to save purchase bill'));
     } finally {

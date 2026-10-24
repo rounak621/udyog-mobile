@@ -188,7 +188,7 @@ export default function CreatePartyScreen() {
         };
         await api.post(`/customers/?business_id=${businessId}`, payload);
       }
-      router.back();
+      safeBack(router, '/(tabs)/parties');
     } catch (err: any) {
       Alert.alert('Error', getApiErrorMessage(err, 'Failed to save party'));
     } finally {
