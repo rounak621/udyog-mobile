@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DesignTokens, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { FixedBottomBar, useBottomPadding } from '../../components/ui/SafeLayout';
+import { safeBack } from '../../utils/navigation';
 
 const THEMES = [
   { label: 'Corporate Standard (Black & White)', value: 'corporate_tax_invoice' },
@@ -359,7 +360,7 @@ export default function InvoiceSettingsScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, '/(tabs)/more')}
           style={styles.backBtn}
           accessibilityLabel="Go back"
         >

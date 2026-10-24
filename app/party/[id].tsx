@@ -14,6 +14,7 @@ import { showApiError } from '../../utils/apiError';
 import * as FileSystem from 'expo-file-system/legacy';
 import { savePdfToAndroidOrShare } from '../../services/safHelper';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { safeBack } from '../../utils/navigation';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -412,7 +413,7 @@ export default function PartyDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(tabs)/parties')} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle} numberOfLines={1}>{party.name}</Text>

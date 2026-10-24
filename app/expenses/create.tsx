@@ -18,6 +18,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DesignTokens, Radius } from '../../constants/theme';
+import { safeBack } from '../../utils/navigation';
 import { api, setAuthToken } from '../../services/api';
 import { FixedBottomBar, useBottomPadding } from '../../components/ui/SafeLayout';
 import {
@@ -290,7 +291,7 @@ export default function CreateExpenseScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => safeBack(router, '/expenses')}
           style={styles.backBtn}
           accessibilityLabel="Go back"
         >

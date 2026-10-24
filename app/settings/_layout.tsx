@@ -1,13 +1,14 @@
 import { Stack, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { BackHandler } from 'react-native';
+import { safeBack } from '../../utils/navigation';
 
 export default function SettingsLayout() {
   const router = useRouter();
 
   useEffect(() => {
     const onBackPress = () => {
-      router.replace('/(tabs)/more');
+      safeBack(router, '/(tabs)/more');
       return true;
     };
 

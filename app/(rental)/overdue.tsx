@@ -11,6 +11,7 @@ import { SafeScrollView } from '../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { useBusiness } from '../../context/BusinessContext';
+import { safeBack } from '../../utils/navigation';
 
 interface RentalOrderList {
   id: string;
@@ -112,7 +113,7 @@ export default function RentalOverdueScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(rental)/overview')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Overdue Orders</Text>

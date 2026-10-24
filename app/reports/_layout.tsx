@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect } from 'react';
 import { Colors } from '../../constants/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { safeBack } from '../../utils/navigation';
 
 export default function ReportsLayout() {
   const pathname = usePathname();
@@ -12,7 +13,7 @@ export default function ReportsLayout() {
 
   useEffect(() => {
     const onBack = () => {
-      router.replace('/reports');
+      safeBack(router, '/reports');
       return true;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBack);

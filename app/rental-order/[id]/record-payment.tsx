@@ -14,6 +14,7 @@ import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { useBusiness } from '../../../context/BusinessContext';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { safeBack } from '../../../utils/navigation';
 
 export default function RentalOrderRecordPaymentScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,7 +49,7 @@ export default function RentalOrderRecordPaymentScreen() {
       setOrder(res.data);
     } catch (err) {
       Alert.alert('Error', 'Failed to load order details');
-      router.back();
+      safeBack(router, id ? `/rental-order/${id}` : '/(rental)/orders');
     } finally {
       setLoading(false);
     }
@@ -74,7 +75,7 @@ export default function RentalOrderRecordPaymentScreen() {
         notes: paymentNotes.trim() || null
       });
 
-      router.back();
+      safeBack(router, id ? `/rental-order/${id}` : '/(rental)/orders');
     } catch (err: any) {
       Alert.alert('Error', getApiErrorMessage(err, 'Failed to record payment.'));
     } finally {
@@ -93,7 +94,7 @@ export default function RentalOrderRecordPaymentScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <View style={[styles.topbar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, id ? `/rental-order/${id}` : '/(rental)/orders')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <Text style={styles.topbarTitle}>Receive Payment</Text>

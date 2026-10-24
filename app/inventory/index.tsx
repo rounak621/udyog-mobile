@@ -13,6 +13,7 @@ import { Colors, Spacing, Radius } from '../../constants/theme';
 import { api, setAuthToken } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { safeBack } from '../../utils/navigation';
 
 interface InventoryItem {
   id: number;
@@ -129,7 +130,7 @@ export default function InventoryScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, flexDirection: 'row', alignItems: 'center' }]}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 8 }}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(tabs)/more')} style={{ padding: 4, marginRight: 8 }}>
           <Ionicons name="arrow-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <View>

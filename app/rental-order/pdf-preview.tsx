@@ -7,6 +7,7 @@ import { WebView } from 'react-native-webview';
 import { getPdfViewerHtml } from '../../utils/pdfViewerHtml';
 import { Colors } from '../../constants/theme';
 import { api } from '../../services/api';
+import { safeBack } from '../../utils/navigation';
 
 export default function OrderPdfPreviewScreen() {
   const { shareToken } = useLocalSearchParams<{ shareToken: string }>();
@@ -19,7 +20,7 @@ export default function OrderPdfPreviewScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeBack(router, '/(rental)/orders')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color="#0F172A" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Invoice Preview</Text>
@@ -41,7 +42,7 @@ export default function OrderPdfPreviewScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(rental)/orders')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Invoice Preview</Text>

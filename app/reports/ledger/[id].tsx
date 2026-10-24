@@ -10,6 +10,7 @@ import { SafeScrollView } from '../../../components/ui/SafeLayout';
 import { Colors, Spacing, Radius } from '../../../constants/theme';
 import { api, setAuthToken } from '../../../services/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { safeBack } from '../../../utils/navigation';
 
 interface LedgerLine {
   transaction_date: string;
@@ -123,7 +124,7 @@ export default function LedgerDetailScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => safeBack(router, '/reports/ledger')} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>{partyName}</Text>

@@ -20,6 +20,7 @@ import { api, setAuthToken, API_BASE_URL } from '../../services/api';
 import { showApiError } from '../../utils/apiError';
 import { useBusiness } from '../../context/BusinessContext';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { safeBack } from '../../utils/navigation';
 
 interface Customer {
   id: string;
@@ -523,7 +524,7 @@ export default function OrderCreateScreen() {
     <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => safeBack(router, '/(rental)/orders')} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Rental Order</Text>
